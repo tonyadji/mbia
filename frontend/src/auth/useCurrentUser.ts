@@ -1,5 +1,6 @@
 import { useQuery } from '@tanstack/react-query';
-import { ApiError, apiClient } from '../api/client';
+import { apiClient } from '../api/client';
+import { retryUnlessClientError } from '../api/retry';
 
 export const currentUserQueryKey = ['me'] as const;
 
@@ -15,7 +16,6 @@ export function useCurrentUser() {
       return data;
     },
     // A client error (401, 403 EMAIL_NOT_VERIFIED) will not change by retrying.
-    retry: (failureCount, error) =>
-      !(error instanceof ApiError && error.status < 500) && failureCount < 3,
+    retry: retryUnlessClientError,
   });
 }

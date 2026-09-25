@@ -1,7 +1,10 @@
 import type { RouteObject } from 'react-router';
+import { CREATE_FAMILY_PATH } from '../auth/AuthProvider';
 import { ProtectedRoute } from '../auth/ProtectedRoute';
 import { AccountSettingsPage, SETTINGS_PATH } from '../pages/AccountSettingsPage';
-import { LandingPage } from '../pages/LandingPage';
+import { CreateFamilyPage } from '../pages/CreateFamilyPage';
+import { FamilyGatePage } from '../pages/FamilyGatePage';
+import { FamilyHomePage } from '../pages/FamilyHomePage';
 import { SignInCallbackPage } from '../pages/SignInCallbackPage';
 import { WelcomePage } from '../pages/WelcomePage';
 import { RootLayout } from './RootLayout';
@@ -15,7 +18,9 @@ export const routes: RouteObject[] = [
       {
         element: <ProtectedRoute />,
         children: [
-          { path: 'home', element: <LandingPage /> },
+          { path: 'home', element: <FamilyGatePage /> },
+          { path: CREATE_FAMILY_PATH.slice(1), element: <CreateFamilyPage /> },
+          { path: 'families/:familyId', element: <FamilyHomePage /> },
           { path: SETTINGS_PATH.slice(1), element: <AccountSettingsPage /> },
         ],
       },

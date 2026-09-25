@@ -1,0 +1,33 @@
+{
+  "create": {
+    "title": "Créer votre famille",
+    "intro": "Donnez-lui un nom : vous pourrez ensuite y ajouter vos proches et vos souvenirs.",
+    "nameLabel": "Nom de la famille",
+    "namePlaceholder": "Par exemple : Famille Adji",
+    "nameRequired": "Indiquez le nom de la famille.",
+    "nameTooLong": "Le nom ne peut pas dépasser {{max}} caractères.",
+    "submit": "Créer la famille"
+  },
+  "home": {
+    "personCount_one": "{{count}} personne",
+    "personCount_other": "{{count}} personnes",
+    "memoryCount_one": "{{count}} souvenir",
+    "memoryCount_other": "{{count}} souvenirs",
+    "stats": "{{persons}} • {{memories}}",
+    "created": "La famille {{name}} a été créée.",
+    "emptyTitle": "Bienvenue dans la famille {{name}}",
+    "emptyBody": "Ajoutons la première personne."
+  },
+  "chooser": {
+    "title": "Vos familles"
+  },
+  "notFound": {
+    "title": "Famille introuvable",
+    "body": "Cette famille n'existe pas, ou vous n'en faites pas partie.",
+    "back": "Retour à mes familles"
+  },
+  "navigation": {
+    "label": "Navigation de la famille",
+    "home": "Accueil"
+  }
+}

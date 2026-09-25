@@ -5,6 +5,9 @@ import { i18n } from '../i18n';
 
 export const HOME_PATH = '/home';
 
+/** Family creation: where `Create my family` leads (SCREEN-001), including after sign-up. */
+export const CREATE_FAMILY_PATH = '/families/new';
+
 /** The part of the `oidc-client-ts` UserManager that the application uses. */
 export type AuthUserManager = Pick<
   UserManager,
@@ -36,7 +39,7 @@ interface Auth {
   isSigningOut: boolean;
   /** Redirects to the Keycloak sign-in page, then back to `returnTo`. */
   signIn: (returnTo?: string) => Promise<void>;
-  /** Redirects to the Keycloak registration page. */
+  /** Redirects to the Keycloak registration page, then to Family creation. */
   signUp: () => Promise<void>;
   signOut: () => Promise<void>;
   /** Completes the redirect from Keycloak; resolves to the in-app path to go to. */
@@ -90,7 +93,7 @@ export function AuthProvider({
       signIn,
       signUp: () =>
         userManager.signinRedirect({
-          state: { returnTo: HOME_PATH },
+          state: { returnTo: CREATE_FAMILY_PATH },
           prompt: 'create',
           ui_locales: uiLocales(),
         }),

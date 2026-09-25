@@ -1,4 +1,5 @@
 {
   "unexpected": "Something went wrong. Please try again.",
-  "VALIDATION_FAILED": "Some information is not valid. Check it and try again."
+  "VALIDATION_FAILED": "Some information is not valid. Check it and try again.",
+  "FAMILY_NOT_FOUND": "This family cannot be found, or you are not one of its members."
 }
