@@ -1,0 +1,40 @@
+/*
+ * Mbia design tokens — the only place where colors, font and type scale are defined.
+ * Source: mbia-specs/product/ux/design-guidelines.md §3–4 and references/mbia-mvp-mockups.png.
+ * Use them through Tailwind classes (bg-primary, text-text-muted, text-display, …).
+ */
+@theme {
+  /* Only Mbia colors exist: Tailwind's default palette is disabled. */
+  --color-*: initial;
+  --color-white: #ffffff;
+  --color-transparent: transparent;
+  --color-current: currentColor;
+
+  --color-primary: #2f5c4e;
+  --color-primary-hover: #244a3e;
+  --color-on-primary: #ffffff;
+  /* Warm ochre from the logo: decorative only, too light for text. */
+  --color-accent: #c49054;
+  --color-background: #f9f5ed;
+  --color-surface: #ffffff;
+  --color-border: #e7e1d6;
+  --color-text: #1a1f1b;
+  --color-text-muted: #62675f;
+
+  --font-sans: 'Nunito Sans Variable', system-ui, sans-serif;
+
+  /* Type scale: display / section / body / caption only. */
+  --text-*: initial;
+  --text-display: 1.75rem;
+  --text-display--line-height: 2.25rem;
+  --text-display--font-weight: 700;
+  --text-section: 1.25rem;
+  --text-section--line-height: 1.75rem;
+  --text-section--font-weight: 600;
+  --text-body: 1rem;
+  --text-body--line-height: 1.5rem;
+  --text-body--font-weight: 400;
+  --text-caption: 0.8125rem;
+  --text-caption--line-height: 1.25rem;
+  --text-caption--font-weight: 400;
+}

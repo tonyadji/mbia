@@ -1,0 +1,8 @@
+@import 'tailwindcss';
+@import './theme.css';
+
+@layer base {
+  html {
+    @apply bg-background font-sans text-body text-text antialiased;
+  }
+}
