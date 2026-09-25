@@ -1,0 +1,33 @@
+{
+  "title": "Paramètres du compte",
+  "open": "Paramètres du compte",
+  "back": "Retour",
+  "displayName": {
+    "label": "Nom affiché",
+    "save": "Enregistrer",
+    "saved": "Votre nom a été enregistré.",
+    "required": "Indiquez le nom à afficher.",
+    "tooLong": "Le nom ne peut pas dépasser {{max}} caractères."
+  },
+  "email": {
+    "label": "Adresse e-mail",
+    "managed": "Elle est gérée par votre compte de connexion."
+  },
+  "language": {
+    "label": "Langue",
+    "fr": "Français",
+    "en": "English"
+  },
+  "security": {
+    "title": "Connexion",
+    "changePassword": "Changer mon mot de passe"
+  },
+  "deleteAccount": {
+    "title": "Supprimer mon compte",
+    "explanation": "Pour supprimer votre compte, écrivez à l'assistance. Votre demande est traitée sous 30 jours : vous quittez toutes vos familles, votre compte de connexion est supprimé et votre nom et votre adresse e-mail sont effacés de Mbia.",
+    "contentKept": "Ce que vous avez partagé reste dans vos familles, attribué à « Ancien membre », sauf si vous demandez aussi à retirer certains contenus.",
+    "contact": "Contacter l'assistance",
+    "emailSubject": "Suppression de mon compte Mbia",
+    "noContact": "L'adresse de l'assistance n'est pas encore disponible."
+  }
+}

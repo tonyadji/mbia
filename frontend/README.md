@@ -69,3 +69,10 @@ realm.
   `GET /me` (`useCurrentUser()`) and applies the User's language. `403 EMAIL_NOT_VERIFIED` shows the "check your
   inbox" page.
 - The access token is added to every API call; a `401` answer drops the session and starts sign-in again.
+
+## Account settings
+
+`/settings` (SCREEN-011), reached from the avatar of the signed-in pages. `useUpdateCurrentUser()` calls `PATCH /me`
+for the display name and the language; the language switches at once and the stored choice wins over the browser
+language at the next sign-in, on any device. `Delete my account` links to the support address `VITE_SUPPORT_EMAIL`
+(see `.env.example`); without it, only the explanation is shown.

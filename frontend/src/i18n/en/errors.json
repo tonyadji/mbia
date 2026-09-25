@@ -1,3 +1,4 @@
 {
-  "unexpected": "Something went wrong. Please try again."
+  "unexpected": "Something went wrong. Please try again.",
+  "VALIDATION_FAILED": "Some information is not valid. Check it and try again."
 }

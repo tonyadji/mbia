@@ -1,3 +1,4 @@
 {
-  "unexpected": "Une erreur inattendue s'est produite. Réessayez."
+  "unexpected": "Une erreur inattendue s'est produite. Réessayez.",
+  "VALIDATION_FAILED": "Certaines informations ne sont pas valides. Vérifiez-les puis réessayez."
 }

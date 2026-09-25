@@ -28,6 +28,15 @@ When a question is answered, update the relevant spec, then move the entry to **
 - **Recommendation:** A; it never merges or erases data silently.
 - **Blocking:** nothing in Phase 1. Until answered, PR-10 does not special-case it: the database refuses the row and the API answers 500 `INTERNAL_ERROR`.
 
+### OQ-004 — Language of the Keycloak pages after a language change in Mbia
+
+- **Raised by / date:** coding agent (PR-12), 2026-09-25
+- **Context:** `localization-and-kinship-labels.md` §1 requires Keycloak pages in both languages and says the language chosen in account settings wins on every device. Mbia passes `ui_locales` to Keycloak on sign-in, sign-up and sign-out (PR-11), but the `Change password` link of SCREEN-011 opens the Keycloak account console, whose own sign-in redirect carries no Mbia language: in local tests its pages follow Keycloak's own choice (browser, cookie or the Keycloak user's `locale` attribute), not `preferredLocale`. `PATCH /me` does not update the Keycloak user.
+- **Question:** must Keycloak pages opened from account settings follow the language chosen in Mbia?
+- **Options:** A — accept Keycloak's own choice for the account console (current PR-12 behavior) / B — the backend also writes the Keycloak user's `locale` attribute on `PATCH /me` (new Keycloak Admin API dependency: ADR needed) / C — replace the account-console link by an application-initiated action (`signinRedirect` with `kc_action=UPDATE_PASSWORD` and `ui_locales`): the password page opens in the UI language and returns to Mbia, but SCREEN-011 says "link to Keycloak account page".
+- **Recommendation:** C; it keeps the user in Mbia's language without new infrastructure. Needs a SCREEN-011 wording change.
+- **Blocking:** nothing; PR-12 ships option A.
+
 ## Resolved
 
 ### OQ-001 — JUnit major version with Spring Boot 4.1
