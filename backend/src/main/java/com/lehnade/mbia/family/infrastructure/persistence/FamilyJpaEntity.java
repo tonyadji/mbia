@@ -46,6 +46,11 @@ class FamilyJpaEntity {
         this.updatedAt = updatedAt;
     }
 
+    void rename(String name, Instant updatedAt) {
+        this.name = name;
+        this.updatedAt = updatedAt;
+    }
+
     UUID id() {
         return id;
     }

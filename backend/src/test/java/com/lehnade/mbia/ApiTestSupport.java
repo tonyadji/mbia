@@ -1,5 +1,6 @@
 package com.lehnade.mbia;
 
+import com.lehnade.mbia.family.FamilyFixtures;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
@@ -29,6 +30,11 @@ public abstract class ApiTestSupport {
 
     @Autowired
     protected JdbcClient jdbc;
+
+    /** Families and members of each role, for family-scoped tests of any module. */
+    protected FamilyFixtures families() {
+        return new FamilyFixtures(mvc, jdbc);
+    }
 
     protected long userRowsWithSubject(String subject) {
         return jdbc.sql("SELECT count(*) FROM users WHERE identity_provider_subject = ?")

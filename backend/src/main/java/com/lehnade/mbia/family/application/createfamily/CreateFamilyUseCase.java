@@ -1,8 +1,8 @@
 package com.lehnade.mbia.family.application.createfamily;
 
-import com.lehnade.mbia.family.application.FamilyStats;
-import com.lehnade.mbia.family.application.FamilyStatsPort;
+import com.lehnade.mbia.family.application.FamilyRole;
 import com.lehnade.mbia.family.application.FamilyView;
+import com.lehnade.mbia.family.application.FamilyViews;
 import com.lehnade.mbia.family.domain.Family;
 import com.lehnade.mbia.family.domain.FamilyId;
 import com.lehnade.mbia.family.domain.FamilyMembership;
@@ -10,7 +10,6 @@ import com.lehnade.mbia.family.domain.FamilyMembershipRepository;
 import com.lehnade.mbia.family.domain.FamilyRepository;
 import java.time.Clock;
 import java.time.Instant;
-import java.util.List;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -23,14 +22,14 @@ public class CreateFamilyUseCase {
 
     private final FamilyRepository families;
     private final FamilyMembershipRepository memberships;
-    private final FamilyStatsPort stats;
+    private final FamilyViews views;
     private final Clock clock;
 
     public CreateFamilyUseCase(FamilyRepository families, FamilyMembershipRepository memberships,
-            FamilyStatsPort stats, Clock clock) {
+            FamilyViews views, Clock clock) {
         this.families = families;
         this.memberships = memberships;
-        this.stats = stats;
+        this.views = views;
         this.clock = clock;
     }
 
@@ -41,10 +40,6 @@ public class CreateFamilyUseCase {
         FamilyMembership membership = FamilyMembership.creator(family.id(), command.userId(), now);
         families.insert(family);
         memberships.insert(membership);
-
-        FamilyStatsPort.ContentCounts counts = stats.contentCounts(List.of(family.id())).get(family.id());
-        return new FamilyView(family.id().value(), family.name(), membership.role(),
-                new FamilyStats(counts.personCount(), counts.memoryCount(), memberships.countActive(family.id())),
-                family.version(), family.createdAt(), family.updatedAt());
+        return views.of(family, FamilyRole.ADMIN);
     }
 }

@@ -12,10 +12,12 @@ public enum ErrorCode {
     VALIDATION_FAILED(400, "Validation failed"),
     AUTHENTICATION_REQUIRED(401, "Authentication required"),
     EMAIL_NOT_VERIFIED(403, "Email not verified"),
+    PERMISSION_DENIED(403, "Permission denied"),
     FAMILY_NOT_FOUND(404, "Family not found"),
     RESOURCE_NOT_FOUND(404, "Resource not found"),
     METHOD_NOT_ALLOWED(405, "Method not allowed"),
     NOT_ACCEPTABLE(406, "Not acceptable"),
+    CONCURRENT_MODIFICATION(409, "Concurrent modification"),
     UNSUPPORTED_MEDIA_TYPE(415, "Unsupported media type"),
     INTERNAL_ERROR(500, "Internal error");
 

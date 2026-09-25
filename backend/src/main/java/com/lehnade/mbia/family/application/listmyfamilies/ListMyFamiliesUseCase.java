@@ -1,5 +1,6 @@
 package com.lehnade.mbia.family.application.listmyfamilies;
 
+import com.lehnade.mbia.family.application.FamilyRole;
 import com.lehnade.mbia.family.application.FamilyStats;
 import com.lehnade.mbia.family.application.FamilyStatsPort;
 import com.lehnade.mbia.family.application.FamilyView;
@@ -29,7 +30,7 @@ public class ListMyFamiliesUseCase {
                 stats.contentCounts(rows.stream().map(row -> row.family().id()).toList());
         return rows.stream().map(row -> {
             FamilyStatsPort.ContentCounts content = counts.get(row.family().id());
-            return new FamilyView(row.family().id().value(), row.family().name(), row.myRole(),
+            return new FamilyView(row.family().id().value(), row.family().name(), FamilyRole.of(row.myRole()),
                     new FamilyStats(content.personCount(), content.memoryCount(), row.activeMemberCount()),
                     row.family().version(), row.family().createdAt(), row.family().updatedAt());
         }).toList();

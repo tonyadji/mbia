@@ -6,6 +6,7 @@ import jakarta.validation.Valid;
 import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.NotBlank;
 import java.util.Map;
+import org.springframework.dao.OptimisticLockingFailureException;
 import org.springframework.http.MediaType;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -38,6 +39,11 @@ public class ErrorTestController {
 
     @GetMapping("/parameter")
     void parameter(@RequestParam @Min(1) int size) {}
+
+    @GetMapping("/optimistic-lock")
+    void optimisticLock() {
+        throw new OptimisticLockingFailureException(LEAKY_MESSAGE);
+    }
 
     @GetMapping("/unexpected")
     void unexpected() {

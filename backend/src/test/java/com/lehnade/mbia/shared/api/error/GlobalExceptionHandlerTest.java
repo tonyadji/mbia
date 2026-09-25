@@ -86,6 +86,26 @@ class GlobalExceptionHandlerTest {
         assertThat(result).bodyJson().extractingPath("$.fieldErrors[0].code").isEqualTo("MIN");
     }
 
+    /** PR-14: a version that changed between the check and the write is a conflict, not a 500. */
+    @Test
+    void optimisticLockingFailureIsAConcurrentModificationWithoutInternals() throws Exception {
+        MvcTestResult result = mvc.get().uri("/test/errors/optimistic-lock").header(RequestIdFilter.HEADER, TRACE_ID)
+                .exchange();
+
+        assertThat(result).hasStatus(HttpStatus.CONFLICT).hasContentType(MediaType.APPLICATION_PROBLEM_JSON);
+        assertThat(result).bodyJson().isStrictlyEqualTo("""
+                {
+                  "type": "https://mbia.example.com/problems/concurrent-modification",
+                  "title": "Concurrent modification",
+                  "status": 409,
+                  "code": "CONCURRENT_MODIFICATION",
+                  "detail": "The resource was modified by someone else. Reload it and try again.",
+                  "traceId": "trace-123"
+                }
+                """);
+        assertThat(result.getResponse().getContentAsString()).doesNotContain("SELECT", "hunter2", "Optimistic");
+    }
+
     @Test
     void unknownExceptionHasTheExactProblemShapeAndAGenericMessage() {
         MvcTestResult result = mvc.get().uri("/test/errors/unexpected").header(RequestIdFilter.HEADER, TRACE_ID).exchange();
