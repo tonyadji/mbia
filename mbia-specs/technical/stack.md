@@ -13,7 +13,7 @@
 - Flyway
 - Maven Wrapper
 - Bean Validation
-- JUnit 5 + AssertJ + Mockito
+- JUnit Jupiter (version managed by Spring Boot: 6.x with Boot 4.1) + AssertJ + Mockito
 - Testcontainers for PostgreSQL integration tests
 - Spring Boot Actuator
 - ArchUnit (or Spring Modulith verification) for module-boundary tests

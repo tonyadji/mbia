@@ -54,12 +54,12 @@ Stack and versions: `mbia-specs/technical/stack.md`. Do not change a framework o
 
 ## 4. Commands
 
-> The implementation does not exist yet. The first implementation task must create these commands exactly as listed, or update this section in the same change.
+> Commands are added as the delivery plan progresses (backend since PR-02). A change that adds or modifies a command updates this section in the same change.
 
 ```bash
 docker compose up -d                      # PostgreSQL, RustFS, Keycloak (realm imported), Mailpit
 cd backend && ./mvnw verify               # compile, generate API, unit + Testcontainers + architecture tests
-cd backend && ./mvnw spring-boot:run      # API on http://localhost:8080/api/v1
+cd backend && ./mvnw spring-boot:run -Dspring-boot.run.profiles=local   # API on http://localhost:8080/api/v1
 cd frontend && npm ci
 cd frontend && npm run generate:api       # regenerate the TypeScript client from openapi.yaml
 cd frontend && npm run typecheck

@@ -1,0 +1,46 @@
+spring:
+  application:
+    name: mbia
+  jpa:
+    open-in-view: false
+    hibernate:
+      ddl-auto: validate
+  flyway:
+    enabled: true
+    locations: classpath:db/migration
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health
+
+---
+# Local development against the docker compose services. Defaults match .env.example;
+# values from the repository-root .env (if any) override them.
+spring:
+  config:
+    activate:
+      on-profile: local
+    import: optional:file:../.env[.properties]
+  datasource:
+    url: jdbc:postgresql://localhost:${POSTGRES_PORT:5432}/${MBIA_DB_NAME:mbia}
+    username: ${MBIA_DB_USER:mbia}
+    password: ${MBIA_DB_PASSWORD:mbia-local}
+
+management:
+  endpoint:
+    health:
+      show-components: always
+
+---
+# Automated tests. The datasource is provided by a Testcontainers @ServiceConnection.
+spring:
+  config:
+    activate:
+      on-profile: test
+
+management:
+  endpoint:
+    health:
+      show-components: always
