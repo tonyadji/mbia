@@ -1,4 +1,4 @@
-import { useQuery } from '@tanstack/react-query';
+import { keepPreviousData, useQuery } from '@tanstack/react-query';
 import { apiClient } from '../api/client';
 import type { components } from '../api/generated/schema';
 import { retryUnlessClientError } from '../api/retry';
@@ -14,11 +14,12 @@ export function familyTreeQueryKey(familyId: string, focusPersonId: string | und
 /**
  * The depth-1 local graph around a Person (`GET /families/{familyId}/tree`). Without
  * `focusPersonId`, or when that Person is no longer ACTIVE, the server chooses the focus (OQ-014).
+ * `keepPrevious` keeps the current tree while the next focus loads (SCREEN-003 recentering).
  */
 export function useFamilyTree(
   familyId: string,
   focusPersonId: string | undefined,
-  { enabled = true } = {},
+  { enabled = true, keepPrevious = false } = {},
 ) {
   return useQuery({
     queryKey: familyTreeQueryKey(familyId, focusPersonId),
@@ -33,5 +34,6 @@ export function useFamilyTree(
     },
     retry: retryUnlessClientError,
     enabled,
+    placeholderData: keepPrevious ? keepPreviousData : undefined,
   });
 }

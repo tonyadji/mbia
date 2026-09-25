@@ -15,7 +15,7 @@ import { AddRelativeMenu } from '../persons/AddRelativeMenu';
 import { formatPartialDate, yearOf } from '../persons/formatPartialDate';
 import { familySections } from '../persons/familySections';
 import { kinshipLabel } from '../persons/kinship';
-import { CHILD_RELATIONS, PARENT_RELATIONS, addRelativePath } from '../persons/relatives';
+import { relativeChoiceGroups } from '../persons/relatives';
 import { useClaimPerson } from '../persons/useClaimPerson';
 import { useFamilyTree, type TreeNode } from '../persons/useFamilyTree';
 import { usePerson, type Person } from '../persons/usePerson';
@@ -219,30 +219,7 @@ function PersonProfile({
           {canAddRelatives(person, role) && (
             <AddRelativeMenu
               label={t('person:relative.menu')}
-              groups={[
-                {
-                  heading: t('person:relative.parents'),
-                  choices: PARENT_RELATIONS.map((relation) => ({
-                    label: t(`person:relative.choices.${relation}`),
-                    to: addRelativePath(familyId, person.id, relation, 'profile'),
-                  })),
-                },
-                {
-                  heading: t('person:relative.children'),
-                  choices: CHILD_RELATIONS.map((relation) => ({
-                    label: t(`person:relative.choices.${relation}`),
-                    to: addRelativePath(familyId, person.id, relation, 'profile'),
-                  })),
-                },
-                {
-                  choices: [
-                    {
-                      label: t('person:relative.choices.PARTNER'),
-                      to: addRelativePath(familyId, person.id, 'PARTNER', 'profile'),
-                    },
-                  ],
-                },
-              ]}
+              groups={relativeChoiceGroups(tPerson, familyId, person.id, 'profile')}
             />
           )}
         </section>

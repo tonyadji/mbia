@@ -1,0 +1,20 @@
+{
+  "title": "Family tree",
+  "loading": "Loading the family tree",
+  "siblings_one": "Siblings ({{count}})",
+  "siblings_other": "Siblings ({{count}})",
+  "zoomIn": "Zoom in",
+  "zoomOut": "Zoom out",
+  "card": {
+    "moreParents": "Has parents beyond this view",
+    "moreChildren": "Has children beyond this view"
+  },
+  "quickView": {
+    "children_one": "{{count}} child",
+    "children_other": "{{count}} children",
+    "seeHow": "See how",
+    "viewProfile": "View profile",
+    "center": "Center the tree on {{name}}",
+    "add": "Add…"
+  }
+}

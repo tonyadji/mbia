@@ -1,5 +1,6 @@
 {
   "actions": {
-    "retry": "Réessayer"
+    "retry": "Réessayer",
+    "close": "Fermer"
   }
 }

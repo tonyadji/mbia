@@ -27,6 +27,12 @@ export default defineConfig({
       name: 'chromium-phone',
       use: { ...devices['Desktop Chrome'], viewport: { width: 375, height: 812 } },
     },
+    {
+      // The tree also works on desktop (phase-2-core-family-graph.md PR-23).
+      name: 'chromium-desktop',
+      testMatch: 'family-tree.spec.ts',
+      use: { ...devices['Desktop Chrome'], viewport: { width: 1280, height: 800 } },
+    },
   ],
   webServer: {
     command: 'npm run build && npm run preview',

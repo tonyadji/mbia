@@ -20,6 +20,7 @@
     "personAdded": "{{name}} is now part of the family.",
     "selfAdded": "You are now part of the {{family}} family.",
     "viewProfile": "View profile",
+    "viewTree": "View family tree",
     "addRelative": "Add a relative",
     "relatives": {
       "FATHER": "My father",
@@ -39,6 +40,7 @@
   },
   "navigation": {
     "label": "Family navigation",
-    "home": "Home"
+    "home": "Home",
+    "tree": "Tree"
   }
 }

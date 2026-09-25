@@ -25,12 +25,14 @@ import {
   relationshipBetween,
   type Relation,
   type RelationshipWarning,
+  isRelativeOrigin,
   type RelativeOrigin,
 } from '../persons/relatives';
 import { useCreatePerson, type CreatePersonRequest } from '../persons/useCreatePerson';
 import { useCreateRelationship } from '../persons/useCreateRelationship';
 import { usePerson, type Person } from '../persons/usePerson';
 import { useUpdatePerson } from '../persons/useUpdatePerson';
+import { familyTreePath, type FamilyTreeState } from '../tree/treePath';
 import { familyHomePath, type FamilyHomeState } from './FamilyHomePage';
 import { FamilyNotFoundPage } from './FamilyNotFoundPage';
 import { displayNameOf, personPath, type PersonProfileState } from './PersonProfilePage';
@@ -59,6 +61,7 @@ export function AddPersonPage() {
   const [params] = useSearchParams();
   const relativeOf = params.get('relativeOf');
   const relation = params.get('relation');
+  const from = params.get('from');
   if (!UUID.test(familyId)) {
     return <FamilyNotFoundPage />;
   }
@@ -68,7 +71,7 @@ export function AddPersonPage() {
         familyId={familyId}
         anchorId={relativeOf}
         relation={relation}
-        from={params.get('from') === 'home' ? 'home' : 'profile'}
+        from={isRelativeOrigin(from) ? from : 'profile'}
       />
     );
   }
@@ -138,12 +141,19 @@ function AddPersonForm({
   const backPath =
     relative?.from === 'profile'
       ? personPath(familyId, relative.anchor.id)
-      : familyHomePath(familyId);
+      : relative?.from === 'tree'
+        ? familyTreePath(familyId, relative.anchor.id)
+        : familyHomePath(familyId);
 
   function done(person: Person) {
     const name = displayNameOf(person);
     if (relative?.from === 'profile') {
       const state: PersonProfileState = { relativeAdded: { name } };
+      void navigate(backPath, { replace: true, state });
+      return;
+    }
+    if (relative?.from === 'tree') {
+      const state: FamilyTreeState = { relativeAdded: { name, anchor: anchorName } };
       void navigate(backPath, { replace: true, state });
       return;
     }

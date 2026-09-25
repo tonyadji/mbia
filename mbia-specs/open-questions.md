@@ -185,3 +185,21 @@ When a question is answered, update the relevant spec, then move the entry to **
 - **Options:** A — yes, as the contract describes (parents of the parents, children of the children) / B — depth 1 only.
 - **Recommendation:** A; the contract already exposes it, at the same bounded query count.
 - **Answer:** A (human, 2026-09-25). Implemented in PR-22 (no spec change).
+
+### OQ-018 — Linked Person or last focused Person when opening the tree
+
+- **Raised by / date:** coding agent (PR-23), 2026-09-25
+- **Context:** `family-tree-ux.md` §6 ranks the User's linked Person (rule 1) before the last focused Person (rule 2), but also says the browser sends the last focused Person as the requested focus, which the server then uses whatever the linked Person.
+- **Question:** when the User has a linked Person and a remembered focus, which one does the tree open on?
+- **Options:** A — the literal order: the browser sends the remembered focus only when the User has no linked Person; the current focus stays in the tree URL while navigating / B — the remembered focus always wins; the linked Person is only the first default.
+- **Recommendation:** A.
+- **Answer:** A (human, 2026-09-25). Documented in `family-tree-ux.md` §6; changed in PR-23.
+
+### OQ-019 — Order of the children groups in the tree
+
+- **Raised by / date:** coding agent (PR-23), 2026-09-25
+- **Context:** `family-tree-ux.md` §6.1 orders the children groups "one group per partner (same order as row 2)", while row 2 places partners by creation, first on the right, next on the left.
+- **Question:** is "same order as row 2" the creation order or the left-to-right order of row 2?
+- **Options:** A — left to right, as the partners are drawn (no crossing lines), then the group of the other children / B — creation order.
+- **Recommendation:** A.
+- **Answer:** A (human, 2026-09-25). Documented in `family-tree-ux.md` §6.1; changed in PR-23.
