@@ -1,5 +1,7 @@
 # Mbia
 
+[![CI](https://github.com/tonyadji/mbia/actions/workflows/ci.yml/badge.svg?branch=develop)](https://github.com/tonyadji/mbia/actions/workflows/ci.yml)
+
 Mbia is a private, collaborative family-heritage web app.
 Families build their tree, attach photos and stories to relatives, and invite each other to contribute.
 
@@ -35,6 +37,24 @@ To stop everything and delete all local data:
 ```bash
 docker compose down -v
 ```
+
+## Continuous integration
+
+[`.github/workflows/ci.yml`](.github/workflows/ci.yml) runs on every pull request to `develop` or `main` and on every push to those branches. A new push cancels the run still in progress on the same branch.
+
+| Job | Steps |
+|---|---|
+| `backend` | Temurin JDK 25, `./mvnw -B verify` (compile, unit and Testcontainers tests) |
+| `frontend` | Node from `frontend/.nvmrc`, `npm ci`, `typecheck`, `lint`, `i18n:check`, `test`, `build` |
+
+### Recommended branch protection
+
+Apply to `develop` and `main` in GitHub (*Settings → Rules → Rulesets*, or *Settings → Branches* for classic rules):
+
+- require a pull request before merging;
+- require status checks `backend` and `frontend` to pass, with the branch up to date before merging;
+- block force pushes and branch deletion;
+- do not allow bypassing these rules, administrators included.
 
 ## Working on Mbia
 
