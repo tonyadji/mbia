@@ -1,6 +1,6 @@
 # ADR-008 — Product analytics with PostHog (EU)
 
-**Status:** Proposed
+**Status:** Accepted
 
 ## Context
 

@@ -43,7 +43,7 @@
 - S3-compatible object storage (MinIO locally, S3-compatible managed storage in production)
 - Keycloak as OIDC identity provider (ADR-005), image tag pinned in `docker-compose.yml`
 - Transactional email provider (SMTP); Mailpit locally
-- PostHog Cloud EU for product analytics (ADR-008, proposed)
+- PostHog Cloud EU for product analytics (ADR-008)
 - Containerized Spring Boot backend
 - Static frontend hosting + CDN
 - Managed PostgreSQL in production

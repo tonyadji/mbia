@@ -34,6 +34,7 @@ When two documents conflict, the higher level in this list wins until the contra
 ```text
 mbia-specs/
 ├── README.md
+├── open-questions.md
 ├── product/
 │   ├── vision.md
 │   ├── mvp.md
@@ -75,5 +76,5 @@ Closed specification gaps before implementation:
 - fixed three-row tree layout and gender presets when adding a parent/child;
 - photo limits, EXIF stripping and derivatives (ADR-007);
 - personal data rights procedure (`mvp.md` §30);
-- pseudonymous analytics with PostHog EU (ADR-008, proposed);
+- pseudonymous analytics with PostHog EU (ADR-008);
 - repository layout aligned on `mbia-specs/`.
