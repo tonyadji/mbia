@@ -13,6 +13,7 @@ import { useFamily } from '../families/useFamily';
 import { isSupportedLanguage, DEFAULT_LANGUAGE } from '../i18n/language';
 import { AddRelativeMenu } from '../persons/AddRelativeMenu';
 import { formatPartialDate, yearOf } from '../persons/formatPartialDate';
+import { kinshipLabel } from '../persons/kinship';
 import { CHILD_RELATIONS, PARENT_RELATIONS, addRelativePath } from '../persons/relatives';
 import { useClaimPerson } from '../persons/useClaimPerson';
 import { usePerson, type Person } from '../persons/usePerson';
@@ -132,6 +133,7 @@ function PersonProfile({
   role: Role | undefined;
 }) {
   const { t, i18n } = useTranslation(['person', 'settings']);
+  const { t: tPerson } = useTranslation('person');
   const relativeAdded = (useLocation().state as PersonProfileState | null)?.relativeAdded;
   const language = isSupportedLanguage(i18n.resolvedLanguage)
     ? i18n.resolvedLanguage
@@ -144,10 +146,13 @@ function PersonProfile({
   if (person.isDeceased) {
     lifespan.push(t('person:profile.deathYear', { year: yearOf(person.death) ?? unknown }));
   }
+  // On the profile, NONE_KNOWN is explained rather than hidden (localization-and-kinship-labels.md §3).
   const relationship =
-    person.relationshipToCurrentUser === 'SELF' || person.relationshipToCurrentUser === 'NONE_KNOWN'
-      ? t(`person:profile.relationship.${person.relationshipToCurrentUser}`)
-      : null;
+    person.relationshipToCurrentUser == null
+      ? null
+      : person.relationshipToCurrentUser === 'NONE_KNOWN'
+        ? t('person:profile.relationship.NONE_KNOWN')
+        : kinshipLabel(tPerson, person.relationshipToCurrentUser, person.gender);
 
   const about: [string, string][] = [];
   if (person.middleNames) about.push([t('person:form.middleNames'), person.middleNames]);

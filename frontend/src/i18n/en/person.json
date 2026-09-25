@@ -43,7 +43,6 @@
     "birthYear": "Birth: {{year}}",
     "deathYear": "Death: {{year}}",
     "relationship": {
-      "SELF": "You",
       "NONE_KNOWN": "No known relationship in Mbia yet"
     },
     "family": "Family",
@@ -112,5 +111,55 @@
     "notLinked": "{{name}} was added to the family, but is not linked to {{anchor}}. You can create this link later from their profile.",
     "added": "{{name}} was added to the family and linked to {{anchor}}.",
     "viewProfile": "View their profile"
+  },
+  "kinship": {
+    "label": {
+      "SELF": "You",
+      "FATHER": "Your father",
+      "MOTHER": "Your mother",
+      "PARENT": "Your parent",
+      "SON": "Your son",
+      "DAUGHTER": "Your daughter",
+      "CHILD": "Your child",
+      "GRANDFATHER": "Your grandfather",
+      "GRANDMOTHER": "Your grandmother",
+      "GRANDPARENT": "Your grandparent",
+      "GRANDSON": "Your grandson",
+      "GRANDDAUGHTER": "Your granddaughter",
+      "GRANDCHILD": "Your grandchild",
+      "BROTHER": "Your brother",
+      "SISTER": "Your sister",
+      "SIBLING": "Your sibling",
+      "UNCLE": "Your uncle",
+      "AUNT": "Your aunt",
+      "PARENT_SIBLING": "Your parent's sibling",
+      "NEPHEW": "Your nephew",
+      "NIECE": "Your niece",
+      "SIBLING_CHILD": "Your sibling's child",
+      "FIRST_COUSIN": {
+        "male": "Your first cousin",
+        "female": "Your first cousin",
+        "neutral": "Your first cousin"
+      },
+      "PARTNER": "Your partner",
+      "RELATED": "Your relative"
+    },
+    "step": {
+      "PARENT": {
+        "male": "{{to}} is {{from}}'s father",
+        "female": "{{to}} is {{from}}'s mother",
+        "neutral": "{{to}} is {{from}}'s parent"
+      },
+      "CHILD": {
+        "male": "{{to}} is {{from}}'s son",
+        "female": "{{to}} is {{from}}'s daughter",
+        "neutral": "{{to}} is {{from}}'s child"
+      },
+      "PARTNER": {
+        "male": "{{to}} is {{from}}'s partner",
+        "female": "{{to}} is {{from}}'s partner",
+        "neutral": "{{to}} is {{from}}'s partner"
+      }
+    }
   }
 }

@@ -226,6 +226,8 @@ Direction convention: a kinship result always describes **what the target Person
 
 Paths use ACTIVE Persons and ACTIVE relationships only. Each step is `PARENT`, `CHILD` or `PARTNER`.
 
+A Person that is ARCHIVED or MERGED therefore has no known kinship with anyone but itself: `NONE_KNOWN`, with an empty path (OQ-013).
+
 When several paths exist, return the shortest one; when several shortest paths exist, prefer the one with only `PARENT`/`CHILD` steps; when still tied, choose deterministically by Person UUID order so that results are stable.
 
 User-facing labels (French and English, gender-aware) are defined in `../ux/localization-and-kinship-labels.md`.

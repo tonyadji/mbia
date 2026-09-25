@@ -7,6 +7,7 @@ import com.lehnade.mbia.TestJwts;
 import com.lehnade.mbia.family.FamilyFixtures;
 import com.lehnade.mbia.family.FamilyFixtures.FamilyWithMembers;
 import com.lehnade.mbia.genealogy.PersonFixtures;
+import com.lehnade.mbia.genealogy.RelationshipFixtures;
 import java.util.UUID;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -61,7 +62,7 @@ class GetPersonApiTest extends ApiTestSupport {
     }
 
     @Test
-    void relationshipToCurrentUserIsSelfNoneKnownOrNull() {
+    void relationshipToCurrentUserIsTheKinshipFromTheCallersLinkedPerson() {
         UUID paul = persons.createId(family.contributor(), family.familyId(),
                 "{\"firstName\": \"Paul\", \"linkToCurrentUser\": true}");
 
@@ -71,6 +72,13 @@ class GetPersonApiTest extends ApiTestSupport {
                 .bodyJson().extractingPath("$.relationshipToCurrentUser").isEqualTo("NONE_KNOWN");
         assertThat(persons.get(family.admin(), family.familyId(), paul))
                 .bodyJson().extractingPath("$.relationshipToCurrentUser").isNull();
+
+        new RelationshipFixtures(mvc, jdbc).parentOfId(family.contributor(), family.familyId(), marie, paul);
+
+        assertThat(persons.get(family.contributor(), family.familyId(), marie))
+                .bodyJson().extractingPath("$.relationshipToCurrentUser").isEqualTo("MOTHER");
+        assertThat(persons.get(family.contributor(), family.familyId(), paul))
+                .bodyJson().extractingPath("$.relationshipToCurrentUser").isEqualTo("SELF");
     }
 
     @Test

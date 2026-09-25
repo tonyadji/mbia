@@ -13,6 +13,10 @@ interface PersonJpaRepository extends JpaRepository<PersonJpaEntity, UUID> {
 
     boolean existsByFamilyIdAndLinkedUserIdAndStatusNot(UUID familyId, UUID linkedUserId, String status);
 
+    /** At most one row: {@code uq_person_linked_user_per_family} (data-model.md §21). */
+    Optional<PersonJpaEntity> findByFamilyIdAndLinkedUserIdAndStatusNot(UUID familyId, UUID linkedUserId,
+            String status);
+
     @Query("""
             SELECT new com.lehnade.mbia.genealogy.infrastructure.persistence.PersonCountRow(p.familyId, COUNT(p))
             FROM PersonJpaEntity p

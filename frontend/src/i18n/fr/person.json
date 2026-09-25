@@ -43,7 +43,6 @@
     "birthYear": "Naissance : {{year}}",
     "deathYear": "Décès : {{year}}",
     "relationship": {
-      "SELF": "Vous",
       "NONE_KNOWN": "Aucun lien connu dans Mbia pour l'instant"
     },
     "family": "Famille",
@@ -112,5 +111,55 @@
     "notLinked": "{{name}} a été ajouté à la famille, mais n'est pas relié à {{anchor}}. Vous pourrez créer ce lien plus tard depuis son profil.",
     "added": "{{name}} a été ajouté à la famille et relié à {{anchor}}.",
     "viewProfile": "Voir son profil"
+  },
+  "kinship": {
+    "label": {
+      "SELF": "Vous",
+      "FATHER": "Votre père",
+      "MOTHER": "Votre mère",
+      "PARENT": "Votre parent",
+      "SON": "Votre fils",
+      "DAUGHTER": "Votre fille",
+      "CHILD": "Votre enfant",
+      "GRANDFATHER": "Votre grand-père",
+      "GRANDMOTHER": "Votre grand-mère",
+      "GRANDPARENT": "Votre grand-parent",
+      "GRANDSON": "Votre petit-fils",
+      "GRANDDAUGHTER": "Votre petite-fille",
+      "GRANDCHILD": "Votre petit-enfant",
+      "BROTHER": "Votre frère",
+      "SISTER": "Votre sœur",
+      "SIBLING": "Votre frère ou sœur",
+      "UNCLE": "Votre oncle",
+      "AUNT": "Votre tante",
+      "PARENT_SIBLING": "Frère ou sœur de votre parent",
+      "NEPHEW": "Votre neveu",
+      "NIECE": "Votre nièce",
+      "SIBLING_CHILD": "Enfant de votre frère ou sœur",
+      "FIRST_COUSIN": {
+        "male": "Votre cousin",
+        "female": "Votre cousine",
+        "neutral": "Votre cousin ou cousine"
+      },
+      "PARTNER": "Votre partenaire",
+      "RELATED": "Membre de votre famille"
+    },
+    "step": {
+      "PARENT": {
+        "male": "{{to}} est le père de {{from}}",
+        "female": "{{to}} est la mère de {{from}}",
+        "neutral": "{{to}} est un parent de {{from}}"
+      },
+      "CHILD": {
+        "male": "{{to}} est le fils de {{from}}",
+        "female": "{{to}} est la fille de {{from}}",
+        "neutral": "{{to}} est un enfant de {{from}}"
+      },
+      "PARTNER": {
+        "male": "{{to}} est le partenaire de {{from}}",
+        "female": "{{to}} est la partenaire de {{from}}",
+        "neutral": "{{to}} est partenaire de {{from}}"
+      }
+    }
   }
 }

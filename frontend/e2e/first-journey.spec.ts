@@ -71,19 +71,19 @@ for (const { language, locale } of [
       const profileUrl = page.url();
       await expect(page.getByRole('heading', { level: 1 })).toHaveText('Alice');
       await expect(
-        page.getByText(t(language, 'person:profile.relationship.SELF'), { exact: true }),
+        page.getByText(t(language, 'person:kinship.label.SELF'), { exact: true }),
       ).toBeVisible();
 
       // Unlink, then "This is me" again (PR-19).
       await page.getByRole('button', { name: t(language, 'person:profile.unclaim') }).click();
       await expect(page.getByRole('status')).toHaveText(t(language, 'person:profile.unclaimed'));
       await expect(
-        page.getByText(t(language, 'person:profile.relationship.SELF'), { exact: true }),
+        page.getByText(t(language, 'person:kinship.label.SELF'), { exact: true }),
       ).toBeHidden();
       await page.getByRole('button', { name: t(language, 'person:profile.claim') }).click();
       await expect(page.getByRole('status')).toHaveText(t(language, 'person:profile.claimed'));
       await expect(
-        page.getByText(t(language, 'person:profile.relationship.SELF'), { exact: true }),
+        page.getByText(t(language, 'person:kinship.label.SELF'), { exact: true }),
       ).toBeVisible();
 
       // A second tab opens the same form before the first one saves.
