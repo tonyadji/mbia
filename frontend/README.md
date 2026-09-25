@@ -37,3 +37,17 @@ read with `useTranslation()` from `react-i18next`. Keys are typed from the Frenc
 - ESLint (`i18next/no-literal-string`) fails on literal text or user-facing attributes in JSX; only the brand name
   "Mbia" is allowed.
 - Dates: `formatDate(date, language)` in `src/i18n/formatDate.ts` (`12 mars 1954` / `March 12, 1954`).
+
+## API client
+
+Types are generated from `../mbia-specs/technical/api/openapi.yaml` by `openapi-typescript` into `src/api/generated/`
+(git-ignored, never edited). `npm run generate:api` runs automatically before `dev`, `build`, `typecheck`, `lint` and
+`test`.
+
+- `src/api/client.ts`: `apiClient`, typed with `openapi-fetch`. Base URL from `VITE_API_BASE_URL` (see `.env.example`;
+  defaults to `http://localhost:8080/api/v1`). `setAccessTokenProvider()` supplies the bearer token. A failed response
+  rejects with an `ApiError { status, code, traceId, fieldErrors, details }` read from the `ProblemDetails` body.
+- `src/api/errorMessage.ts`: `errorMessage(i18n, error)` returns the translation `errors:<code>`, or the generic
+  `errors:unexpected` when the code has no translation yet. Each feature adds the messages of the codes it returns.
+- `package.json` `overrides` lets `openapi-typescript` (peer `typescript ^5`) use the project's TypeScript 6; remove it
+  once `openapi-typescript` supports TypeScript 6.

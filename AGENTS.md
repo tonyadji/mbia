@@ -61,7 +61,8 @@ docker compose up -d                      # PostgreSQL, RustFS, Keycloak (realm 
 cd backend && ./mvnw verify               # compile, generate API, unit + Testcontainers + architecture tests
 cd backend && ./mvnw spring-boot:run -Dspring-boot.run.profiles=local   # API on http://localhost:8080/api/v1
 cd frontend && npm ci
-cd frontend && npm run generate:api       # regenerate the TypeScript client from openapi.yaml
+cd frontend && npm run generate:api       # regenerate the TypeScript types (also run before dev, build, typecheck, lint, test)
+npx @redocly/cli@2.54.3 lint mbia-specs/technical/api/openapi.yaml   # lint the contract (rules: redocly.yaml)
 cd frontend && npm run typecheck
 cd frontend && npm run lint
 cd frontend && npm run i18n:check        # French and English translations have the same keys, no empty value
@@ -83,6 +84,7 @@ Details: `mbia-specs/technical/architecture.md`.
 - `domain/` has no dependency on Spring, JPA, Jackson, HTTP or AWS.
 - **One use case per business operation**, in `application/<operation>/` (for example `genealogy/application/createrelationship/CreateRelationshipUseCase.java`). No catch-all `PersonService`.
 - HTTP DTOs (generated from OpenAPI) ≠ commands ≠ domain objects ≠ JPA entities. Map explicitly.
+- Generated server interfaces and models live in `com.lehnade.mbia.api.generated`. A module's `api/` controller implements a generated interface; `shared/api/web/ApiPathPrefixConfiguration` serves every such controller under `/api/v1` (the contract's paths stay those of `openapi.yaml`). Actuator stays at `/actuator`.
 - No global `controller/`, `service/`, `repository/` or `entity/` packages.
 - Architecture tests (ArchUnit / Spring Modulith) enforce these rules. Never weaken or skip them to make a build pass.
 
@@ -105,6 +107,8 @@ Details: `mbia-specs/technical/architecture.md`.
   - backend: `backend/target/generated-sources/openapi/`
   - frontend: `frontend/src/api/generated/`
 - A breaking change to the contract needs explicit human approval; CI detects it.
+  - `api-lint`: Redocly with `redocly.yaml` (recommended rules; only `info-license`, `no-server-example.com` and `tag-description` are off).
+  - `api-breaking`: `oasdiff` against the pull request's base branch, with `oasdiff-levels.txt`; it fails on breaking changes unless the pull request carries the label `api-breaking-approved`.
 
 ## 7. Database migrations
 

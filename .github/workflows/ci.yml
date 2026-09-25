@@ -3,6 +3,8 @@ name: CI
 on:
   pull_request:
     branches: [develop, main]
+    # labeled/unlabeled: adding or removing `api-breaking-approved` re-runs the contract checks.
+    types: [opened, synchronize, reopened, labeled, unlabeled]
   push:
     branches: [develop, main]
 
@@ -56,3 +58,50 @@ jobs:
       - run: npm run i18n:check
       - run: npm test
       - run: npm run build
+
+  api-lint:
+    name: api-lint
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/setup-node@v7
+        with:
+          node-version-file: frontend/.nvmrc
+
+      # Rules: redocly.yaml (recommended set, three rules disabled).
+      - run: npx -y @redocly/cli@2.54.3 lint mbia-specs/technical/api/openapi.yaml
+
+  api-breaking:
+    name: api-breaking
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+
+      - name: Extract the contract of the base branch
+        env:
+          BASE_REF: ${{ github.base_ref }}
+        run: git show "origin/${BASE_REF}:mbia-specs/technical/api/openapi.yaml" > "$RUNNER_TEMP/openapi-base.yaml"
+
+      # Fails on breaking changes unless the pull request carries the label `api-breaking-approved` (ADR-003).
+      # oasdiff-levels.txt raises the removal of an optional response property (INFO by default) to an error.
+      - name: Detect breaking changes
+        env:
+          APPROVED: ${{ contains(github.event.pull_request.labels.*.name, 'api-breaking-approved') }}
+        run: |
+          fail_on="--fail-on ERR"
+          if [ "$APPROVED" = "true" ]; then
+            echo "::notice::Label api-breaking-approved present: breaking changes are reported, not blocking."
+            fail_on=""
+          fi
+          docker run --rm \
+            -v "$RUNNER_TEMP/openapi-base.yaml:/specs/base.yaml:ro" \
+            -v "$PWD/mbia-specs/technical/api/openapi.yaml:/specs/head.yaml:ro" \
+            -v "$PWD/oasdiff-levels.txt:/specs/levels.txt:ro" \
+            tufin/oasdiff:v1.32.1 breaking /specs/base.yaml /specs/head.yaml \
+              --severity-levels /specs/levels.txt --format githubactions $fail_on
