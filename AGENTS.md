@@ -46,7 +46,7 @@ mbia/
 ├── backend/             Spring Boot modular monolith (Java 25, Maven Wrapper)
 ├── frontend/            React + TypeScript SPA (Vite)
 ├── infrastructure/      docker, keycloak realm, deployment files
-├── docker-compose.yml   local PostgreSQL, MinIO, Keycloak, Mailpit
+├── docker-compose.yml   local PostgreSQL, RustFS (S3), Keycloak, Mailpit
 └── .env.example
 ```
 
@@ -57,7 +57,7 @@ Stack and versions: `mbia-specs/technical/stack.md`. Do not change a framework o
 > The implementation does not exist yet. The first implementation task must create these commands exactly as listed, or update this section in the same change.
 
 ```bash
-docker compose up -d                      # PostgreSQL, MinIO, Keycloak (realm imported), Mailpit
+docker compose up -d                      # PostgreSQL, RustFS, Keycloak (realm imported), Mailpit
 cd backend && ./mvnw verify               # compile, generate API, unit + Testcontainers + architecture tests
 cd backend && ./mvnw spring-boot:run      # API on http://localhost:8080/api/v1
 cd frontend && npm ci
@@ -69,7 +69,7 @@ cd frontend && npm run test:e2e           # Playwright (needs backend + docker c
 cd frontend && npm run dev                # http://localhost:5173
 ```
 
-Local services: Keycloak admin http://localhost:8081, Mailpit http://localhost:8025, MinIO console http://localhost:9001. Test users are defined in `infrastructure/keycloak/realm-mbia.json`.
+Local services: Keycloak admin http://localhost:8081, Mailpit http://localhost:8025, RustFS console http://localhost:9001/rustfs/console/. Test users are defined in `infrastructure/keycloak/realm-mbia.json`.
 
 A change is done only when `./mvnw verify` and all frontend checks pass.
 
