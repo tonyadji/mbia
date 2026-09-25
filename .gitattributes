@@ -1,0 +1,20 @@
+# Normalize all text files to LF in the repository and in working copies,
+# so that diffs stay identical on Windows, macOS, Linux and agent sandboxes.
+* text=auto eol=lf
+
+# Windows scripts need CRLF
+*.cmd  text eol=crlf
+*.bat  text eol=crlf
+*.ps1  text eol=crlf
+
+# Binary files
+*.png   binary
+*.jpg   binary
+*.jpeg  binary
+*.webp  binary
+*.gif   binary
+*.ico   binary
+*.pdf   binary
+*.jar   binary
+*.woff  binary
+*.woff2 binary
