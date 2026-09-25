@@ -69,5 +69,48 @@
     "title": "Personne introuvable",
     "body": "Cette personne n'existe pas dans cette famille.",
     "back": "Retour à la famille"
+  },
+  "relative": {
+    "menu": "Ajouter un proche",
+    "parents": "Ajouter un parent",
+    "children": "Ajouter un enfant",
+    "choices": {
+      "FATHER": "Père",
+      "MOTHER": "Mère",
+      "PARENT": "Autre parent",
+      "SON": "Fils",
+      "DAUGHTER": "Fille",
+      "CHILD": "Enfant",
+      "PARTNER": "Ajouter un ou une partenaire"
+    },
+    "title": {
+      "FATHER": "Ajouter le père de {{name}}",
+      "MOTHER": "Ajouter la mère de {{name}}",
+      "PARENT": "Ajouter un parent de {{name}}",
+      "SON": "Ajouter un fils de {{name}}",
+      "DAUGHTER": "Ajouter une fille de {{name}}",
+      "CHILD": "Ajouter un enfant de {{name}}",
+      "PARTNER": "Ajouter un ou une partenaire de {{name}}"
+    },
+    "titleMe": {
+      "FATHER": "Ajouter mon père",
+      "MOTHER": "Ajouter ma mère",
+      "PARENT": "Ajouter un de mes parents",
+      "SON": "Ajouter mon fils",
+      "DAUGHTER": "Ajouter ma fille",
+      "CHILD": "Ajouter mon enfant",
+      "PARTNER": "Ajouter mon ou ma partenaire"
+    },
+    "intro": "Seul le prénom est obligatoire. Mbia crée le lien familial pour vous.",
+    "warnings": {
+      "title": "Ces dates semblent inhabituelles",
+      "PARENT_BORN_AFTER_CHILD": "{{parent}} deviendrait le parent de {{child}}, alors que son année de naissance ({{parentYear}}) n'est pas antérieure à celle de {{child}} ({{childYear}}).",
+      "IMPLAUSIBLE_PARENT_AGE": "{{parent}} aurait eu {{age}} ans à la naissance de {{child}} (années de naissance : {{parentYear}} et {{childYear}}).",
+      "correct": "Corriger les informations",
+      "confirm": "Ajouter le lien quand même"
+    },
+    "notLinked": "{{name}} a été ajouté à la famille, mais n'est pas relié à {{anchor}}. Vous pourrez créer ce lien plus tard depuis son profil.",
+    "added": "{{name}} a été ajouté à la famille et relié à {{anchor}}.",
+    "viewProfile": "Voir son profil"
   }
 }

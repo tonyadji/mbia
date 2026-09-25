@@ -16,6 +16,7 @@ public record AuditEntry(UUID familyId, UUID actorUserId, String action, String 
         Map<String, Object> oldValue, Map<String, Object> newValue, Instant occurredAt) {
 
     public static final String PERSON = "PERSON";
+    public static final String RELATIONSHIP = "RELATIONSHIP";
 
     public AuditEntry {
         Objects.requireNonNull(action, "action");

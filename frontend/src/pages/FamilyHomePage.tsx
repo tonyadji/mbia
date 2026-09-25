@@ -7,6 +7,8 @@ import { ErrorState } from '../components/ErrorState';
 import { NavigationBar } from '../components/NavigationBar';
 import { Skeleton } from '../components/Skeleton';
 import { useFamily } from '../families/useFamily';
+import { AddRelativeMenu } from '../persons/AddRelativeMenu';
+import { addRelativePath } from '../persons/relatives';
 import { addPersonPath } from './AddPersonPage';
 import { FamilyNotFoundPage } from './FamilyNotFoundPage';
 import { personPath } from './PersonProfilePage';
@@ -20,8 +22,8 @@ export function familyHomePath(familyId: string) {
 /** Navigation state set by Family or Person creation, for the success message. */
 export interface FamilyHomeState {
   created?: boolean;
-  /** The Person just added; `self` after "Start with me". */
-  personAdded?: { id: string; name: string; self: boolean };
+  /** The Person just added; `self` after "Start with me", `linkedTo` after "Add a relative". */
+  personAdded?: { id: string; name: string; self: boolean; linkedTo?: string };
 }
 
 /**
@@ -51,7 +53,7 @@ export function FamilyHomePage() {
 type Family = NonNullable<ReturnType<typeof useFamily>['data']>;
 
 function FamilyContent({ family }: { family: Family }) {
-  const { t } = useTranslation('family');
+  const { t } = useTranslation(['family', 'person']);
   const state = useLocation().state as FamilyHomeState | null;
   const created = state?.created === true;
   const personAdded = state?.personAdded;
@@ -81,9 +83,14 @@ function FamilyContent({ family }: { family: Family }) {
           className="flex flex-col gap-1 rounded-xl border border-border bg-surface px-4 py-3 text-body"
         >
           <p>
-            {personAdded.self
-              ? t('home.selfAdded', { family: family.name })
-              : t('home.personAdded', { name: personAdded.name })}
+            {personAdded.self && t('home.selfAdded', { family: family.name })}
+            {!personAdded.self &&
+              (personAdded.linkedTo === undefined
+                ? t('home.personAdded', { name: personAdded.name })
+                : t('person:relative.added', {
+                    name: personAdded.name,
+                    anchor: personAdded.linkedTo,
+                  }))}
           </p>
           <Link
             to={personPath(family.id, personAdded.id)}
@@ -112,16 +119,45 @@ function FamilyContent({ family }: { family: Family }) {
           )}
         </section>
       ) : (
-        canAddPersons && (
-          <Link
-            to={addPersonPath(family.id)}
-            className={buttonClassName('secondary', 'sm:w-auto sm:self-start')}
-          >
-            {t('home.addPerson')}
-          </Link>
-        )
+        canAddPersons && <AddAction family={family} />
       )}
     </>
+  );
+}
+
+/**
+ * `Add a relative` from the caller's own Person (family-tree-ux.md §9.1), or `Add a person` when
+ * the caller is not in the tree (SCREEN-002).
+ */
+function AddAction({ family }: { family: Family }) {
+  const { t } = useTranslation('family');
+  const me = family.myLinkedPersonId;
+  if (me == null) {
+    return (
+      <Link
+        to={addPersonPath(family.id)}
+        className={buttonClassName('secondary', 'sm:w-auto sm:self-start')}
+      >
+        {t('home.addPerson')}
+      </Link>
+    );
+  }
+  const relatives = (['FATHER', 'MOTHER', 'PARTNER', 'CHILD'] as const).map((relation) => ({
+    label: t(`home.relatives.${relation}`),
+    to: addRelativePath(family.id, me, relation, 'home'),
+  }));
+  return (
+    <AddRelativeMenu
+      label={t('home.addRelative')}
+      groups={[
+        {
+          choices: [
+            ...relatives,
+            { label: t('home.relatives.someoneElse'), to: addPersonPath(family.id) },
+          ],
+        },
+      ]}
+    />
   );
 }
 

@@ -6,5 +6,10 @@
   "PERSON_ALREADY_CLAIMED": "This person is already linked to another member of the family.",
   "USER_ALREADY_LINKED": "You are already in this family's tree.",
   "PERSON_NOT_FOUND": "This person does not exist in this family.",
-  "CONCURRENT_MODIFICATION": "Someone changed this information in the meantime. Reload the page and try again."
+  "CONCURRENT_MODIFICATION": "Someone changed this information in the meantime. Reload the page and try again.",
+  "SELF_RELATIONSHIP_NOT_ALLOWED": "A person cannot be linked to themselves.",
+  "RELATIONSHIP_ALREADY_EXISTS": "These two people are already linked this way.",
+  "RELATIONSHIP_CREATES_CYCLE": "This link cannot be added because it would make someone one of their own ancestors.",
+  "PERSON_NOT_ACTIVE": "This person was archived or merged: they cannot receive new links.",
+  "RELATIONSHIP_WARNING_CONFIRMATION_REQUIRED": "The birth dates look inconsistent. Check them or confirm the link."
 }

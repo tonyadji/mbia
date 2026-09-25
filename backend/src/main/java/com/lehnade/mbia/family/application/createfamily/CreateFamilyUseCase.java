@@ -40,6 +40,6 @@ public class CreateFamilyUseCase {
         FamilyMembership membership = FamilyMembership.creator(family.id(), command.userId(), now);
         families.insert(family);
         memberships.insert(membership);
-        return views.of(family, FamilyRole.ADMIN);
+        return views.of(family, command.userId(), FamilyRole.ADMIN);
     }
 }

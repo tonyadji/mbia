@@ -74,11 +74,13 @@ class FamiliesController implements FamiliesApi {
 
     private static FamilyResponse toResponse(FamilyView family) {
         return new FamilyResponse(family.id(), family.name(), toRole(family), toStats(family), family.version(),
-                toDateTime(family.createdAt()), toDateTime(family.updatedAt()));
+                toDateTime(family.createdAt()), toDateTime(family.updatedAt()))
+                .myLinkedPersonId(family.myLinkedPersonId());
     }
 
     private static FamilySummary toSummary(FamilyView family) {
-        return new FamilySummary(family.id(), family.name(), toRole(family), toStats(family));
+        return new FamilySummary(family.id(), family.name(), toRole(family), toStats(family))
+                .myLinkedPersonId(family.myLinkedPersonId());
     }
 
     private static MembershipRole toRole(FamilyView family) {

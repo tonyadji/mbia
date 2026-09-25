@@ -83,6 +83,11 @@ public final class PersonFixtures {
         jdbc.sql("UPDATE persons SET status = 'ARCHIVED', archived_at = now() WHERE id = ?").param(personId).update();
     }
 
+    public void merge(UUID personId, UUID into) {
+        jdbc.sql("UPDATE persons SET status = 'MERGED', merged_into_person_id = ? WHERE id = ?")
+                .params(into, personId).update();
+    }
+
     public long count(UUID familyId) {
         return jdbc.sql("SELECT count(*) FROM persons WHERE family_id = ?").param(familyId).query(Long.class)
                 .single();
