@@ -56,9 +56,9 @@ class MbiaApplicationTests {
     }
 
     @Test
-    void flywayAppliesTheUsersMigration() {
+    void flywayAppliesEveryMigrationInOrder() {
         assertThat(flyway.info().applied())
                 .extracting(migration -> migration.getVersion().getVersion())
-                .containsExactly("001");
+                .containsExactly("001", "002");
     }
 }
