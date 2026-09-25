@@ -149,3 +149,39 @@ When a question is answered, update the relevant spec, then move the entry to **
 - **Options:** A — 200 `NONE_KNOWN` with an empty path (`from = to` stays `SELF`) / B — 409 `PERSON_NOT_ACTIVE` / C — 404 `PERSON_NOT_FOUND`.
 - **Recommendation:** A; consistent with the badge of an archived Person's profile, and no new error on a read.
 - **Answer:** A (human, 2026-09-25). Documented in `person-relationships-collaboration.md` §10 and the `getKinship` description of `openapi.yaml` (text only); changed in PR-21.
+
+### OQ-014 — Tree focus requested on an ARCHIVED or MERGED Person
+
+- **Raised by / date:** coding agent (PR-22), 2026-09-25
+- **Context:** `getFamilyTree` accepts `focusPersonId`; `family-tree-ux.md` §6 says the browser's last focused Person falls back to the next rule when it is no longer ACTIVE, and `person-relationships-collaboration.md` §5 hides an archived Person from the tree. The contract does not say what the server answers for such a focus.
+- **Question:** 200 with a server-side fallback, 409 `PERSON_NOT_ACTIVE` or 404 `PERSON_NOT_FOUND`?
+- **Options:** A — 200: the server applies rules 1 then 3 as if no focus were requested, and `focusPersonId` of the response names the actual focus / B — 409 `PERSON_NOT_ACTIVE` / C — 404 `PERSON_NOT_FOUND`.
+- **Recommendation:** A; one call for the tree, no new error on a read. An unknown or other-Family focus stays 404 `PERSON_NOT_FOUND`. The same fallback applies when the caller's linked Person is not ACTIVE.
+- **Answer:** A (human, 2026-09-25). Documented in the `getFamilyTree` description of `openapi.yaml` (text only) and `family-tree-ux.md` §6; changed in PR-22.
+
+### OQ-015 — Order of the tree nodes and edges
+
+- **Raised by / date:** coding agent (PR-22), 2026-09-25
+- **Context:** `family-tree-ux.md` §6.1 orders partners by relationship creation date and children by birth date then creation date, but `TreeNode` and `TreeEdge` carry no creation date and the contract gives no order.
+- **Question:** how does the response carry that order?
+- **Options:** A — a documented order (text only): edges by relationship creation then id; nodes focus first, then birth, Person creation, id / B — additive `createdAt` fields / C — no guarantee.
+- **Recommendation:** A; no schema change.
+- **Answer:** A (human, 2026-09-25). Documented in the `getFamilyTree` description of `openapi.yaml` (text only); changed in PR-22.
+
+### OQ-016 — Headings of the profile Family section
+
+- **Raised by / date:** coding agent (PR-22), 2026-09-25
+- **Context:** SCREEN-005 lists parents, partners, children and siblings in the Family section; `localization-and-kinship-labels.md` has no heading for these groups.
+- **Question:** which FR / EN headings?
+- **Options:** A — FR "Parents / Partenaires / Enfants / Frères et sœurs", EN "Parents / Partners / Children / Siblings" / B — other wording.
+- **Recommendation:** A, consistent with the §3 labels.
+- **Answer:** A (human, 2026-09-25). Added to `localization-and-kinship-labels.md` §3bis; changed in PR-22.
+
+### OQ-017 — `depth = 2` of `getFamilyTree` in Phase 2
+
+- **Raised by / date:** coding agent (PR-22), 2026-09-25
+- **Context:** the contract accepts `depth` 1 or 2; PR-22 says "the UI uses depth 1".
+- **Question:** implement depth 2 now?
+- **Options:** A — yes, as the contract describes (parents of the parents, children of the children) / B — depth 1 only.
+- **Recommendation:** A; the contract already exposes it, at the same bounded query count.
+- **Answer:** A (human, 2026-09-25). Implemented in PR-22 (no spec change).

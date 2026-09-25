@@ -13,9 +13,11 @@ import { useFamily } from '../families/useFamily';
 import { isSupportedLanguage, DEFAULT_LANGUAGE } from '../i18n/language';
 import { AddRelativeMenu } from '../persons/AddRelativeMenu';
 import { formatPartialDate, yearOf } from '../persons/formatPartialDate';
+import { familySections } from '../persons/familySections';
 import { kinshipLabel } from '../persons/kinship';
 import { CHILD_RELATIONS, PARENT_RELATIONS, addRelativePath } from '../persons/relatives';
 import { useClaimPerson } from '../persons/useClaimPerson';
+import { useFamilyTree, type TreeNode } from '../persons/useFamilyTree';
 import { usePerson, type Person } from '../persons/usePerson';
 import { familyHomePath } from './FamilyHomePage';
 import { FamilyNotFoundPage } from './FamilyNotFoundPage';
@@ -110,8 +112,8 @@ export function PersonRoute({
 }
 
 /**
- * SCREEN-005 — Person profile: header and About. The Family section stays empty until
- * relationships exist; no Memory, History or photo in this phase (Phase 2 plan §3.1, §3.2).
+ * SCREEN-005 — Person profile: header, Family (ACTIVE Persons only) and About; no Memory, History
+ * or photo in this phase (Phase 2 plan §3.1, §3.2).
  */
 export function PersonProfilePage() {
   return (
@@ -208,41 +210,43 @@ function PersonProfile({
         </p>
       )}
 
-      <section aria-labelledby="profile-family" className="flex flex-col gap-2">
-        <h2 id="profile-family" className="text-section text-text">
-          {t('person:profile.family')}
-        </h2>
-        <p className="text-body text-text-muted">{t('person:profile.noRelatives')}</p>
-        {canAddRelatives(person, role) && (
-          <AddRelativeMenu
-            label={t('person:relative.menu')}
-            groups={[
-              {
-                heading: t('person:relative.parents'),
-                choices: PARENT_RELATIONS.map((relation) => ({
-                  label: t(`person:relative.choices.${relation}`),
-                  to: addRelativePath(familyId, person.id, relation, 'profile'),
-                })),
-              },
-              {
-                heading: t('person:relative.children'),
-                choices: CHILD_RELATIONS.map((relation) => ({
-                  label: t(`person:relative.choices.${relation}`),
-                  to: addRelativePath(familyId, person.id, relation, 'profile'),
-                })),
-              },
-              {
-                choices: [
-                  {
-                    label: t('person:relative.choices.PARTNER'),
-                    to: addRelativePath(familyId, person.id, 'PARTNER', 'profile'),
-                  },
-                ],
-              },
-            ]}
-          />
-        )}
-      </section>
+      {person.status === 'ACTIVE' && (
+        <section aria-labelledby="profile-family" className="flex flex-col gap-4">
+          <h2 id="profile-family" className="text-section text-text">
+            {t('person:profile.family')}
+          </h2>
+          <Relatives familyId={familyId} person={person} />
+          {canAddRelatives(person, role) && (
+            <AddRelativeMenu
+              label={t('person:relative.menu')}
+              groups={[
+                {
+                  heading: t('person:relative.parents'),
+                  choices: PARENT_RELATIONS.map((relation) => ({
+                    label: t(`person:relative.choices.${relation}`),
+                    to: addRelativePath(familyId, person.id, relation, 'profile'),
+                  })),
+                },
+                {
+                  heading: t('person:relative.children'),
+                  choices: CHILD_RELATIONS.map((relation) => ({
+                    label: t(`person:relative.choices.${relation}`),
+                    to: addRelativePath(familyId, person.id, relation, 'profile'),
+                  })),
+                },
+                {
+                  choices: [
+                    {
+                      label: t('person:relative.choices.PARTNER'),
+                      to: addRelativePath(familyId, person.id, 'PARTNER', 'profile'),
+                    },
+                  ],
+                },
+              ]}
+            />
+          )}
+        </section>
+      )}
 
       <section aria-labelledby="profile-about" className="flex flex-col gap-4">
         <h2 id="profile-about" className="text-section text-text">
@@ -266,6 +270,89 @@ function PersonProfile({
         </dl>
       </section>
     </div>
+  );
+}
+
+const SECTIONS = ['parents', 'partners', 'children', 'siblings'] as const;
+
+/**
+ * SCREEN-005 Family section: the Person's parents, partners, children and siblings from the tree
+ * centred on them, each with what they are to the current User (localization-and-kinship-labels.md
+ * §3, §3bis).
+ */
+function Relatives({ familyId, person }: { familyId: string; person: Person }) {
+  const { t } = useTranslation('person');
+  const tree = useFamilyTree(familyId, person.id);
+
+  if (tree.isPending) {
+    return (
+      <div className="flex flex-col gap-3">
+        <Skeleton className="h-12 w-full" />
+        <Skeleton className="h-12 w-full" />
+      </div>
+    );
+  }
+  if (tree.isError) {
+    return <ErrorState error={tree.error} onRetry={() => void tree.refetch()} />;
+  }
+  const sections = familySections(tree.data, person.id);
+  if (SECTIONS.every((section) => sections[section].length === 0)) {
+    return <p className="text-body text-text-muted">{t('profile.noRelatives')}</p>;
+  }
+  return (
+    <div className="flex flex-col gap-4">
+      {SECTIONS.filter((section) => sections[section].length > 0).map((section) => (
+        <div key={section} className="flex flex-col gap-2">
+          <h3
+            id={`profile-family-${section}`}
+            className="text-caption font-semibold text-text-muted"
+          >
+            {t(`profile.relatives.${section}`)}
+          </h3>
+          <ul aria-labelledby={`profile-family-${section}`} className="flex flex-col gap-2">
+            {sections[section].map((relative) => (
+              <li key={relative.id}>
+                <RelativeRow familyId={familyId} relative={relative} />
+              </li>
+            ))}
+          </ul>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+function RelativeRow({ familyId, relative }: { familyId: string; relative: TreeNode }) {
+  const { t } = useTranslation('person');
+  const name = relative.displayName ?? relative.firstName;
+  const birthYear = yearOf(relative.birth);
+  const deathYear = yearOf(relative.death);
+  const years: string[] = [];
+  if (birthYear) years.push(t('profile.birthYear', { year: birthYear }));
+  if (relative.isDeceased && deathYear) years.push(t('profile.deathYear', { year: deathYear }));
+  const relationship =
+    relative.relationshipToCurrentUser == null
+      ? null
+      : kinshipLabel(t, relative.relationshipToCurrentUser, relative.gender);
+
+  return (
+    <Link
+      to={personPath(familyId, relative.id)}
+      className="flex items-center gap-3 rounded-xl border border-border bg-surface px-4 py-3 hover:border-primary"
+    >
+      <Avatar displayName={name} />
+      <span className="flex min-w-0 flex-col">
+        <span className="text-body font-semibold break-words text-text">{name}</span>
+        {relationship && <span className="text-caption text-text-muted">{relationship}</span>}
+        {years.length > 0 && (
+          <span className="flex flex-wrap gap-x-3 text-caption text-text-muted">
+            {years.map((part) => (
+              <span key={part}>{part}</span>
+            ))}
+          </span>
+        )}
+      </span>
+    </Link>
   );
 }
 

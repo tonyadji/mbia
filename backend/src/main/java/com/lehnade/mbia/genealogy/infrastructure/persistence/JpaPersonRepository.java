@@ -85,7 +85,7 @@ class JpaPersonRepository implements PersonRepository {
                 .map(JpaPersonRepository::toDomain);
     }
 
-    private static Person toDomain(PersonJpaEntity entity) {
+    static Person toDomain(PersonJpaEntity entity) {
         PersonDetails details = new PersonDetails(entity.firstName(), entity.middleNames(), entity.lastName(),
                 entity.preferredName(), Gender.valueOf(entity.gender()),
                 partialDate(entity.birthDatePrecision(), entity.birthDate(), entity.birthYear()), entity.deceased(),

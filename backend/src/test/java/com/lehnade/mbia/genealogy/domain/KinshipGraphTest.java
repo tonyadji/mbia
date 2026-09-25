@@ -63,6 +63,13 @@ class KinshipGraphTest {
             return KinshipGraph.of(shuffled).kinship(id(from), id(to), genders.get(to));
         }
 
+        /** Every Person of the fixture, as {@link KinshipGraph#kinshipsFrom} targets. */
+        Map<PersonId, Kinship> kinshipsFrom(String from) {
+            Map<PersonId, Gender> targets = new HashMap<>();
+            ids.forEach((name, id) -> targets.put(id, genders.get(name)));
+            return KinshipGraph.of(edges).kinshipsFrom(id(from), targets);
+        }
+
         /** The Persons of the path after {@code from}, by name. */
         List<String> via(Kinship kinship) {
             return kinship.path().stream().map(step -> nameOf(step.to())).toList();
@@ -291,5 +298,41 @@ class KinshipGraphTest {
         assertThat(fixture.kinship("Tony", "Chloé").path()).hasSize(1);
         // Tony → Awa: sibling through Marie or André; both are PARENT/CHILD, André (id 5) loses to Marie (id 3).
         assertThat(fixture.via(fixture.kinship("Tony", "Awa"))).containsExactly("Marie", "Awa");
+    }
+
+    /** PR-22, genealogy.md §10: one search for every card of the tree gives the same kinships. */
+    @Nested
+    class SeveralTargetsAtOnce {
+
+        @Test
+        void eachTargetGetsTheKinshipOfItsOwnSearch() {
+            Fixture fixture = family();
+
+            for (String from : List.of("Tony", "Awa", "Nina", "Zoé")) {
+                Map<PersonId, Kinship> kinships = fixture.kinshipsFrom(from);
+
+                assertThat(kinships).hasSize(fixture.ids.size());
+                fixture.ids.forEach((to, id) -> assertThat(kinships.get(id)).as("%s to %s", from, to)
+                        .isEqualTo(fixture.kinship(from, to)));
+            }
+        }
+
+        @Test
+        void tieBreakingIsTheSameAsForOneTarget() {
+            Fixture fixture = new SeveralShortestPaths().uncle(uuid(20), uuid(10));
+
+            assertThat(fixture.via(fixture.kinshipsFrom("Tony").get(fixture.id("Jean"))))
+                    .containsExactly("Marie", "Jeanne", "Jean");
+        }
+
+        @Test
+        void unreachableTargetsAreNoneKnownAndTheReferenceIsItself() {
+            Fixture fixture = family();
+
+            Map<PersonId, Kinship> kinships = fixture.kinshipsFrom("Tony");
+
+            assertThat(kinships.get(fixture.id("Zoé"))).isEqualTo(Kinship.noneKnown());
+            assertThat(kinships.get(fixture.id("Tony"))).isEqualTo(Kinship.self());
+        }
     }
 }

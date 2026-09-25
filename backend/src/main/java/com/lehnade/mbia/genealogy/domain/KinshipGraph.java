@@ -97,11 +97,37 @@ public final class KinshipGraph {
                 .orElseGet(Kinship::noneKnown);
     }
 
+    /**
+     * What each target is to {@code from}, in one breadth-first search (genealogy.md §10: no
+     * resolution per tree card). Each result equals {@link #kinship} for that target.
+     *
+     * @param targets each target Person with its gender, which genders its code
+     */
+    public Map<PersonId, Kinship> kinshipsFrom(PersonId from, Map<PersonId, Gender> targets) {
+        Map<PersonId, Path> paths = shortestPaths(from, targets.keySet());
+        Map<PersonId, Kinship> kinships = new HashMap<>();
+        targets.forEach((to, gender) -> {
+            Path path = paths.get(to);
+            if (path == null) {
+                kinships.put(to, Kinship.noneKnown());
+            } else {
+                List<KinshipPathStep> steps = steps(from, path);
+                kinships.put(to, new Kinship(KinshipPatterns.codeOf(steps, gender), steps));
+            }
+        });
+        return kinships;
+    }
+
     /** @return the preferred shortest path from {@code from} to {@code to}, empty when none exists */
     public Optional<List<KinshipPathStep>> shortestPath(PersonId from, PersonId to) {
-        if (from.equals(to)) {
-            return Optional.of(List.of());
-        }
+        return Optional.ofNullable(shortestPaths(from, Set.of(to)).get(to)).map(path -> steps(from, path));
+    }
+
+    /**
+     * The preferred shortest path to each reachable target. The search stops once every target is
+     * reached, after completing that layer so that all equally short paths are compared.
+     */
+    private Map<PersonId, Path> shortestPaths(PersonId from, Set<PersonId> targets) {
         Map<PersonId, Integer> distance = new HashMap<>();
         // Best shortest path to each reached Person: overall, and made only of PARENT/CHILD steps.
         Map<PersonId, Path> bestAny = new HashMap<>();
@@ -112,7 +138,7 @@ public final class KinshipGraph {
 
         Set<PersonId> layer = Set.of(from);
         int depth = 0;
-        while (!layer.isEmpty() && !distance.containsKey(to)) {
+        while (!layer.isEmpty() && !distance.keySet().containsAll(targets)) {
             Set<PersonId> nextLayer = new LinkedHashSet<>();
             for (PersonId person : layer) {
                 for (Neighbour neighbour : neighbours.getOrDefault(person, List.of())) {
@@ -132,8 +158,14 @@ public final class KinshipGraph {
             layer = nextLayer;
             depth++;
         }
-        Path best = bestParentChild.getOrDefault(to, bestAny.get(to));
-        return Optional.ofNullable(best).map(path -> steps(from, path));
+        Map<PersonId, Path> paths = new HashMap<>();
+        for (PersonId target : targets) {
+            Path best = bestParentChild.getOrDefault(target, bestAny.get(target));
+            if (best != null) {
+                paths.put(target, best);
+            }
+        }
+        return paths;
     }
 
     private void link(PersonId from, PersonId to, KinshipRelation relation) {

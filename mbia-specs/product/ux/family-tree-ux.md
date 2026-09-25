@@ -109,7 +109,7 @@ The last focused Person is remembered per Family on the device (browser storage)
 
 "Another suitable Person" means: the ACTIVE Person with the most active relationships; ties broken by earliest creation, then by lowest UUID.
 
-The last focused Person is known only by the browser, which sends it as the requested focus. When no focus is requested, the server applies rules 1 and 3.
+The last focused Person is known only by the browser, which sends it as the requested focus. When no focus is requested, the server applies rules 1 and 3. When the requested focus is not ACTIVE (ARCHIVED or MERGED), or the linked Person is not ACTIVE, the server falls back the same way and returns the focus it actually used (OQ-014).
 
 ### 6.1 Layout
 

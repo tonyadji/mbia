@@ -32,4 +32,90 @@ interface PersonJpaRepository extends JpaRepository<PersonJpaEntity, UUID> {
             WHERE p.linkedUserId = :userId AND p.familyId IN :familyIds AND p.status <> 'MERGED'
             """)
     List<LinkedPersonRow> findLinkedTo(UUID userId, Collection<UUID> familyIds);
+
+    /**
+     * The ACTIVE Person with the most ACTIVE relationships to ACTIVE Persons; ties: earliest
+     * created, then lowest id (family-tree-ux.md §6).
+     */
+    @Query(nativeQuery = true, value = """
+            SELECT p.id
+            FROM persons p
+            LEFT JOIN family_relationships r
+                   ON r.family_id = p.family_id AND r.status = 'ACTIVE'
+                  AND (r.source_person_id = p.id OR r.target_person_id = p.id)
+            LEFT JOIN persons other
+                   ON other.status = 'ACTIVE'
+                  AND other.id = CASE WHEN r.source_person_id = p.id THEN r.target_person_id
+                                      ELSE r.source_person_id END
+            WHERE p.family_id = :familyId AND p.status = 'ACTIVE'
+            GROUP BY p.id, p.created_at
+            ORDER BY count(other.id) DESC, p.created_at, p.id
+            LIMIT 1
+            """)
+    Optional<UUID> findMostConnectedActive(UUID familyId);
+
+    /**
+     * The ACTIVE Persons of the local graph around {@code focus} (openapi {@code getFamilyTree}),
+     * reached through ACTIVE relationships only: parents, children, partners, siblings and, with
+     * {@code depth} 2, grandparents and grandchildren. Each step reads the relationships of known
+     * Persons through the indexes of data-model.md §23.2, never the whole Family. Ordered by
+     * OQ-015: the focus, then birth (a year-only date counts as the start of that year, unknown
+     * last), creation, id.
+     */
+    @Query(nativeQuery = true, value = """
+            WITH parents AS (
+                SELECT r.source_person_id AS id
+                FROM family_relationships r
+                JOIN persons p ON p.id = r.source_person_id AND p.status = 'ACTIVE'
+                WHERE r.family_id = :familyId AND r.target_person_id = :focus
+                  AND r.type = 'PARENT_OF' AND r.status = 'ACTIVE'
+            ), children AS (
+                SELECT r.target_person_id AS id
+                FROM family_relationships r
+                JOIN persons p ON p.id = r.target_person_id AND p.status = 'ACTIVE'
+                WHERE r.family_id = :familyId AND r.source_person_id = :focus
+                  AND r.type = 'PARENT_OF' AND r.status = 'ACTIVE'
+            ), partners AS (
+                SELECT r.target_person_id AS id
+                FROM family_relationships r
+                JOIN persons p ON p.id = r.target_person_id AND p.status = 'ACTIVE'
+                WHERE r.family_id = :familyId AND r.source_person_id = :focus
+                  AND r.type = 'PARTNER_OF' AND r.status = 'ACTIVE'
+                UNION
+                SELECT r.source_person_id
+                FROM family_relationships r
+                JOIN persons p ON p.id = r.source_person_id AND p.status = 'ACTIVE'
+                WHERE r.family_id = :familyId AND r.target_person_id = :focus
+                  AND r.type = 'PARTNER_OF' AND r.status = 'ACTIVE'
+            ), siblings AS (
+                SELECT r.target_person_id AS id
+                FROM family_relationships r
+                JOIN parents parent ON parent.id = r.source_person_id
+                JOIN persons p ON p.id = r.target_person_id AND p.status = 'ACTIVE'
+                WHERE r.family_id = :familyId AND r.type = 'PARENT_OF' AND r.status = 'ACTIVE'
+            ), grandparents AS (
+                SELECT r.source_person_id AS id
+                FROM family_relationships r
+                JOIN parents parent ON parent.id = r.target_person_id
+                JOIN persons p ON p.id = r.source_person_id AND p.status = 'ACTIVE'
+                WHERE :depth >= 2 AND r.family_id = :familyId AND r.type = 'PARENT_OF' AND r.status = 'ACTIVE'
+            ), grandchildren AS (
+                SELECT r.target_person_id AS id
+                FROM family_relationships r
+                JOIN children child ON child.id = r.source_person_id
+                JOIN persons p ON p.id = r.target_person_id AND p.status = 'ACTIVE'
+                WHERE :depth >= 2 AND r.family_id = :familyId AND r.type = 'PARENT_OF' AND r.status = 'ACTIVE'
+            )
+            SELECT p.*
+            FROM persons p
+            WHERE p.family_id = :familyId AND p.status = 'ACTIVE'
+              AND (p.id = :focus
+                   OR p.id IN (SELECT id FROM parents UNION SELECT id FROM children
+                               UNION SELECT id FROM partners UNION SELECT id FROM siblings
+                               UNION SELECT id FROM grandparents UNION SELECT id FROM grandchildren))
+            ORDER BY p.id = :focus DESC,
+                     coalesce(p.birth_date, make_date(p.birth_year, 1, 1)) NULLS LAST,
+                     p.created_at, p.id
+            """)
+    List<PersonJpaEntity> findTreeNeighbourhood(UUID familyId, UUID focus, int depth);
 }

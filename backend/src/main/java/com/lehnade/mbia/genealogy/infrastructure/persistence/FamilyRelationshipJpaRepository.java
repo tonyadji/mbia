@@ -1,5 +1,6 @@
 package com.lehnade.mbia.genealogy.infrastructure.persistence;
 
+import java.util.Collection;
 import java.util.List;
 import java.util.UUID;
 import org.springframework.data.jpa.repository.JpaRepository;
@@ -41,6 +42,25 @@ interface FamilyRelationshipJpaRepository extends JpaRepository<FamilyRelationsh
               AND source.status = 'ACTIVE' AND target.status = 'ACTIVE'
             """)
     List<KinshipEdgeRow> findKinshipEdges(UUID familyId);
+
+    /**
+     * The ACTIVE relationships between ACTIVE Persons that join two of {@code personIds}, and the
+     * {@code PARENT_OF} ones that leave them (for the continuation indicators); ordered by creation,
+     * then id (OQ-015).
+     */
+    @Query("""
+            SELECT new com.lehnade.mbia.genealogy.infrastructure.persistence.TreeEdgeRow(
+                r.id, r.type, r.sourcePersonId, r.targetPersonId, r.version)
+            FROM FamilyRelationshipJpaEntity r
+            JOIN PersonJpaEntity source ON source.id = r.sourcePersonId
+            JOIN PersonJpaEntity target ON target.id = r.targetPersonId
+            WHERE r.familyId = :familyId AND r.status = 'ACTIVE'
+              AND source.status = 'ACTIVE' AND target.status = 'ACTIVE'
+              AND ((r.sourcePersonId IN :personIds AND r.targetPersonId IN :personIds)
+                   OR (r.type = 'PARENT_OF' AND (r.sourcePersonId IN :personIds OR r.targetPersonId IN :personIds)))
+            ORDER BY r.createdAt, r.id
+            """)
+    List<TreeEdgeRow> findTreeEdges(UUID familyId, Collection<UUID> personIds);
 
     /** Transaction-scoped PostgreSQL advisory lock, keyed by the Family. */
     @Query(nativeQuery = true, value = """

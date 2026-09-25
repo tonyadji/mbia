@@ -6,7 +6,8 @@ import { newUser, registerAndVerify } from './support/keycloak';
  * PR-20 (phase-2-core-family-graph.md): from "me", add a mother, a father with a date warning
  * confirmed by the User, then a grandparent from the mother's profile (SCREEN-004, family-tree-ux.md
  * §9 and §9.1, person-relationships-collaboration.md §7.1). PR-21: the father's profile shows the
- * localized kinship label (localization-and-kinship-labels.md §3).
+ * localized kinship label (localization-and-kinship-labels.md §3). PR-22: the profile Family
+ * section lists parents and children with their badge (SCREEN-005, §3bis).
  */
 for (const { language, locale } of [
   { language: 'fr', locale: 'fr-FR' },
@@ -101,6 +102,37 @@ for (const { language, locale } of [
       await expect(page.getByRole('status')).toContainText(
         t(language, 'person:relative.added', { name: 'Marie', anchor: 'Paul' }),
       );
+
+      // PR-22: the Family section lists Paul's relatives, each with what they are to me.
+      const paulParents = page.getByRole('list', {
+        name: t(language, 'person:profile.relatives.parents'),
+      });
+      await expect(paulParents.getByRole('link')).toHaveCount(1);
+      await expect(paulParents.getByRole('link')).toContainText('Marie');
+      await expect(paulParents.getByRole('link')).toContainText(
+        t(language, 'person:kinship.label.GRANDMOTHER'),
+      );
+      const paulChildren = page.getByRole('list', {
+        name: t(language, 'person:profile.relatives.children'),
+      });
+      await expect(paulChildren.getByRole('link')).toContainText(
+        t(language, 'person:kinship.label.SELF'),
+      );
+
+      // My own profile lists my two parents; the grandmother is one step further.
+      await paulChildren.getByRole('link', { name: /Alice/ }).click();
+      await expect(page.getByRole('heading', { level: 1 })).toHaveText('Alice');
+      const myParents = page.getByRole('list', {
+        name: t(language, 'person:profile.relatives.parents'),
+      });
+      await expect(myParents.getByRole('link')).toHaveCount(2);
+      await expect(myParents.getByRole('link', { name: /Awa/ })).toContainText(
+        t(language, 'person:kinship.label.MOTHER'),
+      );
+      await expect(myParents.getByRole('link', { name: /Paul/ })).toContainText(
+        t(language, 'person:kinship.label.FATHER'),
+      );
+      await expect(page.getByText('Marie')).toHaveCount(0);
     });
   });
 }

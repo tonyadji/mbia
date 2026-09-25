@@ -4,26 +4,34 @@ import com.lehnade.mbia.api.generated.TreeApi;
 import com.lehnade.mbia.api.generated.model.KinshipCode;
 import com.lehnade.mbia.api.generated.model.KinshipPathStep;
 import com.lehnade.mbia.api.generated.model.KinshipResponse;
+import com.lehnade.mbia.api.generated.model.Gender;
+import com.lehnade.mbia.api.generated.model.PersonStatus;
+import com.lehnade.mbia.api.generated.model.RelationshipType;
+import com.lehnade.mbia.api.generated.model.TreeEdge;
+import com.lehnade.mbia.api.generated.model.TreeNode;
 import com.lehnade.mbia.api.generated.model.TreeResponse;
+import com.lehnade.mbia.genealogy.application.getfamilytree.FamilyTreeView;
+import com.lehnade.mbia.genealogy.application.getfamilytree.GetFamilyTreeUseCase;
 import com.lehnade.mbia.genealogy.application.resolvekinship.ResolveKinshipUseCase;
+import com.lehnade.mbia.genealogy.domain.FamilyTree;
 import com.lehnade.mbia.genealogy.domain.Kinship;
-import com.lehnade.mbia.shared.domain.DomainException;
-import com.lehnade.mbia.shared.domain.ErrorCode;
+import com.lehnade.mbia.genealogy.domain.Person;
+import com.lehnade.mbia.genealogy.domain.PersonDetails;
+import java.util.List;
 import java.util.UUID;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.RestController;
 
-/**
- * Tree and kinship reads of a Family. {@code getFamilyTree} (PR-22) answers like a route that does
- * not exist yet ({@code RESOURCE_NOT_FOUND}).
- */
+/** Tree and kinship reads of a Family. */
 @RestController
 class TreeController implements TreeApi {
 
     private final ResolveKinshipUseCase resolveKinship;
+    private final GetFamilyTreeUseCase getFamilyTree;
 
-    TreeController(ResolveKinshipUseCase resolveKinship) {
+    TreeController(ResolveKinshipUseCase resolveKinship, GetFamilyTreeUseCase getFamilyTree) {
         this.resolveKinship = resolveKinship;
+        this.getFamilyTree = getFamilyTree;
     }
 
     @Override
@@ -38,6 +46,36 @@ class TreeController implements TreeApi {
 
     @Override
     public ResponseEntity<TreeResponse> getFamilyTree(UUID familyId, UUID focusPersonId, Integer depth) {
-        throw new DomainException(ErrorCode.RESOURCE_NOT_FOUND, "Resource not found.");
+        FamilyTreeView view = getFamilyTree.get(familyId, focusPersonId, depth);
+        return ResponseEntity.ok(view.tree()
+                .map(tree -> new TreeResponse(tree.focus().value(),
+                        tree.nodes().stream().map(node -> toApi(node, view)).toList(),
+                        tree.edges().stream().map(TreeController::toApi).toList()))
+                .orElseGet(() -> new TreeResponse(null, List.of(), List.of())));
+    }
+
+    /** No photo in this phase: {@code profilePictureUrl} is always null (Phase 2 plan §3.1). */
+    private static TreeNode toApi(FamilyTree.Node node, FamilyTreeView view) {
+        Person person = node.person();
+        PersonDetails details = person.details();
+        com.lehnade.mbia.genealogy.domain.KinshipCode relationship =
+                view.relationshipToCurrentUser().get(person.id());
+        return new TreeNode(person.id().value(), person.familyId(), details.firstName(),
+                Gender.fromValue(details.gender().name()), PersonApiMapping.toApi(details.birth()),
+                details.deceased(), PersonApiMapping.toApi(details.death()),
+                PersonStatus.fromValue(person.status().name()), person.version(), node.hasMoreParents(),
+                node.hasMoreChildren())
+                .middleNames(details.middleNames())
+                .lastName(details.lastName())
+                .preferredName(details.preferredName())
+                .displayName(details.displayName())
+                .profilePictureUrl(null)
+                .linkedUserId(person.linkedUserId().orElse(null))
+                .relationshipToCurrentUser(relationship == null ? null : KinshipCode.fromValue(relationship.name()));
+    }
+
+    private static TreeEdge toApi(FamilyTree.Edge edge) {
+        return new TreeEdge(edge.id().value(), RelationshipType.fromValue(edge.type().name()),
+                edge.source().value(), edge.target().value(), edge.version());
     }
 }
