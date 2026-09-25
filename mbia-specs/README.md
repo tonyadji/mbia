@@ -35,6 +35,8 @@ When two documents conflict, the higher level in this list wins until the contra
 mbia-specs/
 ├── README.md
 ├── open-questions.md
+├── delivery/
+│   └── phase-1-walking-skeleton.md
 ├── product/
 │   ├── vision.md
 │   ├── mvp.md

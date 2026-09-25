@@ -42,6 +42,7 @@ When a human answers, update the relevant spec in the same change set as the cod
 mbia/
 ├── AGENTS.md
 ├── mbia-specs/          specifications (product + technical + ADRs + OpenAPI)
+│   └── delivery/        delivery plans: ordered PR breakdown per phase (not product rules)
 ├── backend/             Spring Boot modular monolith (Java 25, Maven Wrapper)
 ├── frontend/            React + TypeScript SPA (Vite)
 ├── infrastructure/      docker, keycloak realm, deployment files
@@ -141,6 +142,7 @@ Write a new ADR in `mbia-specs/technical/adr/` (status `Proposed`) and wait for 
 
 ## 11. Working method
 
+- Follow the current delivery plan in `mbia-specs/delivery/`: one PR at a time, in order, within its scope.
 - Work in **small vertical slices**: one use case or one screen per change, with its tests.
 - Before coding, state which spec sections you implement.
 - Keep the change focused; do not refactor unrelated code.
