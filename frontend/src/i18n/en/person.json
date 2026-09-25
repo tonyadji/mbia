@@ -69,5 +69,48 @@
     "title": "Person not found",
     "body": "This person does not exist in this family.",
     "back": "Back to the family"
+  },
+  "relative": {
+    "menu": "Add a relative",
+    "parents": "Add a parent",
+    "children": "Add a child",
+    "choices": {
+      "FATHER": "Father",
+      "MOTHER": "Mother",
+      "PARENT": "Other parent",
+      "SON": "Son",
+      "DAUGHTER": "Daughter",
+      "CHILD": "Child",
+      "PARTNER": "Add a partner"
+    },
+    "title": {
+      "FATHER": "Add {{name}}'s father",
+      "MOTHER": "Add {{name}}'s mother",
+      "PARENT": "Add a parent of {{name}}",
+      "SON": "Add {{name}}'s son",
+      "DAUGHTER": "Add {{name}}'s daughter",
+      "CHILD": "Add {{name}}'s child",
+      "PARTNER": "Add {{name}}'s partner"
+    },
+    "titleMe": {
+      "FATHER": "Add my father",
+      "MOTHER": "Add my mother",
+      "PARENT": "Add one of my parents",
+      "SON": "Add my son",
+      "DAUGHTER": "Add my daughter",
+      "CHILD": "Add my child",
+      "PARTNER": "Add my partner"
+    },
+    "intro": "Only the first name is required. Mbia creates the family link for you.",
+    "warnings": {
+      "title": "These dates look unusual",
+      "PARENT_BORN_AFTER_CHILD": "{{parent}} would become {{child}}'s parent, but their birth year ({{parentYear}}) is not before {{child}}'s ({{childYear}}).",
+      "IMPLAUSIBLE_PARENT_AGE": "{{parent}} would have been {{age}} at {{child}}'s birth (birth years: {{parentYear}} and {{childYear}}).",
+      "correct": "Correct information",
+      "confirm": "Add relationship anyway"
+    },
+    "notLinked": "{{name}} was added to the family, but is not linked to {{anchor}}. You can create this link later from their profile.",
+    "added": "{{name}} was added to the family and linked to {{anchor}}.",
+    "viewProfile": "View their profile"
   }
 }

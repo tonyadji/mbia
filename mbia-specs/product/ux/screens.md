@@ -73,7 +73,7 @@ ACTIVE ADMIN / CONTRIBUTOR / VIEWER.
 
 ADMIN / CONTRIBUTOR only:
 
-- `Add a relative` when the current User has a linked Person (choices: `family-tree-ux.md` §9.1), otherwise `Add a person`;
+- `Add a relative` when the current User has a linked Person (choices: `family-tree-ux.md` §9.1; the Family carries `myLinkedPersonId`, OQ-010), otherwise `Add a person`;
 - add Memory.
 
 ## Empty state

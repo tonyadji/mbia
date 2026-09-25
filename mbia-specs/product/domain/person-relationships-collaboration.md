@@ -164,7 +164,7 @@ Block:
 - self-relation;
 - exact duplicate;
 - cross-Family relation;
-- relation involving an ARCHIVED or MERGED Person;
+- relation involving an ARCHIVED or MERGED Person (`PERSON_NOT_ACTIVE`, OQ-011);
 - parental cycle.
 
 Warn, but permit confirmation, for probable inconsistencies such as suspicious dates or generation gaps.
@@ -174,7 +174,9 @@ Warn, but permit confirmation, for probable inconsistencies such as suspicious d
 For a `PARENT_OF` relation, when both birth years are known:
 
 - `PARENT_BORN_AFTER_CHILD` when `parentBirthYear >= childBirthYear`;
-- `IMPLAUSIBLE_PARENT_AGE` when the parent's age at the child's birth is `< 12` or `> 80`.
+- otherwise, `IMPLAUSIBLE_PARENT_AGE` when the parent's age at the child's birth is `< 12` or `> 80`.
+
+The age is `childBirthYear - parentBirthYear`, also when exact dates are known. A parent born the same year as the child or after gets only `PARENT_BORN_AFTER_CHILD` (OQ-012).
 
 `IMPLAUSIBLE_GENERATION_GAP` is reserved: no threshold is defined yet, so it is never emitted.
 

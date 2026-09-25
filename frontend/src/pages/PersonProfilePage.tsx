@@ -1,6 +1,6 @@
 import type { ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Link, useParams } from 'react-router';
+import { Link, useLocation, useParams } from 'react-router';
 import { ApiError } from '../api/client';
 import type { components } from '../api/generated/schema';
 import { Avatar } from '../components/Avatar';
@@ -11,7 +11,9 @@ import { errorMessage } from '../api/errorMessage';
 import { Button } from '../components/Button';
 import { useFamily } from '../families/useFamily';
 import { isSupportedLanguage, DEFAULT_LANGUAGE } from '../i18n/language';
+import { AddRelativeMenu } from '../persons/AddRelativeMenu';
 import { formatPartialDate, yearOf } from '../persons/formatPartialDate';
+import { CHILD_RELATIONS, PARENT_RELATIONS, addRelativePath } from '../persons/relatives';
 import { useClaimPerson } from '../persons/useClaimPerson';
 import { usePerson, type Person } from '../persons/usePerson';
 import { familyHomePath } from './FamilyHomePage';
@@ -23,6 +25,11 @@ type Role = components['schemas']['MembershipRole'];
 
 export function personPath(familyId: string, personId: string) {
   return `/families/${familyId}/persons/${personId}`;
+}
+
+/** Navigation state set by Add Relative, for the success message. */
+export interface PersonProfileState {
+  relativeAdded?: { name: string };
 }
 
 export function displayNameOf(person: Person) {
@@ -40,6 +47,11 @@ export function canEditPerson(person: Person, role: Role | undefined) {
     role === 'CONTRIBUTOR' &&
     (person.linkedUserId == null || person.relationshipToCurrentUser === 'SELF')
   );
+}
+
+/** Whether the caller may add relatives to this Person (ADMIN or CONTRIBUTOR, ACTIVE Person). */
+export function canAddRelatives(person: Person, role: Role | undefined) {
+  return person.status === 'ACTIVE' && (role === 'ADMIN' || role === 'CONTRIBUTOR');
 }
 
 /**
@@ -120,6 +132,7 @@ function PersonProfile({
   role: Role | undefined;
 }) {
   const { t, i18n } = useTranslation(['person', 'settings']);
+  const relativeAdded = (useLocation().state as PersonProfileState | null)?.relativeAdded;
   const language = isSupportedLanguage(i18n.resolvedLanguage)
     ? i18n.resolvedLanguage
     : DEFAULT_LANGUAGE;
@@ -184,11 +197,46 @@ function PersonProfile({
         <ClaimAction familyId={familyId} person={person} />
       </header>
 
+      {relativeAdded && (
+        <p role="status" className="rounded-xl border border-border bg-surface px-4 py-3 text-body">
+          {t('person:relative.added', { name: relativeAdded.name, anchor: displayNameOf(person) })}
+        </p>
+      )}
+
       <section aria-labelledby="profile-family" className="flex flex-col gap-2">
         <h2 id="profile-family" className="text-section text-text">
           {t('person:profile.family')}
         </h2>
         <p className="text-body text-text-muted">{t('person:profile.noRelatives')}</p>
+        {canAddRelatives(person, role) && (
+          <AddRelativeMenu
+            label={t('person:relative.menu')}
+            groups={[
+              {
+                heading: t('person:relative.parents'),
+                choices: PARENT_RELATIONS.map((relation) => ({
+                  label: t(`person:relative.choices.${relation}`),
+                  to: addRelativePath(familyId, person.id, relation, 'profile'),
+                })),
+              },
+              {
+                heading: t('person:relative.children'),
+                choices: CHILD_RELATIONS.map((relation) => ({
+                  label: t(`person:relative.choices.${relation}`),
+                  to: addRelativePath(familyId, person.id, relation, 'profile'),
+                })),
+              },
+              {
+                choices: [
+                  {
+                    label: t('person:relative.choices.PARTNER'),
+                    to: addRelativePath(familyId, person.id, 'PARTNER', 'profile'),
+                  },
+                ],
+              },
+            ]}
+          />
+        )}
       </section>
 
       <section aria-labelledby="profile-about" className="flex flex-col gap-4">

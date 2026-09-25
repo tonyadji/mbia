@@ -113,3 +113,30 @@ When a question is answered, update the relevant spec, then move the entry to **
 - **Options:** (1) A — only the linked User or an ADMIN may unclaim: a non-ADMIN gets 403 `PERMISSION_DENIED`, an ADMIN gets 200 with the unchanged Person and version / B — new 409 `PERSON_NOT_CLAIMED` / C — 200 no-op for everyone. (2) A — 200, nothing written / B — 409 `USER_ALREADY_LINKED`. (3) A — every `updatePerson` field: a CONTRIBUTOR edits a linked Person only when it is their own (`mvp.md` §4 "edit their own linked Person") / B — identity only, the biography stays open to every CONTRIBUTOR.
 - **Recommendation:** A for all three; as for `updatePerson` (OQ-008), claiming or unclaiming a non-ACTIVE Person returns 404 `PERSON_NOT_FOUND`, and a linked VIEWER stays read-only on their Person.
 - **Answer:** A for all three (human, 2026-09-25). Documented in `openapi.yaml` (`claimPerson`, `unclaimPerson`, `updatePerson` descriptions) and `data-model.md` §21; changed in PR-19.
+
+### OQ-010 — How Family Home knows the current User's linked Person
+
+- **Raised by / date:** coding agent (PR-20), 2026-09-25
+- **Context:** SCREEN-002 offers `Add a relative` (My father, My mother, …) "when the current User has a linked Person" (`family-tree-ux.md` §9.1), but no Phase 2 endpoint gives the frontend that Person: `FamilySummary` has no such field, `searchPersons` arrives with PR-25, `getFamilyTree` with PR-22, member listing in a later phase.
+- **Question:** how does Family Home find the caller's linked Person?
+- **Options:** A — additive `FamilySummary.myLinkedPersonId` (nullable) / B — postpone the Family Home entry to PR-22.
+- **Recommendation:** A.
+- **Answer:** A (human, 2026-09-25). Added to `openapi.yaml` (`FamilySummary`) and `screens.md` SCREEN-002; changed in PR-20.
+
+### OQ-011 — Error code for a relationship involving an ARCHIVED or MERGED Person
+
+- **Raised by / date:** coding agent (PR-20), 2026-09-25
+- **Context:** `person-relationships-collaboration.md` §7 blocks such relationships, but the contract has no code for it; PR-24 must also explain a refused restore "because the other Person is archived".
+- **Question:** which status and code?
+- **Options:** A — new 409 `PERSON_NOT_ACTIVE` / B — 404 `PERSON_NOT_FOUND`, as `claimPerson` does for a non-ACTIVE Person.
+- **Recommendation:** A; `getPerson` still returns an archived Person, so "not found" would be misleading.
+- **Answer:** A (human, 2026-09-25). Added to `openapi.yaml` (`createRelationship`, `ProblemDetails.code`), `technical-specification.md` §12 and `person-relationships-collaboration.md` §7; changed in PR-20.
+
+### OQ-012 — Parent born the same year as the child or after: one warning or two?
+
+- **Raised by / date:** coding agent (PR-20), 2026-09-25
+- **Context:** `person-relationships-collaboration.md` §7.1: when `parentBirthYear >= childBirthYear`, the computed age (≤ 0) is also `< 12`, so a literal reading emits both `PARENT_BORN_AFTER_CHILD` and `IMPLAUSIBLE_PARENT_AGE`.
+- **Question:** emit both warnings, or only the first?
+- **Options:** A — only `PARENT_BORN_AFTER_CHILD`; age = difference of birth years, also with exact dates / B — both.
+- **Recommendation:** A; the second message repeats the first.
+- **Answer:** A (human, 2026-09-25). Documented in `person-relationships-collaboration.md` §7.1; changed in PR-20.

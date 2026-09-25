@@ -756,9 +756,16 @@ paths:
       operationId: createRelationship
       summary: Create an explicit family relationship
       description: |
-        ADMIN or CONTRIBUTOR only. Certain inconsistencies (self relation, parental
-        cycle, cross-family reference) are blocking. Probable date inconsistencies
-        require explicit confirmation through `confirmWarnings=true`.
+        ADMIN or CONTRIBUTOR only. Certain inconsistencies are blocking: self relation
+        (400 `SELF_RELATIONSHIP_NOT_ALLOWED`), Person unknown or of another family
+        (404 `PERSON_NOT_FOUND`), Person ARCHIVED or MERGED (409 `PERSON_NOT_ACTIVE`),
+        exact ACTIVE duplicate, `PARTNER_OF` in either order included
+        (409 `RELATIONSHIP_ALREADY_EXISTS`), parental cycle (409 `RELATIONSHIP_CREATES_CYCLE`).
+        Probable date inconsistencies require explicit confirmation through
+        `confirmWarnings=true`: without it, nothing is created and the server returns 422
+        `RELATIONSHIP_WARNING_CONFIRMATION_REQUIRED` with the warnings in `details.warnings`
+        (same shape as `RelationshipWarning`). With it, the relationship is created and the
+        confirmed warnings are returned in `warnings`.
       requestBody:
         required: true
         content:
@@ -779,6 +786,8 @@ paths:
           $ref: '#/components/responses/BadRequest'
         '403':
           $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
         '409':
           $ref: '#/components/responses/Conflict'
         '422':
@@ -1383,6 +1392,10 @@ components:
           type: string
         myRole:
           $ref: '#/components/schemas/MembershipRole'
+        myLinkedPersonId:
+          type: [string, 'null']
+          format: uuid
+          description: The Person linked to the current User in this family ("me"), or null.
         stats:
           $ref: '#/components/schemas/FamilyStats'
 
@@ -2332,6 +2345,7 @@ components:
             - SELF_RELATIONSHIP_NOT_ALLOWED
             - RELATIONSHIP_CREATES_CYCLE
             - RELATIONSHIP_WARNING_CONFIRMATION_REQUIRED
+            - PERSON_NOT_ACTIVE
             - PERSON_MERGE_CONFLICT
             - EMAIL_NOT_VERIFIED
             - LAST_ADMIN_REQUIRED

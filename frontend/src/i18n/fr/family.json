@@ -19,7 +19,15 @@
     "addPerson": "Ajouter une personne",
     "personAdded": "{{name}} fait maintenant partie de la famille.",
     "selfAdded": "Vous faites maintenant partie de la famille {{family}}.",
-    "viewProfile": "Voir le profil"
+    "viewProfile": "Voir le profil",
+    "addRelative": "Ajouter un proche",
+    "relatives": {
+      "FATHER": "Mon père",
+      "MOTHER": "Ma mère",
+      "PARTNER": "Mon ou ma partenaire",
+      "CHILD": "Mon enfant",
+      "someoneElse": "Quelqu'un d'autre"
+    }
   },
   "chooser": {
     "title": "Vos familles"

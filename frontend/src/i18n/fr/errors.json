@@ -6,5 +6,10 @@
   "PERSON_ALREADY_CLAIMED": "Cette personne est déjà reliée à un autre membre de la famille.",
   "USER_ALREADY_LINKED": "Vous faites déjà partie de l'arbre de cette famille.",
   "PERSON_NOT_FOUND": "Cette personne n'existe pas dans cette famille.",
-  "CONCURRENT_MODIFICATION": "Quelqu'un a modifié ces informations entre-temps. Rechargez la page et réessayez."
+  "CONCURRENT_MODIFICATION": "Quelqu'un a modifié ces informations entre-temps. Rechargez la page et réessayez.",
+  "SELF_RELATIONSHIP_NOT_ALLOWED": "Une personne ne peut pas être reliée à elle-même.",
+  "RELATIONSHIP_ALREADY_EXISTS": "Ces deux personnes sont déjà reliées de cette façon.",
+  "RELATIONSHIP_CREATES_CYCLE": "Ce lien ne peut pas être ajouté : une personne deviendrait son propre ancêtre.",
+  "PERSON_NOT_ACTIVE": "Cette personne a été archivée ou fusionnée : elle ne peut plus recevoir de nouveau lien.",
+  "RELATIONSHIP_WARNING_CONFIRMATION_REQUIRED": "Les dates de naissance semblent incohérentes. Vérifiez-les ou confirmez le lien."
 }

@@ -10,6 +10,7 @@ package com.lehnade.mbia.shared.domain;
 public enum ErrorCode {
 
     VALIDATION_FAILED(400, "Validation failed"),
+    SELF_RELATIONSHIP_NOT_ALLOWED(400, "Self relationship not allowed"),
     AUTHENTICATION_REQUIRED(401, "Authentication required"),
     EMAIL_NOT_VERIFIED(403, "Email not verified"),
     PERMISSION_DENIED(403, "Permission denied"),
@@ -22,7 +23,11 @@ public enum ErrorCode {
     POSSIBLE_DUPLICATE(409, "Possible duplicate"),
     PERSON_ALREADY_CLAIMED(409, "Person already claimed"),
     USER_ALREADY_LINKED(409, "User already linked"),
+    PERSON_NOT_ACTIVE(409, "Person not active"),
+    RELATIONSHIP_ALREADY_EXISTS(409, "Relationship already exists"),
+    RELATIONSHIP_CREATES_CYCLE(409, "Relationship creates a cycle"),
     UNSUPPORTED_MEDIA_TYPE(415, "Unsupported media type"),
+    RELATIONSHIP_WARNING_CONFIRMATION_REQUIRED(422, "Relationship warning confirmation required"),
     INTERNAL_ERROR(500, "Internal error");
 
     private final int httpStatus;

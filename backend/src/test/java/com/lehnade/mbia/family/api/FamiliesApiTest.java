@@ -5,6 +5,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import com.lehnade.mbia.ApiTestSupport;
 import com.lehnade.mbia.TestJwts;
 import com.lehnade.mbia.family.FamilyFixtures;
+import com.lehnade.mbia.genealogy.PersonFixtures;
 import com.jayway.jsonpath.JsonPath;
 import java.util.List;
 import java.util.UUID;
@@ -133,6 +134,31 @@ class FamiliesApiTest extends ApiTestSupport {
         assertThat(result).hasStatusOk().bodyJson().extractingPath("$").asArray().isEmpty();
     }
 
+    /** PR-20, OQ-010: Family Home offers "Add a relative" from the caller's own linked Person. */
+    @Test
+    void theCallersLinkedPersonIsGivenPerFamily() {
+        FamilyFixtures.FamilyWithMembers family = families().givenFamilyWithMembersOfEachRole();
+        PersonFixtures persons = new PersonFixtures(mvc, jdbc);
+        persons.createId(family.admin(), family.familyId(), "{\"firstName\": \"Someone\"}");
+        UUID adminFamilyWithoutMe = createOk(family.admin(), "Autre famille");
+
+        assertThat(get(family.admin(), family.familyId())).bodyJson()
+                .extractingPath("$.myLinkedPersonId").isNull();
+
+        UUID me = persons.createId(family.admin(), family.familyId(),
+                "{\"firstName\": \"Me\", \"linkToCurrentUser\": true}");
+
+        assertThat(get(family.admin(), family.familyId())).bodyJson()
+                .extractingPath("$.myLinkedPersonId").isEqualTo(me.toString());
+        assertThat(get(family.contributor(), family.familyId())).bodyJson()
+                .extractingPath("$.myLinkedPersonId").isNull();
+        MvcTestResult myFamilies = list(family.admin());
+        assertThat(JsonPath.<List<Object>>read(FamilyFixtures.body(myFamilies),
+                "$[?(@.id == '%s')].myLinkedPersonId".formatted(family.familyId()))).containsExactly(me.toString());
+        assertThat(JsonPath.<List<Object>>read(FamilyFixtures.body(myFamilies),
+                "$[?(@.id == '%s')].myLinkedPersonId".formatted(adminFamilyWithoutMe))).containsExactly((Object) null);
+    }
+
     @Test
     void anonymousCallsReturn401() {
         assertThat(mvc.get().uri("/api/v1/families").exchange()).hasStatus(HttpStatus.UNAUTHORIZED);
@@ -151,6 +177,11 @@ class FamiliesApiTest extends ApiTestSupport {
 
     private UUID createOk(TestJwts.Token token, String name) {
         return families().createFamily(token, name);
+    }
+
+    private MvcTestResult get(TestJwts.Token token, UUID familyId) {
+        return mvc.get().uri("/api/v1/families/{familyId}", familyId)
+                .header(HttpHeaders.AUTHORIZATION, token.bearer()).exchange();
     }
 
     private MvcTestResult list(TestJwts.Token token) {
