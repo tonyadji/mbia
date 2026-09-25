@@ -1,0 +1,77 @@
+# Local development dependencies. Defaults match .env.example; create a .env to override them.
+name: mbia
+
+services:
+  postgres:
+    image: postgres:18.6-alpine
+    environment:
+      POSTGRES_USER: ${POSTGRES_SUPERUSER:-postgres}
+      POSTGRES_PASSWORD: ${POSTGRES_SUPERUSER_PASSWORD:-postgres-local}
+      MBIA_DB_NAME: ${MBIA_DB_NAME:-mbia}
+      MBIA_DB_USER: ${MBIA_DB_USER:-mbia}
+      MBIA_DB_PASSWORD: ${MBIA_DB_PASSWORD:-mbia-local}
+      KEYCLOAK_DB_NAME: ${KEYCLOAK_DB_NAME:-keycloak}
+      KEYCLOAK_DB_USER: ${KEYCLOAK_DB_USER:-keycloak}
+      KEYCLOAK_DB_PASSWORD: ${KEYCLOAK_DB_PASSWORD:-keycloak-local}
+    ports:
+      - "${POSTGRES_PORT:-5432}:5432"
+    volumes:
+      # PostgreSQL 18+ images keep their data under /var/lib/postgresql/<major>/.
+      - postgres-data:/var/lib/postgresql
+      - ./infrastructure/postgres/init:/docker-entrypoint-initdb.d:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U \"$${POSTGRES_USER}\" -d postgres"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  # S3-compatible object storage (ADR-004, ADR-009).
+  rustfs:
+    image: rustfs/rustfs:1.0.0
+    environment:
+      RUSTFS_ACCESS_KEY: ${S3_ACCESS_KEY:-mbia-local}
+      RUSTFS_SECRET_KEY: ${S3_SECRET_KEY:-mbia-local-secret}
+      RUSTFS_CONSOLE_ENABLE: "true"
+    ports:
+      - "${S3_API_PORT:-9000}:9000"
+      - "${S3_CONSOLE_PORT:-9001}:9001"
+    volumes:
+      - rustfs-data:/data
+    healthcheck:
+      test: ["CMD", "curl", "-fsS", "http://localhost:9000/health"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  # One-shot: creates the private media bucket, then exits 0. Buckets are private by default
+  # and no bucket policy is set, so anonymous requests are denied.
+  rustfs-init:
+    image: amazon/aws-cli:2.37.3
+    depends_on:
+      rustfs:
+        condition: service_healthy
+    environment:
+      AWS_ACCESS_KEY_ID: ${S3_ACCESS_KEY:-mbia-local}
+      AWS_SECRET_ACCESS_KEY: ${S3_SECRET_KEY:-mbia-local-secret}
+      AWS_DEFAULT_REGION: ${S3_REGION:-us-east-1}
+      AWS_ENDPOINT_URL: http://rustfs:9000
+      S3_BUCKET: ${S3_BUCKET:-mbia-media}
+    entrypoint: ["/bin/sh", "-c"]
+    command:
+      - aws s3api head-bucket --bucket "$$S3_BUCKET" 2>/dev/null || aws s3api create-bucket --bucket "$$S3_BUCKET"
+    restart: "no"
+
+  mailpit:
+    image: axllent/mailpit:v1.31.2
+    ports:
+      - "${MAILPIT_SMTP_PORT:-1025}:1025"
+      - "${MAILPIT_UI_PORT:-8025}:8025"
+    healthcheck:
+      test: ["CMD", "/mailpit", "readyz"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+volumes:
+  postgres-data:
+  rustfs-data:

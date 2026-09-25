@@ -1,0 +1,2270 @@
+openapi: 3.1.0
+info:
+  title: Mbia API
+  version: 0.2.0
+  summary: REST contract for the Mbia commercial MVP
+  description: |
+    Contract-first API for Mbia, a private collaborative family heritage platform.
+
+    Product specifications are authoritative for business behavior. This OpenAPI
+    document is the authoritative HTTP contract derived from those specifications.
+
+servers:
+  - url: https://api.mbia.example.com/api/v1
+    description: Production placeholder
+  - url: http://localhost:8080/api/v1
+    description: Local development
+
+tags:
+  - name: Current User
+  - name: Families
+  - name: Members
+  - name: Invitations
+  - name: Persons
+  - name: Relationships
+  - name: Tree
+  - name: Memories
+  - name: Media
+  - name: Activity
+
+security:
+  - bearerAuth: []
+
+paths:
+  /me:
+    get:
+      tags: [Current User]
+      operationId: getCurrentUser
+      summary: Get the authenticated Mbia user
+      description: |
+        Creates the Mbia user just-in-time on first call (ADR-005). Returns 403
+        `EMAIL_NOT_VERIFIED` when the token's `email_verified` claim is not true.
+      responses:
+        '200':
+          description: Current user
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UserResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+    patch:
+      tags: [Current User]
+      operationId: updateCurrentUser
+      summary: Update the current user's display name or language
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateCurrentUserRequest'
+      responses:
+        '200':
+          description: Updated current user
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UserResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
+  /families:
+    get:
+      tags: [Families]
+      operationId: listMyFamilies
+      summary: List families where the current user has an active membership
+      responses:
+        '200':
+          description: Families available to the current user
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/FamilySummary'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+    post:
+      tags: [Families]
+      operationId: createFamily
+      summary: Create a family
+      description: The current user automatically becomes ADMIN of the new family.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateFamilyRequest'
+      responses:
+        '201':
+          description: Family created
+          headers:
+            ETag:
+              $ref: '#/components/headers/ETag'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/FamilyResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
+  /families/{familyId}:
+    parameters:
+      - $ref: '#/components/parameters/FamilyId'
+    get:
+      tags: [Families]
+      operationId: getFamily
+      summary: Get a family and its MVP home-screen statistics
+      responses:
+        '200':
+          description: Family
+          headers:
+            ETag:
+              $ref: '#/components/headers/ETag'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/FamilyResponse'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+    patch:
+      tags: [Families]
+      operationId: updateFamily
+      summary: Update family metadata
+      description: ADMIN only.
+      parameters:
+        - $ref: '#/components/parameters/IfMatch'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateFamilyRequest'
+      responses:
+        '200':
+          description: Updated family
+          headers:
+            ETag:
+              $ref: '#/components/headers/ETag'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/FamilyResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+
+  /families/{familyId}/members:
+    parameters:
+      - $ref: '#/components/parameters/FamilyId'
+    get:
+      tags: [Members]
+      operationId: listFamilyMembers
+      summary: List active and removed family memberships
+      responses:
+        '200':
+          description: Family members
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/MemberResponse'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  /families/{familyId}/members/{memberId}:
+    parameters:
+      - $ref: '#/components/parameters/FamilyId'
+      - $ref: '#/components/parameters/MemberId'
+    patch:
+      tags: [Members]
+      operationId: updateMemberRole
+      summary: Change a family member role
+      description: |
+        ADMIN only. MVP public API does not grant ADMIN through this operation.
+        An ADMIN cannot change their own role (`LAST_ADMIN_REQUIRED`).
+      parameters:
+        - $ref: '#/components/parameters/IfMatch'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateMemberRoleRequest'
+      responses:
+        '200':
+          description: Updated membership
+          headers:
+            ETag:
+              $ref: '#/components/headers/ETag'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MemberResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+    delete:
+      tags: [Members]
+      operationId: removeFamilyMember
+      summary: Remove a member from the family, or leave it
+      description: |
+        ADMIN may remove any other member. Any member may target their own
+        membership to leave the family. The last ACTIVE ADMIN cannot be removed
+        and cannot leave (409 `LAST_ADMIN_REQUIRED`).
+
+        Removal is logical and does not delete contributed family data. The
+        member's linked Person, if any, is released in the same transaction.
+      parameters:
+        - $ref: '#/components/parameters/IfMatch'
+      responses:
+        '204':
+          description: Member removed
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+
+  /families/{familyId}/invitations:
+    parameters:
+      - $ref: '#/components/parameters/FamilyId'
+    get:
+      tags: [Invitations]
+      operationId: listFamilyInvitations
+      summary: List the family's invitations
+      description: ADMIN only. Defaults to PENDING invitations. Raw tokens and links are never returned here.
+      parameters:
+        - name: status
+          in: query
+          required: false
+          schema:
+            $ref: '#/components/schemas/InvitationStatus'
+      responses:
+        '200':
+          description: Invitations
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/InvitationResponse'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+    post:
+      tags: [Invitations]
+      operationId: inviteFamilyMember
+      summary: Invite someone to a family by email or shareable link
+      description: |
+        ADMIN only. Allowed invitation roles are CONTRIBUTOR and VIEWER.
+        Channel EMAIL requires `email` and sends the invitation email in `locale`.
+        Channel LINK sends nothing; the response contains `inviteUrl` to share.
+        The invitation is single-use and expires after 14 days.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateInvitationRequest'
+      responses:
+        '201':
+          description: Invitation created (email queued for EMAIL channel)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CreatedInvitationResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '409':
+          $ref: '#/components/responses/Conflict'
+
+  /families/{familyId}/invitations/{invitationId}/renew:
+    parameters:
+      - $ref: '#/components/parameters/FamilyId'
+      - $ref: '#/components/parameters/InvitationId'
+    post:
+      tags: [Invitations]
+      operationId: renewInvitation
+      summary: Issue a new link for a pending or expired invitation
+      description: |
+        ADMIN only. Generates a new token, resets the expiry to 14 days and, for
+        channel EMAIL, sends the email again. The previous link stops working.
+      parameters:
+        - $ref: '#/components/parameters/IfMatch'
+      responses:
+        '200':
+          description: Renewed invitation with its new link
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CreatedInvitationResponse'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+
+  /families/{familyId}/invitations/{invitationId}/revoke:
+    parameters:
+      - $ref: '#/components/parameters/FamilyId'
+      - $ref: '#/components/parameters/InvitationId'
+    post:
+      tags: [Invitations]
+      operationId: revokeInvitation
+      summary: Revoke a pending invitation
+      description: ADMIN only. The link stops working immediately.
+      parameters:
+        - $ref: '#/components/parameters/IfMatch'
+      responses:
+        '204':
+          description: Invitation revoked
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+
+  /invitations/{token}:
+    parameters:
+      - $ref: '#/components/parameters/InvitationToken'
+    get:
+      tags: [Invitations]
+      operationId: previewInvitation
+      summary: Preview an invitation using its raw invitation token
+      security: []
+      responses:
+        '200':
+          description: Invitation preview
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/InvitationPreviewResponse'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '410':
+          description: Invitation expired, revoked, renewed or already used (`INVITATION_EXPIRED`, `INVITATION_REVOKED`, `INVITATION_ALREADY_USED`)
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+
+  /invitations/{token}/accept:
+    parameters:
+      - $ref: '#/components/parameters/InvitationToken'
+    post:
+      tags: [Invitations]
+      operationId: acceptInvitation
+      summary: Accept an invitation as the authenticated user
+      description: |
+        Any authenticated, email-verified user holding the token may accept it;
+        the invitation is not bound to its email address. If the user is already
+        an ACTIVE member of the family, nothing changes, the invitation stays
+        PENDING and the response has `alreadyMember = true`. A REMOVED membership
+        is reactivated with the invitation role.
+      responses:
+        '200':
+          description: Invitation accepted and membership activated, or user already a member
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AcceptInvitationResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '410':
+          description: Invitation expired, revoked, renewed or already used (`INVITATION_EXPIRED`, `INVITATION_REVOKED`, `INVITATION_ALREADY_USED`)
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+
+  /families/{familyId}/persons:
+    parameters:
+      - $ref: '#/components/parameters/FamilyId'
+    get:
+      tags: [Persons]
+      operationId: searchPersons
+      summary: Search or list active persons in a family
+      parameters:
+        - name: search
+          in: query
+          required: false
+          description: Search first name, last name and preferred name.
+          schema:
+            type: string
+            maxLength: 200
+        - $ref: '#/components/parameters/Page'
+        - $ref: '#/components/parameters/Size'
+      responses:
+        '200':
+          description: Persons
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PersonPage'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+    post:
+      tags: [Persons]
+      operationId: createPerson
+      summary: Create a person in the family
+      description: |
+        ADMIN or CONTRIBUTOR only. If the server detects likely duplicates and
+        `confirmPossibleDuplicate` is false, the server returns 409 with code
+        `POSSIBLE_DUPLICATE` and candidate summaries in `details.candidates`.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreatePersonRequest'
+      responses:
+        '201':
+          description: Person created
+          headers:
+            ETag:
+              $ref: '#/components/headers/ETag'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PersonResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '409':
+          $ref: '#/components/responses/Conflict'
+
+  /families/{familyId}/persons/{personId}:
+    parameters:
+      - $ref: '#/components/parameters/FamilyId'
+      - $ref: '#/components/parameters/PersonId'
+    get:
+      tags: [Persons]
+      operationId: getPerson
+      summary: Get a person profile
+      responses:
+        '200':
+          description: Person
+          headers:
+            ETag:
+              $ref: '#/components/headers/ETag'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PersonResponse'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+    patch:
+      tags: [Persons]
+      operationId: updatePerson
+      summary: Update person identity/profile data
+      description: |
+        ADMIN or authorized CONTRIBUTOR according to linked-person protection rules.
+        A linked person's protected identity can be changed only by that linked user
+        or an ADMIN.
+      parameters:
+        - $ref: '#/components/parameters/IfMatch'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdatePersonRequest'
+      responses:
+        '200':
+          description: Updated person
+          headers:
+            ETag:
+              $ref: '#/components/headers/ETag'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PersonResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+
+  /families/{familyId}/persons/{personId}/archive:
+    parameters:
+      - $ref: '#/components/parameters/FamilyId'
+      - $ref: '#/components/parameters/PersonId'
+    post:
+      tags: [Persons]
+      operationId: archivePerson
+      summary: Archive a person
+      description: ADMIN only. A person linked to an active user must be unlinked first.
+      parameters:
+        - $ref: '#/components/parameters/IfMatch'
+      responses:
+        '200':
+          description: Archived person
+          headers:
+            ETag:
+              $ref: '#/components/headers/ETag'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PersonResponse'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+
+  /families/{familyId}/persons/{personId}/restore:
+    parameters:
+      - $ref: '#/components/parameters/FamilyId'
+      - $ref: '#/components/parameters/PersonId'
+    post:
+      tags: [Persons]
+      operationId: restorePerson
+      summary: Restore an archived person
+      description: ADMIN only.
+      parameters:
+        - $ref: '#/components/parameters/IfMatch'
+      responses:
+        '200':
+          description: Restored person
+          headers:
+            ETag:
+              $ref: '#/components/headers/ETag'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PersonResponse'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+
+  /families/{familyId}/persons/{personId}/claim:
+    parameters:
+      - $ref: '#/components/parameters/FamilyId'
+      - $ref: '#/components/parameters/PersonId'
+    post:
+      tags: [Persons]
+      operationId: claimPerson
+      summary: Link the current user to this Person as “me”
+      parameters:
+        - $ref: '#/components/parameters/IfMatch'
+      responses:
+        '200':
+          description: Person claimed
+          headers:
+            ETag:
+              $ref: '#/components/headers/ETag'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PersonResponse'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+    delete:
+      tags: [Persons]
+      operationId: unclaimPerson
+      summary: Remove the User ↔ Person link
+      description: The linked user may unlink themselves. ADMIN may correct an erroneous link.
+      parameters:
+        - $ref: '#/components/parameters/IfMatch'
+      responses:
+        '200':
+          description: Person unlinked
+          headers:
+            ETag:
+              $ref: '#/components/headers/ETag'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PersonResponse'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+
+  /families/{familyId}/persons/{personId}/merge:
+    parameters:
+      - $ref: '#/components/parameters/FamilyId'
+      - $ref: '#/components/parameters/PersonId'
+    post:
+      tags: [Persons]
+      operationId: mergePerson
+      summary: Merge this duplicate person into a target person
+      description: |
+        ADMIN only. `personId` is the duplicate/source that will become MERGED.
+        `targetPersonId` is retained. Scalar target values win when both sides are
+        non-empty; source values fill empty target fields. Relationships and memories
+        are transferred and deduplicated atomically.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/MergePersonRequest'
+      responses:
+        '200':
+          description: Merge completed; response is the retained target person
+          headers:
+            ETag:
+              $ref: '#/components/headers/ETag'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PersonResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+
+  /families/{familyId}/persons/{personId}/history:
+    parameters:
+      - $ref: '#/components/parameters/FamilyId'
+      - $ref: '#/components/parameters/PersonId'
+    get:
+      tags: [Persons]
+      operationId: getPersonHistory
+      summary: Get presentation-safe change history for a person
+      parameters:
+        - $ref: '#/components/parameters/Page'
+        - $ref: '#/components/parameters/Size'
+      responses:
+        '200':
+          description: Person history
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PersonHistoryPage'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  /families/{familyId}/relationships:
+    parameters:
+      - $ref: '#/components/parameters/FamilyId'
+    post:
+      tags: [Relationships]
+      operationId: createRelationship
+      summary: Create an explicit family relationship
+      description: |
+        ADMIN or CONTRIBUTOR only. Certain inconsistencies (self relation, parental
+        cycle, cross-family reference) are blocking. Probable date inconsistencies
+        require explicit confirmation through `confirmWarnings=true`.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateRelationshipRequest'
+      responses:
+        '201':
+          description: Relationship created
+          headers:
+            ETag:
+              $ref: '#/components/headers/ETag'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RelationshipResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '422':
+          description: Relationship is plausible but requires user confirmation
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+
+  /families/{familyId}/relationships/{relationshipId}:
+    parameters:
+      - $ref: '#/components/parameters/FamilyId'
+      - $ref: '#/components/parameters/RelationshipId'
+    delete:
+      tags: [Relationships]
+      operationId: archiveRelationship
+      summary: Remove/archive an explicit relationship
+      description: ADMIN or CONTRIBUTOR. Derived kinship changes immediately after archival.
+      parameters:
+        - $ref: '#/components/parameters/IfMatch'
+      responses:
+        '204':
+          description: Relationship archived
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+
+  /families/{familyId}/relationships/{relationshipId}/restore:
+    parameters:
+      - $ref: '#/components/parameters/FamilyId'
+      - $ref: '#/components/parameters/RelationshipId'
+    post:
+      tags: [Relationships]
+      operationId: restoreRelationship
+      summary: Restore an archived relationship
+      description: ADMIN only. Restore is rejected if the current graph would become invalid.
+      parameters:
+        - $ref: '#/components/parameters/IfMatch'
+      responses:
+        '200':
+          description: Restored relationship
+          headers:
+            ETag:
+              $ref: '#/components/headers/ETag'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RelationshipResponse'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+
+  /families/{familyId}/tree:
+    parameters:
+      - $ref: '#/components/parameters/FamilyId'
+    get:
+      tags: [Tree]
+      operationId: getFamilyTree
+      summary: Get a local graph around a focused person
+      description: |
+        Depth 1 (MVP UI) returns the focus, its ACTIVE parents, partners, children
+        and siblings (Persons sharing at least one parent with the focus), plus all
+        ACTIVE relationships among the returned nodes. Depth 2 additionally returns
+        the parents of the parents and the children of the children.
+
+        Each node carries `hasMoreParents` / `hasMoreChildren` so the UI can show
+        continuation indicators. When `focusPersonId` is omitted, the server uses
+        the current user's linked Person, otherwise the ACTIVE Person with the most
+        active relationships (ties: earliest created). For an empty family, the
+        response has `focusPersonId = null` and no nodes.
+      parameters:
+        - name: focusPersonId
+          in: query
+          required: false
+          description: Defaults to the current user's linked Person when available.
+          schema:
+            type: string
+            format: uuid
+        - name: depth
+          in: query
+          required: false
+          description: Local traversal depth. MVP supports 1 or 2; the MVP UI uses 1.
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 2
+            default: 1
+      responses:
+        '200':
+          description: Local tree graph
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TreeResponse'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  /families/{familyId}/kinship:
+    parameters:
+      - $ref: '#/components/parameters/FamilyId'
+    get:
+      tags: [Tree]
+      operationId: getKinship
+      summary: Explain the known kinship path between two persons
+      description: |
+        `relationship` describes what `to` is to `from`
+        (from = Tony, to = Paul → GRANDFATHER). Gendered codes are used when the
+        `to` Person's gender is MALE or FEMALE, neutral codes otherwise. The path
+        starts at `from` and ends at `to`; it is the shortest known path,
+        preferring paths made only of PARENT/CHILD steps.
+      parameters:
+        - name: from
+          in: query
+          required: true
+          schema:
+            type: string
+            format: uuid
+        - name: to
+          in: query
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Kinship result. `NONE_KNOWN` means no path is currently known in Mbia.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/KinshipResponse'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  /families/{familyId}/memories:
+    parameters:
+      - $ref: '#/components/parameters/FamilyId'
+    get:
+      tags: [Memories]
+      operationId: listFamilyMemories
+      summary: List active family memories
+      parameters:
+        - name: type
+          in: query
+          required: false
+          schema:
+            $ref: '#/components/schemas/MemoryType'
+        - $ref: '#/components/parameters/Page'
+        - $ref: '#/components/parameters/Size'
+      responses:
+        '200':
+          description: Family memories
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MemoryPage'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+
+  /families/{familyId}/memories/photos:
+    parameters:
+      - $ref: '#/components/parameters/FamilyId'
+    post:
+      tags: [Memories]
+      operationId: createPhotoMemory
+      summary: Create a photo memory from an already uploaded READY media asset
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreatePhotoMemoryRequest'
+      responses:
+        '201':
+          description: Photo memory created
+          headers:
+            ETag:
+              $ref: '#/components/headers/ETag'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MemoryResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '409':
+          $ref: '#/components/responses/Conflict'
+
+  /families/{familyId}/memories/stories:
+    parameters:
+      - $ref: '#/components/parameters/FamilyId'
+    post:
+      tags: [Memories]
+      operationId: createStoryMemory
+      summary: Create a written family story
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateStoryMemoryRequest'
+      responses:
+        '201':
+          description: Story created
+          headers:
+            ETag:
+              $ref: '#/components/headers/ETag'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MemoryResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+
+  /families/{familyId}/memories/{memoryId}:
+    parameters:
+      - $ref: '#/components/parameters/FamilyId'
+      - $ref: '#/components/parameters/MemoryId'
+    get:
+      tags: [Memories]
+      operationId: getMemory
+      summary: Get a memory
+      responses:
+        '200':
+          description: Memory
+          headers:
+            ETag:
+              $ref: '#/components/headers/ETag'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MemoryResponse'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+    patch:
+      tags: [Memories]
+      operationId: updateMemory
+      summary: Update a memory
+      description: The creator may edit their own memory; ADMIN may edit any family memory.
+      parameters:
+        - $ref: '#/components/parameters/IfMatch'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateMemoryRequest'
+      responses:
+        '200':
+          description: Updated memory
+          headers:
+            ETag:
+              $ref: '#/components/headers/ETag'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MemoryResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+    delete:
+      tags: [Memories]
+      operationId: archiveMemory
+      summary: Archive a memory
+      description: The creator may archive their own memory; ADMIN may archive any family memory.
+      parameters:
+        - $ref: '#/components/parameters/IfMatch'
+      responses:
+        '204':
+          description: Memory archived
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+
+  /families/{familyId}/persons/{personId}/memories:
+    parameters:
+      - $ref: '#/components/parameters/FamilyId'
+      - $ref: '#/components/parameters/PersonId'
+    get:
+      tags: [Memories]
+      operationId: listPersonMemories
+      summary: List memories associated with a person
+      parameters:
+        - $ref: '#/components/parameters/Page'
+        - $ref: '#/components/parameters/Size'
+      responses:
+        '200':
+          description: Person memories
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MemoryPage'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  /families/{familyId}/media/uploads:
+    parameters:
+      - $ref: '#/components/parameters/FamilyId'
+    post:
+      tags: [Media]
+      operationId: createMediaUpload
+      summary: Create a pre-signed direct upload for an image
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateMediaUploadRequest'
+      responses:
+        '201':
+          description: Upload slot created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MediaUploadResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+
+  /families/{familyId}/media/uploads/{mediaAssetId}/complete:
+    parameters:
+      - $ref: '#/components/parameters/FamilyId'
+      - $ref: '#/components/parameters/MediaAssetId'
+    post:
+      tags: [Media]
+      operationId: completeMediaUpload
+      summary: Verify a direct upload and mark the media asset READY
+      description: |
+        Synchronously validates the uploaded object (size, magic bytes, max 40
+        megapixels), generates metadata-free JPEG `display` and `thumbnail`
+        derivatives, deletes the uploaded original and marks the asset READY
+        (ADR-007). On invalid content the asset becomes FAILED and 400
+        `MEDIA_INVALID` is returned.
+      responses:
+        '200':
+          description: Ready media asset
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MediaAssetResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+
+  /families/{familyId}/activities:
+    parameters:
+      - $ref: '#/components/parameters/FamilyId'
+    get:
+      tags: [Activity]
+      operationId: listFamilyActivities
+      summary: List recent presentation-safe family activity
+      parameters:
+        - $ref: '#/components/parameters/Page'
+        - $ref: '#/components/parameters/Size'
+      responses:
+        '200':
+          description: Activities
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ActivityPage'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+      description: OIDC access token validated by Spring Security.
+
+  headers:
+    ETag:
+      description: Resource version encoded as an HTTP ETag, for example `"3"`.
+      schema:
+        type: string
+        example: '"3"'
+
+  parameters:
+    FamilyId:
+      name: familyId
+      in: path
+      required: true
+      schema:
+        type: string
+        format: uuid
+    MemberId:
+      name: memberId
+      in: path
+      required: true
+      schema:
+        type: string
+        format: uuid
+    PersonId:
+      name: personId
+      in: path
+      required: true
+      schema:
+        type: string
+        format: uuid
+    RelationshipId:
+      name: relationshipId
+      in: path
+      required: true
+      schema:
+        type: string
+        format: uuid
+    MemoryId:
+      name: memoryId
+      in: path
+      required: true
+      schema:
+        type: string
+        format: uuid
+    MediaAssetId:
+      name: mediaAssetId
+      in: path
+      required: true
+      schema:
+        type: string
+        format: uuid
+    InvitationId:
+      name: invitationId
+      in: path
+      required: true
+      schema:
+        type: string
+        format: uuid
+    InvitationToken:
+      name: token
+      in: path
+      required: true
+      description: Raw opaque invitation token received by email or shared link. The server stores only a hash.
+      schema:
+        type: string
+        minLength: 20
+        maxLength: 512
+    IfMatch:
+      name: If-Match
+      in: header
+      required: true
+      description: Expected resource ETag/version. Stale values return 409 CONCURRENT_MODIFICATION.
+      schema:
+        type: string
+        example: '"3"'
+    Page:
+      name: page
+      in: query
+      required: false
+      schema:
+        type: integer
+        minimum: 0
+        default: 0
+    Size:
+      name: size
+      in: query
+      required: false
+      schema:
+        type: integer
+        minimum: 1
+        maximum: 100
+        default: 20
+
+  responses:
+    BadRequest:
+      description: Invalid request
+      content:
+        application/problem+json:
+          schema:
+            $ref: '#/components/schemas/ProblemDetails'
+    Unauthorized:
+      description: Missing or invalid access token
+      content:
+        application/problem+json:
+          schema:
+            $ref: '#/components/schemas/ProblemDetails'
+    Forbidden:
+      description: Authenticated user is not authorized for this family/action
+      content:
+        application/problem+json:
+          schema:
+            $ref: '#/components/schemas/ProblemDetails'
+    NotFound:
+      description: Resource not found in the accessible scope
+      content:
+        application/problem+json:
+          schema:
+            $ref: '#/components/schemas/ProblemDetails'
+    Conflict:
+      description: Domain or optimistic-concurrency conflict
+      content:
+        application/problem+json:
+          schema:
+            $ref: '#/components/schemas/ProblemDetails'
+
+  schemas:
+    Locale:
+      type: string
+      enum: [fr, en]
+
+    UserResponse:
+      type: object
+      required: [id, email, preferredLocale]
+      properties:
+        id:
+          type: string
+          format: uuid
+        email:
+          type: string
+          format: email
+        displayName:
+          type: [string, 'null']
+          maxLength: 200
+        preferredLocale:
+          $ref: '#/components/schemas/Locale'
+
+    UpdateCurrentUserRequest:
+      type: object
+      minProperties: 1
+      properties:
+        displayName:
+          type: string
+          minLength: 1
+          maxLength: 200
+        preferredLocale:
+          $ref: '#/components/schemas/Locale'
+
+    MembershipRole:
+      type: string
+      enum: [ADMIN, CONTRIBUTOR, VIEWER]
+
+    InvitationRole:
+      type: string
+      enum: [CONTRIBUTOR, VIEWER]
+
+    MembershipStatus:
+      type: string
+      enum: [ACTIVE, REMOVED]
+
+    InvitationStatus:
+      type: string
+      enum: [PENDING, ACCEPTED, REVOKED, EXPIRED]
+
+    InvitationChannel:
+      type: string
+      enum: [EMAIL, LINK]
+
+    FamilyStats:
+      type: object
+      required: [personCount, memoryCount, activeMemberCount]
+      properties:
+        personCount:
+          type: integer
+          minimum: 0
+        memoryCount:
+          type: integer
+          minimum: 0
+        activeMemberCount:
+          type: integer
+          minimum: 0
+
+    FamilySummary:
+      type: object
+      required: [id, name, myRole, stats]
+      properties:
+        id:
+          type: string
+          format: uuid
+        name:
+          type: string
+        myRole:
+          $ref: '#/components/schemas/MembershipRole'
+        stats:
+          $ref: '#/components/schemas/FamilyStats'
+
+    FamilyResponse:
+      allOf:
+        - $ref: '#/components/schemas/FamilySummary'
+        - type: object
+          required: [version, createdAt, updatedAt]
+          properties:
+            version:
+              type: integer
+              format: int64
+              minimum: 0
+            createdAt:
+              type: string
+              format: date-time
+            updatedAt:
+              type: string
+              format: date-time
+
+    CreateFamilyRequest:
+      type: object
+      required: [name]
+      properties:
+        name:
+          type: string
+          minLength: 1
+          maxLength: 200
+
+    UpdateFamilyRequest:
+      type: object
+      required: [name]
+      properties:
+        name:
+          type: string
+          minLength: 1
+          maxLength: 200
+
+    MemberResponse:
+      type: object
+      required: [id, userId, role, status, joinedAt, version]
+      properties:
+        id:
+          type: string
+          format: uuid
+        userId:
+          type: string
+          format: uuid
+        displayName:
+          type: [string, 'null']
+        email:
+          type: string
+          format: email
+        role:
+          $ref: '#/components/schemas/MembershipRole'
+        status:
+          $ref: '#/components/schemas/MembershipStatus'
+        linkedPersonId:
+          type: [string, 'null']
+          format: uuid
+        joinedAt:
+          type: string
+          format: date-time
+        version:
+          type: integer
+          format: int64
+
+    UpdateMemberRoleRequest:
+      type: object
+      required: [role]
+      properties:
+        role:
+          $ref: '#/components/schemas/InvitationRole'
+
+    CreateInvitationRequest:
+      type: object
+      required: [channel, role]
+      description: '`email` is required when `channel` is EMAIL, optional (informative) when LINK.'
+      properties:
+        channel:
+          $ref: '#/components/schemas/InvitationChannel'
+        email:
+          type: [string, 'null']
+          format: email
+          maxLength: 320
+        role:
+          $ref: '#/components/schemas/InvitationRole'
+        locale:
+          $ref: '#/components/schemas/Locale'
+          description: Language of the invitation email. Defaults to the inviter's preferred locale.
+      if:
+        properties:
+          channel:
+            const: EMAIL
+      then:
+        required: [email]
+        properties:
+          email:
+            type: string
+
+    InvitationResponse:
+      type: object
+      required: [id, familyId, channel, role, status, expiresAt, createdAt, invitedBy, version]
+      properties:
+        id:
+          type: string
+          format: uuid
+        familyId:
+          type: string
+          format: uuid
+        channel:
+          $ref: '#/components/schemas/InvitationChannel'
+        email:
+          type: [string, 'null']
+          format: email
+        role:
+          $ref: '#/components/schemas/InvitationRole'
+        status:
+          $ref: '#/components/schemas/InvitationStatus'
+        invitedBy:
+          $ref: '#/components/schemas/ActivityActor'
+        expiresAt:
+          type: string
+          format: date-time
+        createdAt:
+          type: string
+          format: date-time
+        version:
+          type: integer
+          format: int64
+
+    CreatedInvitationResponse:
+      description: Returned only on creation and renewal. `inviteUrl` contains the raw token and is never returned again.
+      allOf:
+        - $ref: '#/components/schemas/InvitationResponse'
+        - type: object
+          required: [inviteUrl]
+          properties:
+            inviteUrl:
+              type: string
+              format: uri
+              example: https://app.mbia.example.com/invitations/Zk3...
+
+    InvitationPreviewResponse:
+      type: object
+      required: [familyId, familyName, invitedByDisplayName, role, status, expiresAt]
+      properties:
+        familyId:
+          type: string
+          format: uuid
+        familyName:
+          type: string
+        invitedByDisplayName:
+          type: string
+        role:
+          $ref: '#/components/schemas/InvitationRole'
+        status:
+          $ref: '#/components/schemas/InvitationStatus'
+        expiresAt:
+          type: string
+          format: date-time
+
+    AcceptInvitationResponse:
+      type: object
+      required: [family, membership, alreadyMember]
+      properties:
+        alreadyMember:
+          type: boolean
+          description: True when the user was already an ACTIVE member; the invitation was not consumed.
+        family:
+          $ref: '#/components/schemas/FamilySummary'
+        membership:
+          $ref: '#/components/schemas/MemberResponse'
+
+    Gender:
+      type: string
+      enum: [MALE, FEMALE, OTHER, UNKNOWN]
+
+    DatePrecision:
+      type: string
+      enum: [EXACT, YEAR_ONLY, UNKNOWN]
+
+    PartialDate:
+      type: object
+      required: [precision]
+      description: |
+        EXACT requires `date`; YEAR_ONLY requires `year`; UNKNOWN requires neither.
+        The application must reject inconsistent combinations.
+      properties:
+        precision:
+          $ref: '#/components/schemas/DatePrecision'
+        date:
+          type: [string, 'null']
+          format: date
+        year:
+          type: [integer, 'null']
+          minimum: 1
+          maximum: 9999
+
+    PersonStatus:
+      type: string
+      enum: [ACTIVE, ARCHIVED, MERGED]
+
+    PersonSummary:
+      type: object
+      required: [id, familyId, firstName, gender, birth, isDeceased, death, status, version]
+      properties:
+        id:
+          type: string
+          format: uuid
+        familyId:
+          type: string
+          format: uuid
+        firstName:
+          type: string
+        middleNames:
+          type: [string, 'null']
+        lastName:
+          type: [string, 'null']
+        preferredName:
+          type: [string, 'null']
+        displayName:
+          type: string
+        gender:
+          $ref: '#/components/schemas/Gender'
+        birth:
+          $ref: '#/components/schemas/PartialDate'
+        isDeceased:
+          type: boolean
+        death:
+          $ref: '#/components/schemas/PartialDate'
+        profilePictureUrl:
+          type: [string, 'null']
+          format: uri
+          description: Short-lived or CDN URL; never the internal storage key.
+        linkedUserId:
+          type: [string, 'null']
+          format: uuid
+        status:
+          $ref: '#/components/schemas/PersonStatus'
+        relationshipToCurrentUser:
+          description: |
+            What this Person is to the current user's linked Person
+            (kinship from = linked Person, to = this Person). Null when the
+            current user has no linked Person in this family.
+          oneOf:
+            - $ref: '#/components/schemas/KinshipCode'
+            - type: 'null'
+        version:
+          type: integer
+          format: int64
+          minimum: 0
+
+    PersonResponse:
+      allOf:
+        - $ref: '#/components/schemas/PersonSummary'
+        - type: object
+          required: [biography, createdAt, updatedAt]
+          properties:
+            biography:
+              type: [string, 'null']
+            mergedIntoPersonId:
+              type: [string, 'null']
+              format: uuid
+            createdAt:
+              type: string
+              format: date-time
+            updatedAt:
+              type: string
+              format: date-time
+
+    CreatePersonRequest:
+      type: object
+      required: [firstName]
+      properties:
+        firstName:
+          type: string
+          minLength: 1
+          maxLength: 150
+        middleNames:
+          type: [string, 'null']
+          maxLength: 250
+        lastName:
+          type: [string, 'null']
+          maxLength: 150
+        preferredName:
+          type: [string, 'null']
+          maxLength: 150
+        gender:
+          $ref: '#/components/schemas/Gender'
+        birth:
+          $ref: '#/components/schemas/PartialDate'
+        isDeceased:
+          type: boolean
+          default: false
+        death:
+          $ref: '#/components/schemas/PartialDate'
+        biography:
+          type: [string, 'null']
+          maxLength: 10000
+        profileMediaAssetId:
+          type: [string, 'null']
+          format: uuid
+        linkToCurrentUser:
+          type: boolean
+          default: false
+          description: Used by onboarding “Commencer par moi”. Same claim rules apply.
+        confirmPossibleDuplicate:
+          type: boolean
+          default: false
+
+    UpdatePersonRequest:
+      type: object
+      minProperties: 1
+      properties:
+        firstName:
+          type: string
+          minLength: 1
+          maxLength: 150
+        middleNames:
+          type: [string, 'null']
+          maxLength: 250
+        lastName:
+          type: [string, 'null']
+          maxLength: 150
+        preferredName:
+          type: [string, 'null']
+          maxLength: 150
+        gender:
+          $ref: '#/components/schemas/Gender'
+        birth:
+          $ref: '#/components/schemas/PartialDate'
+        isDeceased:
+          type: boolean
+        death:
+          $ref: '#/components/schemas/PartialDate'
+        biography:
+          type: [string, 'null']
+          maxLength: 10000
+        profileMediaAssetId:
+          type: [string, 'null']
+          format: uuid
+
+    MergePersonRequest:
+      type: object
+      required: [targetPersonId, sourceVersion, targetVersion]
+      properties:
+        targetPersonId:
+          type: string
+          format: uuid
+        sourceVersion:
+          type: integer
+          format: int64
+          minimum: 0
+        targetVersion:
+          type: integer
+          format: int64
+          minimum: 0
+
+    PageMeta:
+      type: object
+      required: [page, size, totalElements, totalPages]
+      properties:
+        page:
+          type: integer
+          minimum: 0
+        size:
+          type: integer
+          minimum: 1
+        totalElements:
+          type: integer
+          format: int64
+          minimum: 0
+        totalPages:
+          type: integer
+          minimum: 0
+
+    PersonPage:
+      type: object
+      required: [items, page]
+      properties:
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/PersonSummary'
+        page:
+          $ref: '#/components/schemas/PageMeta'
+
+    PersonHistoryEntry:
+      type: object
+      required: [id, action, actor, occurredAt]
+      properties:
+        id:
+          type: string
+          format: uuid
+        action:
+          type: string
+          examples: [PERSON_BIRTH_YEAR_CHANGED]
+        actor:
+          $ref: '#/components/schemas/ActivityActor'
+        field:
+          type: [string, 'null']
+        oldValue:
+          description: Presentation-safe previous value.
+        newValue:
+          description: Presentation-safe new value.
+        occurredAt:
+          type: string
+          format: date-time
+
+    PersonHistoryPage:
+      type: object
+      required: [items, page]
+      properties:
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/PersonHistoryEntry'
+        page:
+          $ref: '#/components/schemas/PageMeta'
+
+    RelationshipType:
+      type: string
+      enum: [PARENT_OF, PARTNER_OF]
+
+    RelationshipStatus:
+      type: string
+      enum: [ACTIVE, ARCHIVED]
+
+    RelationshipWarningCode:
+      type: string
+      enum:
+        - PARENT_BORN_AFTER_CHILD
+        - IMPLAUSIBLE_PARENT_AGE
+        - IMPLAUSIBLE_GENERATION_GAP
+
+    RelationshipWarning:
+      type: object
+      required: [code]
+      properties:
+        code:
+          $ref: '#/components/schemas/RelationshipWarningCode'
+        context:
+          type: object
+          additionalProperties: true
+
+    CreateRelationshipRequest:
+      type: object
+      required: [type, sourcePersonId, targetPersonId]
+      properties:
+        type:
+          $ref: '#/components/schemas/RelationshipType'
+        sourcePersonId:
+          type: string
+          format: uuid
+          description: For PARENT_OF, this is the parent. PARTNER_OF is symmetric.
+        targetPersonId:
+          type: string
+          format: uuid
+          description: For PARENT_OF, this is the child. PARTNER_OF is symmetric.
+        confirmWarnings:
+          type: boolean
+          default: false
+
+    RelationshipResponse:
+      type: object
+      required: [id, familyId, type, sourcePersonId, targetPersonId, status, warnings, version, createdAt]
+      properties:
+        id:
+          type: string
+          format: uuid
+        familyId:
+          type: string
+          format: uuid
+        type:
+          $ref: '#/components/schemas/RelationshipType'
+        sourcePersonId:
+          type: string
+          format: uuid
+        targetPersonId:
+          type: string
+          format: uuid
+        status:
+          $ref: '#/components/schemas/RelationshipStatus'
+        warnings:
+          type: array
+          items:
+            $ref: '#/components/schemas/RelationshipWarning'
+        version:
+          type: integer
+          format: int64
+        createdAt:
+          type: string
+          format: date-time
+
+    TreeNode:
+      allOf:
+        - $ref: '#/components/schemas/PersonSummary'
+        - type: object
+          required: [hasMoreParents, hasMoreChildren]
+          properties:
+            hasMoreParents:
+              type: boolean
+              description: The Person has ACTIVE parents that are not part of this response.
+            hasMoreChildren:
+              type: boolean
+              description: The Person has ACTIVE children that are not part of this response.
+
+    TreeEdge:
+      type: object
+      required: [relationshipId, type, sourcePersonId, targetPersonId, version]
+      properties:
+        relationshipId:
+          type: string
+          format: uuid
+        type:
+          $ref: '#/components/schemas/RelationshipType'
+        sourcePersonId:
+          type: string
+          format: uuid
+        targetPersonId:
+          type: string
+          format: uuid
+        version:
+          type: integer
+          format: int64
+
+    TreeResponse:
+      type: object
+      required: [focusPersonId, nodes, edges]
+      properties:
+        focusPersonId:
+          type: [string, 'null']
+          format: uuid
+          description: Null only when the family has no ACTIVE Person.
+        nodes:
+          type: array
+          items:
+            $ref: '#/components/schemas/TreeNode'
+        edges:
+          type: array
+          items:
+            $ref: '#/components/schemas/TreeEdge'
+
+    KinshipCode:
+      type: string
+      enum:
+        - SELF
+        - FATHER
+        - MOTHER
+        - PARENT
+        - SON
+        - DAUGHTER
+        - CHILD
+        - GRANDFATHER
+        - GRANDMOTHER
+        - GRANDPARENT
+        - GRANDSON
+        - GRANDDAUGHTER
+        - GRANDCHILD
+        - BROTHER
+        - SISTER
+        - SIBLING
+        - UNCLE
+        - AUNT
+        - PARENT_SIBLING
+        - NEPHEW
+        - NIECE
+        - SIBLING_CHILD
+        - FIRST_COUSIN
+        - PARTNER
+        - RELATED
+        - NONE_KNOWN
+
+    KinshipPathStep:
+      type: object
+      description: '`toPersonId` is the `relation` of `fromPersonId` (PARENT means `to` is a parent of `from`).'
+      required: [fromPersonId, toPersonId, relation]
+      properties:
+        fromPersonId:
+          type: string
+          format: uuid
+        toPersonId:
+          type: string
+          format: uuid
+        relation:
+          type: string
+          enum: [PARENT, CHILD, PARTNER]
+
+    KinshipResponse:
+      type: object
+      required: [fromPersonId, toPersonId, relationship, path]
+      properties:
+        fromPersonId:
+          type: string
+          format: uuid
+        toPersonId:
+          type: string
+          format: uuid
+        relationship:
+          $ref: '#/components/schemas/KinshipCode'
+        path:
+          type: array
+          items:
+            $ref: '#/components/schemas/KinshipPathStep'
+
+    MemoryType:
+      type: string
+      enum: [PHOTO, STORY]
+
+    MemoryStatus:
+      type: string
+      enum: [ACTIVE, ARCHIVED]
+
+    RelatedPersonReference:
+      type: object
+      required: [id, displayName]
+      properties:
+        id:
+          type: string
+          format: uuid
+        displayName:
+          type: string
+        profilePictureUrl:
+          type: [string, 'null']
+          format: uri
+
+    MemoryResponse:
+      type: object
+      required:
+        - id
+        - familyId
+        - type
+        - status
+        - relatedPersons
+        - createdBy
+        - createdAt
+        - updatedAt
+        - version
+      properties:
+        id:
+          type: string
+          format: uuid
+        familyId:
+          type: string
+          format: uuid
+        type:
+          $ref: '#/components/schemas/MemoryType'
+        status:
+          $ref: '#/components/schemas/MemoryStatus'
+        title:
+          type: [string, 'null']
+        content:
+          type: [string, 'null']
+        caption:
+          type: [string, 'null']
+        media:
+          oneOf:
+            - $ref: '#/components/schemas/MediaAssetResponse'
+            - type: 'null'
+        takenAt:
+          oneOf:
+            - $ref: '#/components/schemas/PartialDate'
+            - type: 'null'
+        relatedPersons:
+          type: array
+          minItems: 1
+          items:
+            $ref: '#/components/schemas/RelatedPersonReference'
+        createdBy:
+          $ref: '#/components/schemas/ActivityActor'
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+        version:
+          type: integer
+          format: int64
+
+    CreatePhotoMemoryRequest:
+      type: object
+      required: [mediaAssetId, relatedPersonIds]
+      properties:
+        mediaAssetId:
+          type: string
+          format: uuid
+        caption:
+          type: [string, 'null']
+          maxLength: 5000
+        takenAt:
+          oneOf:
+            - $ref: '#/components/schemas/PartialDate'
+            - type: 'null'
+        relatedPersonIds:
+          type: array
+          minItems: 1
+          uniqueItems: true
+          items:
+            type: string
+            format: uuid
+
+    CreateStoryMemoryRequest:
+      type: object
+      required: [title, content, relatedPersonIds]
+      properties:
+        title:
+          type: string
+          minLength: 1
+          maxLength: 250
+        content:
+          type: string
+          minLength: 1
+          maxLength: 50000
+        relatedPersonIds:
+          type: array
+          minItems: 1
+          uniqueItems: true
+          items:
+            type: string
+            format: uuid
+
+    UpdateMemoryRequest:
+      type: object
+      minProperties: 1
+      description: Fields irrelevant to the existing memory type are rejected.
+      properties:
+        title:
+          type: [string, 'null']
+          maxLength: 250
+        content:
+          type: [string, 'null']
+          maxLength: 50000
+        caption:
+          type: [string, 'null']
+          maxLength: 5000
+        takenAt:
+          oneOf:
+            - $ref: '#/components/schemas/PartialDate'
+            - type: 'null'
+        relatedPersonIds:
+          type: array
+          minItems: 1
+          uniqueItems: true
+          items:
+            type: string
+            format: uuid
+
+    MemoryPage:
+      type: object
+      required: [items, page]
+      properties:
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/MemoryResponse'
+        page:
+          $ref: '#/components/schemas/PageMeta'
+
+    MediaPurpose:
+      type: string
+      enum: [PROFILE_PICTURE, MEMORY_PHOTO]
+
+    MediaStatus:
+      type: string
+      enum: [PENDING_UPLOAD, READY, FAILED, ARCHIVED]
+
+    CreateMediaUploadRequest:
+      type: object
+      required: [purpose, fileName, mimeType, sizeBytes]
+      properties:
+        purpose:
+          $ref: '#/components/schemas/MediaPurpose'
+        fileName:
+          type: string
+          minLength: 1
+          maxLength: 500
+        mimeType:
+          type: string
+          enum: [image/jpeg, image/png, image/webp]
+        sizeBytes:
+          type: integer
+          format: int64
+          minimum: 1
+          maximum: 15728640
+          description: Maximum 15 MB. Larger files are rejected with `MEDIA_TOO_LARGE`.
+
+    MediaUploadResponse:
+      type: object
+      required: [mediaAssetId, uploadUrl, method, expiresAt, requiredHeaders]
+      properties:
+        mediaAssetId:
+          type: string
+          format: uuid
+        uploadUrl:
+          type: string
+          format: uri
+        method:
+          type: string
+          const: PUT
+        expiresAt:
+          type: string
+          format: date-time
+        requiredHeaders:
+          type: object
+          additionalProperties:
+            type: string
+
+    MediaAssetResponse:
+      type: object
+      required: [id, purpose, status, mimeType]
+      properties:
+        id:
+          type: string
+          format: uuid
+        purpose:
+          $ref: '#/components/schemas/MediaPurpose'
+        status:
+          $ref: '#/components/schemas/MediaStatus'
+        mimeType:
+          type: string
+        sizeBytes:
+          type: [integer, 'null']
+          format: int64
+        widthPx:
+          type: [integer, 'null']
+        heightPx:
+          type: [integer, 'null']
+        url:
+          type: [string, 'null']
+          format: uri
+          description: Display derivative (long edge ≤ 2048 px). Pre-signed, valid 60 minutes. Present when READY.
+        thumbnailUrl:
+          type: [string, 'null']
+          format: uri
+          description: Thumbnail derivative (long edge ≤ 480 px). Pre-signed, valid 60 minutes. Present when READY.
+
+    ActivityActor:
+      type: object
+      required: [userId, displayName, deleted]
+      properties:
+        userId:
+          type: string
+          format: uuid
+        displayName:
+          type: [string, 'null']
+          description: Null when the account was deleted; the UI then shows "Former member".
+        deleted:
+          type: boolean
+
+    ActivityResponse:
+      type: object
+      required: [id, type, actor, occurredAt]
+      properties:
+        id:
+          type: string
+          format: uuid
+        type:
+          type: string
+          examples: [PERSON_CREATED]
+        actor:
+          $ref: '#/components/schemas/ActivityActor'
+        resourceType:
+          type: [string, 'null']
+        resourceId:
+          type: [string, 'null']
+          format: uuid
+        data:
+          type: object
+          additionalProperties: true
+        occurredAt:
+          type: string
+          format: date-time
+
+    ActivityPage:
+      type: object
+      required: [items, page]
+      properties:
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/ActivityResponse'
+        page:
+          $ref: '#/components/schemas/PageMeta'
+
+    ProblemDetails:
+      type: object
+      required: [type, title, status, code, detail, traceId]
+      properties:
+        type:
+          type: string
+          format: uri
+          example: https://mbia.example.com/problems/concurrent-modification
+        title:
+          type: string
+          example: Concurrent modification
+        status:
+          type: integer
+          minimum: 400
+          maximum: 599
+        code:
+          type: string
+          description: Stable machine-readable Mbia error code.
+          examples:
+            - CONCURRENT_MODIFICATION
+            - PERSON_NOT_FOUND
+            - MEMBERSHIP_REQUIRED
+            - PERMISSION_DENIED
+            - POSSIBLE_DUPLICATE
+            - PERSON_ALREADY_CLAIMED
+            - RELATIONSHIP_ALREADY_EXISTS
+            - SELF_RELATIONSHIP_NOT_ALLOWED
+            - RELATIONSHIP_CREATES_CYCLE
+            - RELATIONSHIP_WARNING_CONFIRMATION_REQUIRED
+            - PERSON_MERGE_CONFLICT
+            - EMAIL_NOT_VERIFIED
+            - LAST_ADMIN_REQUIRED
+            - INVITATION_NOT_FOUND
+            - INVITATION_EXPIRED
+            - INVITATION_REVOKED
+            - INVITATION_ALREADY_USED
+            - MEDIA_TOO_LARGE
+            - MEDIA_INVALID
+            - MEDIA_NOT_READY
+        detail:
+          type: string
+        traceId:
+          type: string
+        fieldErrors:
+          type: array
+          items:
+            $ref: '#/components/schemas/FieldError'
+        details:
+          type: object
+          additionalProperties: true
+          description: Structured domain-specific context, e.g. duplicate candidates or relationship warnings.
+
+    FieldError:
+      type: object
+      required: [field, code, message]
+      properties:
+        field:
+          type: string
+        code:
+          type: string
+        message:
+          type: string
