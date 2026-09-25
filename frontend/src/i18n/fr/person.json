@@ -37,5 +37,33 @@
     "invalidYear": "Indiquez une année entre {{min}} et {{max}}.",
     "submit": "Ajouter à la famille",
     "submitMe": "M'ajouter à la famille"
+  },
+  "profile": {
+    "edit": "Modifier",
+    "birthYear": "Naissance : {{year}}",
+    "deathYear": "Décès : {{year}}",
+    "relationship": {
+      "SELF": "Vous",
+      "NONE_KNOWN": "Aucun lien connu dans Mbia pour l'instant"
+    },
+    "family": "Famille",
+    "noRelatives": "Aucun proche n'est encore relié à cette personne.",
+    "about": "À propos",
+    "name": "Prénom et nom"
+  },
+  "edit": {
+    "title": "Modifier {{name}}",
+    "identity": "Identité",
+    "life": "Vie",
+    "about": "À propos",
+    "submit": "Enregistrer",
+    "cancel": "Annuler",
+    "conflict": "Cette personne a été modifiée depuis que vous avez ouvert la page.",
+    "reload": "Recharger la dernière version"
+  },
+  "notFound": {
+    "title": "Personne introuvable",
+    "body": "Cette personne n'existe pas dans cette famille.",
+    "back": "Retour à la famille"
   }
 }

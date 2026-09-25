@@ -1,15 +1,21 @@
 package com.lehnade.mbia.genealogy.infrastructure.persistence;
 
+import com.lehnade.mbia.genealogy.domain.DatePrecision;
+import com.lehnade.mbia.genealogy.domain.Gender;
 import com.lehnade.mbia.genealogy.domain.PartialDate;
 import com.lehnade.mbia.genealogy.domain.Person;
 import com.lehnade.mbia.genealogy.domain.PersonDetails;
+import com.lehnade.mbia.genealogy.domain.PersonId;
 import com.lehnade.mbia.genealogy.domain.PersonRepository;
 import com.lehnade.mbia.genealogy.domain.PersonStatus;
 import com.lehnade.mbia.shared.domain.DomainException;
 import com.lehnade.mbia.shared.domain.ErrorCode;
+import java.time.LocalDate;
+import java.util.Optional;
 import java.util.UUID;
 import org.hibernate.exception.ConstraintViolationException;
 import org.springframework.dao.DataIntegrityViolationException;
+import org.springframework.dao.OptimisticLockingFailureException;
 import org.springframework.stereotype.Repository;
 
 @Repository
@@ -45,8 +51,46 @@ class JpaPersonRepository implements PersonRepository {
     }
 
     @Override
+    public Optional<Person> findInFamily(UUID familyId, PersonId id) {
+        return jpa.findByIdAndFamilyId(id.value(), familyId).map(JpaPersonRepository::toDomain);
+    }
+
+    /**
+     * Hibernate writes {@code UPDATE … WHERE version = ?} (JPA {@code @Version}): a commit by
+     * another transaction since the Person was read fails the flush instead of being overwritten.
+     */
+    @Override
+    public Person update(Person person) {
+        PersonJpaEntity entity = jpa.findByIdAndFamilyId(person.id().value(), person.familyId())
+                .filter(found -> found.version() == person.version())
+                .orElseThrow(() -> new OptimisticLockingFailureException("The person changed since it was read."));
+        PersonDetails details = person.details();
+        entity.changeDetails(details.firstName(), details.middleNames(), details.lastName(),
+                details.preferredName(), details.gender().name(), details.birth().date(), year(details.birth()),
+                details.birth().precision().name(), details.deceased(), details.death().date(),
+                year(details.death()), details.death().precision().name(), details.biography(),
+                person.updatedBy(), person.updatedAt());
+        return toDomain(jpa.saveAndFlush(entity));
+    }
+
+    @Override
     public boolean existsLinkedTo(UUID familyId, UUID userId) {
         return jpa.existsByFamilyIdAndLinkedUserIdAndStatusNot(familyId, userId, PersonStatus.MERGED.name());
+    }
+
+    private static Person toDomain(PersonJpaEntity entity) {
+        PersonDetails details = new PersonDetails(entity.firstName(), entity.middleNames(), entity.lastName(),
+                entity.preferredName(), Gender.valueOf(entity.gender()),
+                partialDate(entity.birthDatePrecision(), entity.birthDate(), entity.birthYear()), entity.deceased(),
+                partialDate(entity.deathDatePrecision(), entity.deathDate(), entity.deathYear()),
+                entity.biography());
+        return Person.restore(new PersonId(entity.id()), entity.familyId(), details, entity.linkedUserId(),
+                PersonStatus.valueOf(entity.status()), entity.createdBy(), entity.updatedBy(), entity.createdAt(),
+                entity.updatedAt(), entity.version());
+    }
+
+    private static PartialDate partialDate(String precision, LocalDate date, Short year) {
+        return new PartialDate(DatePrecision.valueOf(precision), date, year == null ? null : year.intValue());
     }
 
     private static Short year(PartialDate date) {

@@ -9,6 +9,7 @@ import { Skeleton } from '../components/Skeleton';
 import { useFamily } from '../families/useFamily';
 import { addPersonPath } from './AddPersonPage';
 import { FamilyNotFoundPage } from './FamilyNotFoundPage';
+import { personPath } from './PersonProfilePage';
 
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
@@ -19,8 +20,8 @@ export function familyHomePath(familyId: string) {
 /** Navigation state set by Family or Person creation, for the success message. */
 export interface FamilyHomeState {
   created?: boolean;
-  /** Display name of the Person just added; `self` after "Start with me". */
-  personAdded?: { name: string; self: boolean };
+  /** The Person just added; `self` after "Start with me". */
+  personAdded?: { id: string; name: string; self: boolean };
 }
 
 /**
@@ -75,11 +76,22 @@ function FamilyContent({ family }: { family: Family }) {
         </p>
       )}
       {personAdded && (
-        <p role="status" className="rounded-xl border border-border bg-surface px-4 py-3 text-body">
-          {personAdded.self
-            ? t('home.selfAdded', { family: family.name })
-            : t('home.personAdded', { name: personAdded.name })}
-        </p>
+        <div
+          role="status"
+          className="flex flex-col gap-1 rounded-xl border border-border bg-surface px-4 py-3 text-body"
+        >
+          <p>
+            {personAdded.self
+              ? t('home.selfAdded', { family: family.name })
+              : t('home.personAdded', { name: personAdded.name })}
+          </p>
+          <Link
+            to={personPath(family.id, personAdded.id)}
+            className="self-start font-semibold text-primary underline-offset-4 hover:underline"
+          >
+            {t('home.viewProfile')}
+          </Link>
+        </div>
       )}
       {isEmpty ? (
         <section className="flex flex-1 flex-col items-center justify-center gap-2 text-center">

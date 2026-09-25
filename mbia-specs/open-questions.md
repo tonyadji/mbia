@@ -94,3 +94,13 @@ When a question is answered, update the relevant spec, then move the entry to **
 - **Options:** A — new 409 `USER_ALREADY_LINKED` (additive in `ProblemDetails.code` examples) / B — reuse 409 `PERSON_ALREADY_CLAIMED`.
 - **Recommendation:** A; the frontend can explain the right situation ("you are already in this family's tree"), and PR-19 can reuse it for "claiming a second Person".
 - **Answer:** A (human, 2026-09-25). Added to `openapi.yaml` (`createPerson` description, `ProblemDetails.code` examples), `technical-specification.md` §12 and `data-model.md` §21; changed in PR-17.
+
+### OQ-008 — Partial update semantics of `updatePerson`
+
+- **Raised by / date:** coding agent (PR-18), 2026-09-25
+- **Context:** `updatePerson` is a `PATCH` whose optional fields are nullable (`UpdatePersonRequest`), but no spec says how a client clears a value, and the generated server models (`openApiNullable = false`) cannot tell an absent field from a `null` one. The specs also do not say what a request that changes nothing does to the version (`technical-specification.md` §13, and PR-18's "`profileMediaAssetId` … changes nothing"), nor what `updatePerson` answers for an ARCHIVED or MERGED Person (SCREEN-005 offers no mutation on them).
+- **Question:** (1) how is an optional field cleared; (2) does a no-op request increment the version; (3) what does editing a non-ACTIVE Person return?
+- **Options:** (1) A — absent or `null` leaves a field unchanged, a blank string clears an optional text, `{precision: UNKNOWN}` clears a date, `gender: UNKNOWN` clears the gender / B — `null` clears, absent keeps (needs `JsonNullable`, a new library: ADR). (2) A — 200, nothing written, version unchanged / B — the version always increments. (3) A — 404 `PERSON_NOT_FOUND` / B — no rule until PR-26.
+- **Recommendation:** A for all three.
+- **Answer:** A for all three (human, 2026-09-25). Documented in `openapi.yaml` (`updatePerson`, `UpdatePersonRequest`) and `technical-specification.md` §13; changed in PR-18.
+

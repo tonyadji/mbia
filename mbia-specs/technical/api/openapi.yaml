@@ -513,6 +513,10 @@ paths:
         ADMIN or authorized CONTRIBUTOR according to linked-person protection rules.
         A linked person's protected identity can be changed only by that linked user
         or an ADMIN.
+        Only an ACTIVE Person can be edited: an ARCHIVED or MERGED Person returns 404
+        `PERSON_NOT_FOUND`. A request that changes nothing (same values, or only
+        `profileMediaAssetId`, which is ignored until media exist) returns 200 with the
+        unchanged Person and version.
       parameters:
         - $ref: '#/components/parameters/IfMatch'
       requestBody:
@@ -1682,6 +1686,10 @@ components:
     UpdatePersonRequest:
       type: object
       minProperties: 1
+      description: |
+        Partial update. An absent or `null` field is left unchanged. A blank string clears
+        `middleNames`, `lastName`, `preferredName` or `biography`; `{precision: UNKNOWN}`
+        clears a date and `gender: UNKNOWN` the gender. `firstName` cannot be cleared.
       properties:
         firstName:
           type: string

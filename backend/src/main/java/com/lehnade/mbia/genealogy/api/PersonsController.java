@@ -15,6 +15,9 @@ import com.lehnade.mbia.api.generated.model.UpdatePersonRequest;
 import com.lehnade.mbia.genealogy.application.PersonView;
 import com.lehnade.mbia.genealogy.application.createperson.CreatePersonCommand;
 import com.lehnade.mbia.genealogy.application.createperson.CreatePersonUseCase;
+import com.lehnade.mbia.genealogy.application.getperson.GetPersonUseCase;
+import com.lehnade.mbia.genealogy.application.updateperson.UpdatePersonCommand;
+import com.lehnade.mbia.genealogy.application.updateperson.UpdatePersonUseCase;
 import com.lehnade.mbia.genealogy.domain.Person;
 import com.lehnade.mbia.genealogy.domain.PersonDetails;
 import com.lehnade.mbia.shared.api.web.ETags;
@@ -23,6 +26,7 @@ import com.lehnade.mbia.shared.domain.ErrorCode;
 import java.time.Instant;
 import java.time.OffsetDateTime;
 import java.time.ZoneOffset;
+import java.util.Optional;
 import java.util.UUID;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -36,9 +40,14 @@ import org.springframework.web.bind.annotation.RestController;
 class PersonsController implements PersonsApi {
 
     private final CreatePersonUseCase createPerson;
+    private final GetPersonUseCase getPerson;
+    private final UpdatePersonUseCase updatePerson;
 
-    PersonsController(CreatePersonUseCase createPerson) {
+    PersonsController(CreatePersonUseCase createPerson, GetPersonUseCase getPerson,
+            UpdatePersonUseCase updatePerson) {
         this.createPerson = createPerson;
+        this.getPerson = getPerson;
+        this.updatePerson = updatePerson;
     }
 
     /** {@code profileMediaAssetId} is ignored: Persons have no photo in Phase 2 (OQ-005). */
@@ -58,7 +67,8 @@ class PersonsController implements PersonsApi {
 
     @Override
     public ResponseEntity<PersonResponse> getPerson(UUID familyId, UUID personId) {
-        throw notAvailableYet();
+        PersonView person = getPerson.get(familyId, personId);
+        return ResponseEntity.ok().eTag(ETags.of(person.person().version())).body(toResponse(person));
     }
 
     @Override
@@ -67,10 +77,20 @@ class PersonsController implements PersonsApi {
         throw notAvailableYet();
     }
 
+    /**
+     * An absent or {@code null} field is left unchanged; {@code profileMediaAssetId} is ignored
+     * (OQ-005, OQ-008).
+     */
     @Override
     public ResponseEntity<PersonResponse> updatePerson(String ifMatch, UUID familyId, UUID personId,
             UpdatePersonRequest request) {
-        throw notAvailableYet();
+        PersonView person = updatePerson.update(new UpdatePersonCommand(familyId, personId,
+                ETags.parseIfMatch(ifMatch), Optional.ofNullable(request.getFirstName()),
+                Optional.ofNullable(request.getMiddleNames()), Optional.ofNullable(request.getLastName()),
+                Optional.ofNullable(request.getPreferredName()), Optional.ofNullable(toDomain(request.getGender())),
+                Optional.ofNullable(toDomain(request.getBirth())), Optional.ofNullable(request.getIsDeceased()),
+                Optional.ofNullable(toDomain(request.getDeath())), Optional.ofNullable(request.getBiography())));
+        return ResponseEntity.ok().eTag(ETags.of(person.person().version())).body(toResponse(person));
     }
 
     @Override
