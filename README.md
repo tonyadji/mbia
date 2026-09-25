@@ -27,10 +27,12 @@ This starts every local dependency with health checks. No `.env` file is needed:
 | RustFS console | http://localhost:9001/rustfs/console/ | same as S3 API |
 | Mailpit SMTP | `localhost:1025` | none |
 | Mailpit UI | http://localhost:8025 | none |
+| Keycloak admin console | http://localhost:8081/admin/ | `admin` / `admin-local` |
+| Keycloak realm `mbia` | http://localhost:8081/realms/mbia/account | test users in [`infrastructure/keycloak/README.md`](infrastructure/keycloak/README.md) |
 
 `docker compose ps -a` shows the long-running services as `healthy` and the one-shot `rustfs-init` (bucket creation) as `Exited (0)`. Avoid `up --wait`: it reports a failure as soon as that one-shot container exits.
 
-RustFS replaces MinIO locally (ADR-009). Keycloak is added in PR-09.
+RustFS replaces MinIO locally (ADR-009). Keycloak imports the realm `mbia` on first start (ADR-005); see [`infrastructure/keycloak/README.md`](infrastructure/keycloak/README.md).
 
 To stop everything and delete all local data:
 
