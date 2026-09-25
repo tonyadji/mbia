@@ -2,10 +2,15 @@ package com.lehnade.mbia.shared.api.error;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
+import com.lehnade.mbia.identity.api.CurrentUserWebConfiguration;
+import com.lehnade.mbia.shared.api.security.SecurityConfiguration;
 import com.lehnade.mbia.shared.api.tracing.RequestIdFilter;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.webmvc.test.autoconfigure.WebMvcTest;
+import org.springframework.context.annotation.ComponentScan;
+import org.springframework.context.annotation.FilterType;
+import org.springframework.context.annotation.Import;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
@@ -14,7 +19,10 @@ import org.springframework.test.web.servlet.assertj.MockMvcTester;
 import org.springframework.test.web.servlet.assertj.MvcTestResult;
 
 /** Error model of PR-07: every error is {@code application/problem+json} shaped as {@code ProblemDetails}. */
-@WebMvcTest(ErrorTestController.class)
+@WebMvcTest(
+        controllers = ErrorTestController.class,
+        excludeFilters = @ComponentScan.Filter(type = FilterType.ASSIGNABLE_TYPE, classes = CurrentUserWebConfiguration.class))
+@Import(SecurityConfiguration.class)
 @ActiveProfiles("test")
 class GlobalExceptionHandlerTest {
 

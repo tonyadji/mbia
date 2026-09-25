@@ -26,6 +26,12 @@ mbia:
   problems:
     # Base of the `type` URI of error responses (technical-specification.md §12).
     base-uri: https://mbia.example.com/problems
+  security:
+    # Keycloak realm trusted by the API (ADR-005); no default outside local and test: startup fails without it.
+    # issuer-uri:
+    audience: mbia-api
+    cors:
+      allowed-origins: []
 
 ---
 # Structured JSON logs everywhere except local development (technical-specification.md §19).
@@ -53,6 +59,12 @@ spring:
     username: ${MBIA_DB_USER:mbia}
     password: ${MBIA_DB_PASSWORD:mbia-local}
 
+mbia:
+  security:
+    issuer-uri: http://localhost:${KEYCLOAK_PORT:8081}/realms/mbia
+    cors:
+      allowed-origins: http://localhost:5173
+
 logging:
   pattern:
     # Readable logs with the request identifier.
@@ -74,3 +86,10 @@ management:
   endpoint:
     health:
       show-components: always
+
+mbia:
+  security:
+    # Tokens are signed by a test key (TestJwts); KeycloakAuthenticationTest overrides it with a real realm.
+    issuer-uri: https://issuer.test/realms/mbia
+    cors:
+      allowed-origins: http://localhost:5173

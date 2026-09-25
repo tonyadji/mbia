@@ -56,7 +56,9 @@ class MbiaApplicationTests {
     }
 
     @Test
-    void flywayRunsWithNoMigrationYet() {
-        assertThat(flyway.info().applied()).isEmpty();
+    void flywayAppliesTheUsersMigration() {
+        assertThat(flyway.info().applied())
+                .extracting(migration -> migration.getVersion().getVersion())
+                .containsExactly("001");
     }
 }
