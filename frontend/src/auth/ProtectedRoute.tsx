@@ -1,9 +1,7 @@
 import { useEffect } from 'react';
-import { useTranslation } from 'react-i18next';
 import { Outlet, useLocation } from 'react-router';
 import { ApiError } from '../api/client';
-import { errorMessage } from '../api/errorMessage';
-import { Button } from '../components/Button';
+import { ErrorState } from '../components/ErrorState';
 import { i18n } from '../i18n';
 import { EmailNotVerifiedPage } from '../pages/EmailNotVerifiedPage';
 import { useAuth } from './AuthProvider';
@@ -23,7 +21,6 @@ export function ProtectedRoute() {
 }
 
 function CurrentUserGate() {
-  const { t } = useTranslation();
   const currentUser = useCurrentUser();
   const preferredLocale = currentUser.data?.preferredLocale;
 
@@ -38,14 +35,7 @@ function CurrentUserGate() {
     if (error instanceof ApiError && error.code === 'EMAIL_NOT_VERIFIED') {
       return <EmailNotVerifiedPage />;
     }
-    return (
-      <div className="flex flex-1 flex-col items-center justify-center gap-4 text-center">
-        <p role="alert">{errorMessage(i18n, error)}</p>
-        <Button variant="secondary" onClick={() => void currentUser.refetch()}>
-          {t('actions.retry')}
-        </Button>
-      </div>
-    );
+    return <ErrorState error={error} onRetry={() => void currentUser.refetch()} />;
   }
   return <Outlet />;
 }

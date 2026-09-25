@@ -23,6 +23,15 @@ function problemResponse(code: string, status: number) {
 
 const alice = { id: '0b5c1f3e-1c1a-4a57-9a55-8f2f6c1d2e01', email: 'alice@mbia.local' };
 
+/** `GET /me` answers this User; the User has no Family yet. */
+function signedInApi(me: object) {
+  fetchMock.mockImplementation((input) =>
+    Promise.resolve(
+      (input as Request).url.endsWith('/families') ? jsonResponse([]) : jsonResponse(me),
+    ),
+  );
+}
+
 function renderApp(path: string, userManager = fakeUserManager()) {
   const router = createMemoryRouter(routes, { initialEntries: [path] });
   render(<App router={router} queryClient={createQueryClient()} userManager={userManager} />);
@@ -67,7 +76,7 @@ describe('App', () => {
       fireEvent.click(await screen.findByRole('button', { name: 'Create my family' }));
 
       expect(userManager.signinRedirect).toHaveBeenCalledWith({
-        state: { returnTo: '/home' },
+        state: { returnTo: '/families/new' },
         prompt: 'create',
         ui_locales: 'en',
       });
@@ -84,10 +93,8 @@ describe('App', () => {
       });
     });
 
-    it('takes a signed-in User straight to the app', async () => {
-      fetchMock.mockResolvedValue(
-        jsonResponse({ ...alice, displayName: 'Alice', preferredLocale: 'fr' }),
-      );
+    it('takes a signed-in User straight to Family creation', async () => {
+      signedInApi({ ...alice, displayName: 'Alice', preferredLocale: 'fr' });
       const userManager = fakeUserManager(fakeOidcUser());
       const { router } = renderApp('/', userManager);
       // Let the provider read the stored session.
@@ -95,7 +102,7 @@ describe('App', () => {
 
       fireEvent.click(screen.getByRole('button', { name: 'Créer ma famille' }));
 
-      expect(router.state.location.pathname).toBe('/home');
+      expect(router.state.location.pathname).toBe('/families/new');
       expect(userManager.signinRedirect).not.toHaveBeenCalled();
     });
   });
@@ -113,14 +120,12 @@ describe('App', () => {
       expect(fetchMock).not.toHaveBeenCalled();
     });
 
-    it('greets the signed-in User and applies their stored language', async () => {
-      fetchMock.mockResolvedValue(
-        jsonResponse({ ...alice, displayName: 'Alice', preferredLocale: 'en' }),
-      );
+    it('takes a signed-in User to the app in their stored language', async () => {
+      signedInApi({ ...alice, displayName: 'Alice', preferredLocale: 'en' });
       renderApp('/home', fakeUserManager(fakeOidcUser({ access_token: 'token-alice' })));
 
       expect(
-        await screen.findByRole('heading', { level: 1, name: 'Hello Alice' }),
+        await screen.findByRole('heading', { level: 1, name: 'Create your family' }),
       ).toBeInTheDocument();
       expect(i18n.language).toBe('en');
       const request = fetchMock.mock.calls[0]?.[0] as Request;
@@ -128,24 +133,11 @@ describe('App', () => {
       expect(request.headers.get('Authorization')).toBe('Bearer token-alice');
     });
 
-    it('greets a User without a display name', async () => {
-      fetchMock.mockResolvedValue(
-        jsonResponse({ ...alice, displayName: null, preferredLocale: 'fr' }),
-      );
-      renderApp('/home', fakeUserManager(fakeOidcUser()));
-
-      expect(
-        await screen.findByRole('heading', { level: 1, name: 'Bonjour !' }),
-      ).toBeInTheDocument();
-    });
-
     it('signs out without starting a new sign-in', async () => {
-      fetchMock.mockResolvedValue(
-        jsonResponse({ ...alice, displayName: 'Alice', preferredLocale: 'fr' }),
-      );
+      signedInApi({ ...alice, displayName: 'Alice', preferredLocale: 'fr' });
       const userManager = fakeUserManager(fakeOidcUser());
       userManager.signoutRedirect.mockImplementation(() => userManager.removeUser());
-      renderApp('/home', userManager);
+      renderApp('/settings', userManager);
 
       fireEvent.click(await screen.findByRole('button', { name: 'Se déconnecter' }));
 
@@ -200,9 +192,7 @@ describe('App', () => {
 
   describe('sign-in callback', () => {
     it('goes to the page requested before sign-in', async () => {
-      fetchMock.mockResolvedValue(
-        jsonResponse({ ...alice, displayName: 'Alice', preferredLocale: 'fr' }),
-      );
+      signedInApi({ ...alice, displayName: 'Alice', preferredLocale: 'fr' });
       const userManager = fakeUserManager();
       userManager.signinRedirectCallback.mockResolvedValue(
         fakeOidcUser({ state: { returnTo: '/home?tab=1' } }),

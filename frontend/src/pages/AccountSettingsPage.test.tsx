@@ -28,6 +28,17 @@ interface StoredUser {
   preferredLocale: 'fr' | 'en';
 }
 
+/** Alice's only Family, where `/home` leads. */
+const adjiFamily = {
+  id: '6f1c2a3b-4d5e-4f60-8a7b-9c0d1e2f3a4b',
+  name: 'ADJI',
+  myRole: 'ADMIN',
+  stats: { personCount: 0, memoryCount: 0, activeMemberCount: 1 },
+  version: 0,
+  createdAt: '2026-09-25T10:00:00Z',
+  updatedAt: '2026-09-25T10:00:00Z',
+};
+
 /** An in-memory `/me` that keeps what `PATCH /me` stores, like the backend. */
 function fakeMeApi(initial: Partial<StoredUser> = {}) {
   const stored: StoredUser = {
@@ -41,6 +52,9 @@ function fakeMeApi(initial: Partial<StoredUser> = {}) {
   let failNextPatch: Response | null = null;
   fetchMock.mockImplementation(async (input) => {
     const request = input as Request;
+    const path = new URL(request.url).pathname;
+    if (path.endsWith('/families')) return jsonResponse([adjiFamily]);
+    if (path.includes('/families/')) return jsonResponse(adjiFamily);
     if (request.method === 'PATCH') {
       const body = (await request.json()) as Partial<StoredUser>;
       patches.push(body);
@@ -86,7 +100,7 @@ describe('Account settings (SCREEN-011)', () => {
     vi.unstubAllEnvs();
   });
 
-  it('is reached from the landing page through the avatar', async () => {
+  it('is reached from the Family home through the avatar', async () => {
     fakeMeApi();
     const { router } = renderApp('/home');
 
@@ -210,7 +224,7 @@ describe('Account settings (SCREEN-011)', () => {
       renderApp('/home');
 
       expect(
-        await screen.findByRole('heading', { level: 1, name: 'Hello Alice' }),
+        await screen.findByRole('heading', { level: 2, name: 'Welcome to the ADJI family' }),
       ).toBeInTheDocument();
       expect(i18n.language).toBe('en');
     });

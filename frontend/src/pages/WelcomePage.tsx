@@ -1,6 +1,6 @@
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router';
-import { HOME_PATH, useAuth } from '../auth/AuthProvider';
+import { CREATE_FAMILY_PATH, HOME_PATH, useAuth } from '../auth/AuthProvider';
 import { Button } from '../components/Button';
 import { Logo } from '../components/Logo';
 
@@ -23,7 +23,7 @@ export function WelcomePage() {
         <p className="text-body text-text-muted">{t('welcome.valueProposition')}</p>
       </div>
       <div className="flex flex-col gap-3">
-        <Button onClick={() => (signedIn ? void navigate(HOME_PATH) : void signUp())}>
+        <Button onClick={() => (signedIn ? void navigate(CREATE_FAMILY_PATH) : void signUp())}>
           {t('welcome.createFamily')}
         </Button>
         <Button
