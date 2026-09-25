@@ -1,0 +1,232 @@
+# Mbia MVP — Code Architecture
+
+## 1. Architecture style
+
+Mbia MVP is a **modular monolith**.
+
+The goal is to keep deployment simple while preserving explicit business boundaries that can later be extracted if real scaling or organizational needs justify it.
+
+```text
+React SPA
+   |
+   | HTTPS / REST / JSON
+   v
+Spring Boot modular monolith
+   |
+   +-- PostgreSQL
+   +-- S3-compatible object storage
+   +-- OIDC Identity Provider
+   +-- Transactional Email
+```
+
+No Kafka, RabbitMQ, service mesh, distributed transactions or independent business microservices are required for MVP.
+
+## 2. Repository layout
+
+```text
+mbia/
+├── AGENTS.md
+├── README.md
+├── docker-compose.yml
+├── .env.example
+├── specs/
+│   ├── product/
+│   └── technical/
+│       ├── README.md
+│       ├── stack.md
+│       ├── architecture.md
+│       ├── data-model.md
+│       └── api/openapi.yaml
+├── backend/
+├── frontend/
+└── infrastructure/
+```
+
+## 3. Backend modules
+
+```text
+com.lehnade.mbia
+├── identity
+├── family
+├── genealogy
+├── memory
+├── invitation
+├── activity
+└── shared
+```
+
+Business capability comes before technical layer.
+
+Do not create global folders such as:
+
+```text
+controller/
+service/
+repository/
+entity/
+```
+
+for the whole application.
+
+## 4. Internal module structure
+
+Example for genealogy:
+
+```text
+genealogy/
+├── domain/
+│   ├── model/
+│   ├── service/
+│   └── repository/
+├── application/
+│   ├── createperson/
+│   ├── updateperson/
+│   ├── archiveperson/
+│   ├── mergepersons/
+│   ├── createrelationship/
+│   ├── removerelationship/
+│   ├── gettree/
+│   └── resolvekinship/
+├── infrastructure/
+│   └── persistence/
+└── api/
+```
+
+## 5. Dependency rule
+
+```text
+API -> Application -> Domain
+Infrastructure -> Domain/Application ports
+Domain -> nothing framework-specific
+```
+
+The domain must not depend on Spring MVC, JSON, JPA, PostgreSQL, AWS or frontend concepts.
+
+## 6. Use-case style
+
+Prefer one explicit application use case per business operation:
+
+```text
+CreatePersonUseCase
+UpdatePersonUseCase
+ArchivePersonUseCase
+RestorePersonUseCase
+ClaimPersonUseCase
+UnclaimPersonUseCase
+MergePersonsUseCase
+CreateRelationshipUseCase
+ArchiveRelationshipUseCase
+RestoreRelationshipUseCase
+ResolveKinshipUseCase
+```
+
+Avoid giant generic services such as `PersonService` with dozens of unrelated methods.
+
+## 7. API boundary
+
+HTTP models are not domain models.
+
+```text
+CreatePersonRequest
+       ->
+CreatePersonCommand
+       ->
+Person domain object
+       ->
+PersonResponse
+```
+
+`specs/technical/api/openapi.yaml` is the API contract.
+
+Generated frontend API code must live in an isolated generated directory and must never be edited manually.
+
+## 8. Persistence boundary
+
+JPA persistence models are infrastructure details.
+
+```text
+Person (domain)
+   <-> mapper
+PersonJpaEntity (infrastructure)
+```
+
+Repositories exposed to the domain/application layer use domain concepts and IDs, not Spring Data interfaces directly.
+
+Graph-heavy read models may use explicit SQL/projections instead of forcing all traversal through ORM associations.
+
+## 9. Transactions
+
+A business operation that must be atomic uses one local PostgreSQL transaction.
+
+Examples:
+
+- create Family + creator ADMIN membership;
+- accept invitation + create membership;
+- merge Persons + move memories + move/deduplicate relationships + audit;
+- archive relationship + audit + activity.
+
+## 10. Domain events
+
+In-process domain/application events are allowed for secondary effects such as activity entries or email requests.
+
+They do not justify a message broker in MVP.
+
+If reliable asynchronous delivery becomes necessary later, introduce an outbox through an ADR rather than silently adding infrastructure.
+
+## 11. Security
+
+Authentication is delegated to an OIDC provider.
+
+Authorization is owned by Mbia:
+
+```text
+identity -> Who is the user?
+membership -> Which Family can they access?
+role/rules -> What may they do there?
+```
+
+Every family-scoped use case verifies active membership on the backend.
+
+Frontend hiding of actions is UX only and is never an authorization control.
+
+## 12. Concurrency
+
+Mutable aggregates expose a version.
+
+HTTP mutations use optimistic concurrency. A stale update returns the stable error code:
+
+```text
+CONCURRENT_MODIFICATION
+```
+
+No stale browser form may silently overwrite a newer persisted Person or Memory.
+
+## 13. Error handling
+
+The API uses `application/problem+json` plus a stable Mbia `code`.
+
+Frontend behavior depends on the stable code, not on parsing English error messages.
+
+## 14. Testing strategy
+
+```text
+Domain unit tests
+  -> application use-case tests
+  -> Testcontainers persistence tests
+  -> API integration tests
+  -> a small set of critical browser E2E tests
+```
+
+Critical business rules such as cycle prevention, Family isolation and merge atomicity require automated tests.
+
+## 15. Human maintainability rule
+
+A change generated by an agent is acceptable only if a developer can understand and modify it from:
+
+- source code;
+- tests;
+- product specs;
+- technical specs;
+- ADRs.
+
+Conversation history with the agent must never be required to understand the architecture.
