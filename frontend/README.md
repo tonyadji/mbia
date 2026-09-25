@@ -15,6 +15,8 @@ npm run typecheck
 npm run lint
 npm run i18n:check    # fr and en translations have the same keys, no empty value
 npm test              # Vitest
+npm run test:e2e      # Playwright end-to-end tests (see below)
+npm run test:e2e:ui   # same, in the Playwright UI
 npm run build         # production build in dist/
 npm run preview       # serve dist/
 npm run format        # Prettier (format:check in CI)
@@ -76,3 +78,25 @@ realm.
 for the display name and the language; the language switches at once and the stored choice wins over the browser
 language at the next sign-in, on any device. `Delete my account` links to the support address `VITE_SUPPORT_EMAIL`
 (see `.env.example`); without it, only the explanation is shown.
+
+## End-to-end tests
+
+Playwright (`playwright.config.ts`, tests in `e2e/`) drives Chromium at phone width (375 px) through the real stack.
+It builds the frontend and serves it on http://localhost:5173 (the only origin the Keycloak client accepts); locally,
+a running `npm run dev` is reused instead. Docker compose and the backend must already run:
+
+```bash
+docker compose up -d
+cd backend && ./mvnw spring-boot:run -Dspring-boot.run.profiles=local
+cd frontend && npx playwright install chromium   # once
+cd frontend && npm run test:e2e                  # or npm run test:e2e:ui
+```
+
+- Each test signs up a new account (`e2e-<uuid>@mbia.local`) and reads its verification email through the Mailpit API
+  (`e2e/support/mailpit.ts`), so runs repeat without resetting local data. The isolation test signs in as the realm's
+  test user `bob@mbia.local`.
+- Expected texts come from `src/i18n/{fr,en}`: a wording change does not break the tests.
+- `e2e/mvp-release-criteria.spec.ts` lists every step of `mvp.md` §28 as `test.fixme`: each phase turns its steps into
+  real tests.
+- Report: `npx playwright show-report` (traces and screenshots of failed tests). `MAILPIT_URL`, `E2E_API_URL` and
+  `E2E_OIDC_AUTHORITY` override the local service URLs.

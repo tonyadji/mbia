@@ -67,7 +67,9 @@ cd frontend && npm run typecheck
 cd frontend && npm run lint
 cd frontend && npm run i18n:check        # French and English translations have the same keys, no empty value
 cd frontend && npm test                   # Vitest
-cd frontend && npm run test:e2e           # Playwright (needs backend + docker compose)
+cd frontend && npx playwright install chromium   # once, the browser used by the E2E tests
+cd frontend && npm run test:e2e           # Playwright on the built frontend (needs docker compose + backend running)
+cd frontend && npm run test:e2e:ui        # same, in the Playwright UI
 cd frontend && npm run dev                # http://localhost:5173
 ```
 
