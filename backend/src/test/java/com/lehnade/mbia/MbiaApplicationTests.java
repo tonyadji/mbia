@@ -59,6 +59,6 @@ class MbiaApplicationTests {
     void flywayAppliesEveryMigrationInOrder() {
         assertThat(flyway.info().applied())
                 .extracting(migration -> migration.getVersion().getVersion())
-                .containsExactly("001", "002");
+                .containsExactly("001", "002", "003");
     }
 }

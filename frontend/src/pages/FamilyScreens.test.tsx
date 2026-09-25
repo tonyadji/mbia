@@ -31,11 +31,11 @@ const me = {
 const ADJI_ID = '6f1c2a3b-4d5e-4f60-8a7b-9c0d1e2f3a4b';
 const NJOH_ID = '7a2b3c4d-5e6f-4a1b-8c2d-3e4f5a6b7c8d';
 
-function family(id: string, name: string, personCount = 0, memoryCount = 0) {
+function family(id: string, name: string, personCount = 0, memoryCount = 0, myRole = 'ADMIN') {
   return {
     id,
     name,
-    myRole: 'ADMIN',
+    myRole,
     stats: { personCount, memoryCount, activeMemberCount: 1 },
     version: 0,
     createdAt: '2026-09-25T10:00:00Z',
@@ -94,7 +94,7 @@ describe('Family screens', () => {
 
       expect(await screen.findByRole('heading', { level: 1, name: 'ADJI' })).toBeInTheDocument();
       expect(router.state.location.pathname).toBe(`/families/${ADJI_ID}`);
-      expect(screen.getByText('0 personne • 0 souvenir')).toBeInTheDocument();
+      expect(screen.getByText('0 personne')).toBeInTheDocument();
     });
 
     it('lets a User with several Families choose one', async () => {
@@ -191,34 +191,77 @@ describe('Family screens', () => {
   });
 
   describe('Family home (SCREEN-002)', () => {
-    it('welcomes a Family without Persons, without add actions, in French then English', async () => {
-      fakeApi({ [`GET /families/${ADJI_ID}`]: () => jsonResponse(family(ADJI_ID, 'ADJI')) });
+    it.each(['ADMIN', 'CONTRIBUTOR'])(
+      'welcomes a Family without Persons with both add actions for %s, in French then English',
+      async (role) => {
+        fakeApi({
+          [`GET /families/${ADJI_ID}`]: () => jsonResponse(family(ADJI_ID, 'ADJI', 0, 0, role)),
+        });
+        renderApp(`/families/${ADJI_ID}`);
+
+        expect(
+          await screen.findByRole('heading', { level: 2, name: 'Bienvenue dans la famille ADJI' }),
+        ).toBeInTheDocument();
+        expect(screen.getByText('Ajoutons la première personne.')).toBeInTheDocument();
+        expect(screen.getByRole('link', { name: 'Commencer par moi' })).toHaveAttribute(
+          'href',
+          `/families/${ADJI_ID}/persons/new?mode=me`,
+        );
+        expect(screen.getByRole('link', { name: "Ajouter quelqu'un d'autre" })).toHaveAttribute(
+          'href',
+          `/families/${ADJI_ID}/persons/new`,
+        );
+        expect(screen.queryByRole('status')).not.toBeInTheDocument();
+
+        await act(() => i18n.changeLanguage('en'));
+
+        expect(
+          screen.getByRole('heading', { level: 2, name: 'Welcome to the ADJI family' }),
+        ).toBeInTheDocument();
+        expect(screen.getByText("Let's add the first person.")).toBeInTheDocument();
+        expect(screen.getByText('0 people')).toBeInTheDocument();
+        expect(screen.getByRole('link', { name: 'Start with me' })).toBeInTheDocument();
+        expect(screen.getByRole('link', { name: 'Add someone else' })).toBeInTheDocument();
+      },
+    );
+
+    it('shows only the explanatory text to a VIEWER of a Family without Persons', async () => {
+      fakeApi({
+        [`GET /families/${ADJI_ID}`]: () => jsonResponse(family(ADJI_ID, 'ADJI', 0, 0, 'VIEWER')),
+      });
       renderApp(`/families/${ADJI_ID}`);
 
+      expect(await screen.findByText('Ajoutons la première personne.')).toBeInTheDocument();
+      expect(screen.queryByRole('link', { name: 'Commencer par moi' })).not.toBeInTheDocument();
       expect(
-        await screen.findByRole('heading', { level: 2, name: 'Bienvenue dans la famille ADJI' }),
-      ).toBeInTheDocument();
-      expect(screen.getByText('Ajoutons la première personne.')).toBeInTheDocument();
-      expect(screen.queryByRole('button')).not.toBeInTheDocument();
-      expect(screen.queryByRole('status')).not.toBeInTheDocument();
-
-      await act(() => i18n.changeLanguage('en'));
-
-      expect(
-        screen.getByRole('heading', { level: 2, name: 'Welcome to the ADJI family' }),
-      ).toBeInTheDocument();
-      expect(screen.getByText("Let's add the first person.")).toBeInTheDocument();
-      expect(screen.getByText('0 people • 0 memories')).toBeInTheDocument();
+        screen.queryByRole('link', { name: "Ajouter quelqu'un d'autre" }),
+      ).not.toBeInTheDocument();
     });
 
-    it('shows the Person and Memory counts, without the empty state once Persons exist', async () => {
+    it('shows the Person count and Add a person once Persons exist, without Memories', async () => {
       fakeApi({
         [`GET /families/${ADJI_ID}`]: () => jsonResponse(family(ADJI_ID, 'ADJI', 3, 1)),
       });
       renderApp(`/families/${ADJI_ID}`);
 
-      expect(await screen.findByText('3 personnes • 1 souvenir')).toBeInTheDocument();
+      expect(await screen.findByText('3 personnes')).toBeInTheDocument();
+      expect(screen.queryByText(/souvenir/)).not.toBeInTheDocument();
       expect(screen.queryByText('Ajoutons la première personne.')).not.toBeInTheDocument();
+      expect(screen.getByRole('link', { name: 'Ajouter une personne' })).toHaveAttribute(
+        'href',
+        `/families/${ADJI_ID}/persons/new`,
+      );
+      expect(screen.queryByRole('link', { name: 'Commencer par moi' })).not.toBeInTheDocument();
+    });
+
+    it('does not offer Add a person to a VIEWER', async () => {
+      fakeApi({
+        [`GET /families/${ADJI_ID}`]: () => jsonResponse(family(ADJI_ID, 'ADJI', 3, 0, 'VIEWER')),
+      });
+      renderApp(`/families/${ADJI_ID}`);
+
+      expect(await screen.findByText('3 personnes')).toBeInTheDocument();
+      expect(screen.queryByRole('link', { name: 'Ajouter une personne' })).not.toBeInTheDocument();
     });
 
     it('has a navigation bar with only Home, and opens settings from the avatar', async () => {
@@ -278,6 +321,194 @@ describe('Family screens', () => {
         "Une erreur inattendue s'est produite. Réessayez.",
       );
       expect(screen.getByRole('button', { name: 'Réessayer' })).toBeInTheDocument();
+    });
+  });
+
+  describe('Add a Person (SCREEN-004)', () => {
+    const MARIE_ID = '9d8c7b6a-5f4e-4d3c-8b2a-1f0e9d8c7b6a';
+
+    function person(overrides: Record<string, unknown> = {}) {
+      return {
+        id: MARIE_ID,
+        familyId: ADJI_ID,
+        firstName: 'Marie',
+        displayName: 'Marie Adji',
+        gender: 'UNKNOWN',
+        birth: { precision: 'UNKNOWN' },
+        isDeceased: false,
+        death: { precision: 'UNKNOWN' },
+        status: 'ACTIVE',
+        version: 0,
+        biography: null,
+        createdAt: '2026-09-25T10:00:00Z',
+        updatedAt: '2026-09-25T10:00:00Z',
+        ...overrides,
+      };
+    }
+
+    /** The Family has no Person until the POST succeeds. */
+    function personApi(post: Handler = () => jsonResponse(person(), 201)) {
+      let created = false;
+      return fakeApi({
+        [`GET /families/${ADJI_ID}`]: () => jsonResponse(family(ADJI_ID, 'ADJI', created ? 1 : 0)),
+        [`POST /families/${ADJI_ID}/persons`]: async (request) => {
+          const response = await post(request);
+          created = response.ok;
+          return response;
+        },
+      });
+    }
+
+    function type(name: string, value: string) {
+      fireEvent.change(screen.getByRole('textbox', { name }), { target: { value } });
+    }
+
+    async function postedBody(api: ReturnType<typeof fakeApi>) {
+      const post = api.requests.find((request) => request.method === 'POST');
+      return (await post?.json()) as Record<string, unknown>;
+    }
+
+    it('starts with me from the empty Family Home, then shows 1 person', async () => {
+      const api = personApi();
+      const { router } = renderApp(`/families/${ADJI_ID}`);
+      fireEvent.click(await screen.findByRole('link', { name: 'Commencer par moi' }));
+
+      expect(
+        await screen.findByRole('heading', { level: 1, name: 'Commencer par moi' }),
+      ).toBeInTheDocument();
+      expect(screen.getAllByRole('textbox').map((box) => box.getAttribute('name'))).toEqual([
+        'firstName',
+        'lastName',
+      ]);
+      expect(screen.queryByText(/photo/i)).not.toBeInTheDocument();
+      type('Prénom', '  Marie ');
+      type('Nom', 'Adji');
+      fireEvent.click(screen.getByRole('button', { name: "M'ajouter à la famille" }));
+
+      expect(await screen.findByRole('status')).toHaveTextContent(
+        'Vous faites maintenant partie de la famille ADJI.',
+      );
+      expect(router.state.location.pathname).toBe(`/families/${ADJI_ID}`);
+      expect(await screen.findByText('1 personne')).toBeInTheDocument();
+      expect(await postedBody(api)).toEqual({
+        firstName: 'Marie',
+        lastName: 'Adji',
+        gender: 'UNKNOWN',
+        birth: { precision: 'UNKNOWN' },
+        isDeceased: false,
+        death: { precision: 'UNKNOWN' },
+        linkToCurrentUser: true,
+        confirmPossibleDuplicate: false,
+      });
+    });
+
+    it('adds someone else with optional details, in English', async () => {
+      const api = personApi(() =>
+        jsonResponse(person({ firstName: 'Paul', displayName: 'Papa Paul' }), 201),
+      );
+      renderApp(`/families/${ADJI_ID}/persons/new`);
+      await screen.findByRole('heading', { level: 1, name: 'Ajouter une personne' });
+      await act(() => i18n.changeLanguage('en'));
+
+      expect(
+        await screen.findByRole('heading', { level: 1, name: 'Add a person' }),
+      ).toBeInTheDocument();
+      type('First name', 'Paul');
+      fireEvent.click(screen.getByRole('button', { name: 'More information' }));
+      type('Preferred name or nickname', 'Papa Paul');
+      fireEvent.change(screen.getByRole('combobox', { name: 'Gender' }), {
+        target: { value: 'MALE' },
+      });
+      fireEvent.change(screen.getByRole('combobox', { name: 'Date of birth' }), {
+        target: { value: 'YEAR_ONLY' },
+      });
+      type('Year of birth', '1950');
+      fireEvent.click(screen.getByRole('checkbox', { name: 'This person has died' }));
+      fireEvent.change(screen.getByRole('combobox', { name: 'Date of death' }), {
+        target: { value: 'EXACT' },
+      });
+      fireEvent.change(screen.getByLabelText('Exact date of death'), {
+        target: { value: '2020-05-04' },
+      });
+      type('Biography', 'Teacher.');
+      fireEvent.click(screen.getByRole('button', { name: 'Add to the family' }));
+
+      expect(await screen.findByRole('status')).toHaveTextContent(
+        'Papa Paul is now part of the family.',
+      );
+      expect(await postedBody(api)).toEqual({
+        firstName: 'Paul',
+        preferredName: 'Papa Paul',
+        gender: 'MALE',
+        birth: { precision: 'YEAR_ONLY', year: 1950 },
+        isDeceased: true,
+        death: { precision: 'EXACT', date: '2020-05-04' },
+        biography: 'Teacher.',
+        linkToCurrentUser: false,
+        confirmPossibleDuplicate: false,
+      });
+    });
+
+    it('requires a first name, with no request', async () => {
+      const api = personApi();
+      renderApp(`/families/${ADJI_ID}/persons/new`);
+      await screen.findByRole('heading', { level: 1, name: 'Ajouter une personne' });
+
+      type('Prénom', '   ');
+      fireEvent.click(screen.getByRole('button', { name: 'Ajouter à la famille' }));
+
+      expect(await screen.findByText('Indiquez le prénom.')).toBeInTheDocument();
+      expect(screen.getByRole('textbox', { name: 'Prénom' })).toHaveAttribute(
+        'aria-invalid',
+        'true',
+      );
+      expect(api.requests.some((request) => request.method === 'POST')).toBe(false);
+    });
+
+    it('opens More information to show an invalid year, with no request', async () => {
+      const api = personApi();
+      renderApp(`/families/${ADJI_ID}/persons/new`);
+      await screen.findByRole('heading', { level: 1, name: 'Ajouter une personne' });
+      type('Prénom', 'Marie');
+      fireEvent.click(screen.getByRole('button', { name: "Plus d'informations" }));
+      fireEvent.change(screen.getByRole('combobox', { name: 'Date de naissance' }), {
+        target: { value: 'YEAR_ONLY' },
+      });
+      type('Année de naissance', '19a4');
+      fireEvent.click(screen.getByRole('button', { name: "Plus d'informations" }));
+      expect(screen.getByRole('button', { name: "Plus d'informations" })).toHaveAttribute(
+        'aria-expanded',
+        'false',
+      );
+
+      fireEvent.click(screen.getByRole('button', { name: 'Ajouter à la famille' }));
+
+      expect(await screen.findByText('Indiquez une année entre 1 et 9999.')).toBeVisible();
+      expect(api.requests.some((request) => request.method === 'POST')).toBe(false);
+    });
+
+    it('translates a refused Start with me and never shows the raw message', async () => {
+      personApi(() => problemResponse('USER_ALREADY_LINKED', 409));
+      renderApp(`/families/${ADJI_ID}/persons/new?mode=me`);
+      await screen.findByRole('heading', { level: 1, name: 'Commencer par moi' });
+
+      type('Prénom', 'Marie');
+      fireEvent.click(screen.getByRole('button', { name: "M'ajouter à la famille" }));
+
+      expect(await screen.findByRole('alert')).toHaveTextContent(
+        "Vous faites déjà partie de l'arbre de cette famille.",
+      );
+      expect(screen.queryByText(/raw server detail/)).not.toBeInTheDocument();
+    });
+
+    it('treats a malformed Family address as not found', async () => {
+      const api = fakeApi({});
+      renderApp('/families/not-a-family/persons/new');
+
+      expect(
+        await screen.findByRole('heading', { level: 1, name: 'Famille introuvable' }),
+      ).toBeInTheDocument();
+      expect(api.familyRequests()).toHaveLength(0);
     });
   });
 });

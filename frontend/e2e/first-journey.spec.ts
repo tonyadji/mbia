@@ -2,7 +2,10 @@ import { expect, test } from '@playwright/test';
 import { t, type Language } from './support/i18n';
 import { newUser, registerAndVerify, signInOnKeycloak } from './support/keycloak';
 
-/** Phase 1 journey (phase-1-walking-skeleton.md §1): sign up, verify, create a Family, sign out, sign in again. */
+/**
+ * Phase 1 journey (phase-1-walking-skeleton.md §1): sign up, verify, create a Family, sign out, sign in again;
+ * with "Start with me" from Phase 2 (PR-17).
+ */
 for (const { language, locale } of [
   { language: 'fr', locale: 'fr-FR' },
   { language: 'en', locale: 'en-US' },
@@ -11,7 +14,7 @@ for (const { language, locale } of [
     // The UI language comes from the browser language (localization-and-kinship-labels.md §1).
     test.use({ locale });
 
-    test('a new User signs up, creates a Family and finds it again after signing in', async ({
+    test('a new User signs up, creates a Family, starts with themselves and finds it again after signing in', async ({
       page,
       request,
     }) => {
@@ -40,6 +43,25 @@ for (const { language, locale } of [
       ).toBeVisible();
       const familyUrl = page.url();
 
+      // "Start with me" (SCREEN-004): only the first name is required.
+      await page.getByRole('link', { name: t(language, 'family:home.startWithMe') }).click();
+      await expect(
+        page.getByRole('heading', { level: 1, name: t(language, 'person:form.titleMe') }),
+      ).toBeVisible();
+      await page.getByLabel(t(language, 'person:form.firstName'), { exact: true }).fill('Alice');
+      await page.getByRole('button', { name: t(language, 'person:form.submitMe') }).click();
+
+      await expect(page).toHaveURL(familyUrl);
+      await expect(page.getByRole('status')).toHaveText(
+        t(language, 'family:home.selfAdded', { family: familyName }),
+      );
+      await expect(
+        page.getByText(t(language, 'family:home.personCount_one', { count: '1' }), { exact: true }),
+      ).toBeVisible();
+      await expect(
+        page.getByRole('link', { name: t(language, 'family:home.addPerson') }),
+      ).toBeVisible();
+
       await page.getByRole('link', { name: t(language, 'settings:open') }).click();
       await page.getByRole('button', { name: t(language, 'auth:signOut') }).click();
       await expect(
@@ -52,6 +74,9 @@ for (const { language, locale } of [
       // One Family: signing in leads straight to its home.
       await expect(page).toHaveURL(familyUrl);
       await expect(page.getByRole('heading', { level: 1 })).toHaveText(familyName);
+      await expect(
+        page.getByText(t(language, 'family:home.personCount_one', { count: '1' }), { exact: true }),
+      ).toBeVisible();
       await expect(page.locator('html')).toHaveAttribute('lang', language);
     });
   });

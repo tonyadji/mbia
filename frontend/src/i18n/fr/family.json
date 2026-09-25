@@ -11,12 +11,14 @@
   "home": {
     "personCount_one": "{{count}} personne",
     "personCount_other": "{{count}} personnes",
-    "memoryCount_one": "{{count}} souvenir",
-    "memoryCount_other": "{{count}} souvenirs",
-    "stats": "{{persons}} • {{memories}}",
     "created": "La famille {{name}} a été créée.",
     "emptyTitle": "Bienvenue dans la famille {{name}}",
-    "emptyBody": "Ajoutons la première personne."
+    "emptyBody": "Ajoutons la première personne.",
+    "startWithMe": "Commencer par moi",
+    "addSomeoneElse": "Ajouter quelqu'un d'autre",
+    "addPerson": "Ajouter une personne",
+    "personAdded": "{{name}} fait maintenant partie de la famille.",
+    "selfAdded": "Vous faites maintenant partie de la famille {{family}}."
   },
   "chooser": {
     "title": "Vos familles"

@@ -1,11 +1,13 @@
 import { useTranslation } from 'react-i18next';
-import { useLocation, useParams } from 'react-router';
+import { Link, useLocation, useParams } from 'react-router';
 import { ApiError } from '../api/client';
 import { AccountLink } from '../components/AccountLink';
+import { buttonClassName } from '../components/Button';
 import { ErrorState } from '../components/ErrorState';
 import { NavigationBar } from '../components/NavigationBar';
 import { Skeleton } from '../components/Skeleton';
 import { useFamily } from '../families/useFamily';
+import { addPersonPath } from './AddPersonPage';
 import { FamilyNotFoundPage } from './FamilyNotFoundPage';
 
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
@@ -14,14 +16,16 @@ export function familyHomePath(familyId: string) {
   return `/families/${familyId}`;
 }
 
-/** Navigation state set by Family creation, for the success message. */
+/** Navigation state set by Family or Person creation, for the success message. */
 export interface FamilyHomeState {
   created?: boolean;
+  /** Display name of the Person just added; `self` after "Start with me". */
+  personAdded?: { name: string; self: boolean };
 }
 
 /**
- * SCREEN-002 — Family Home. Search, tree card, recent activity and add actions arrive with their
- * features.
+ * SCREEN-002 — Family Home. `View family tree`, `Add a relative`, search and the tree card arrive
+ * with their features; no Memory or activity in Phase 2.
  */
 export function FamilyHomePage() {
   const { familyId = '' } = useParams();
@@ -47,7 +51,11 @@ type Family = NonNullable<ReturnType<typeof useFamily>['data']>;
 
 function FamilyContent({ family }: { family: Family }) {
   const { t } = useTranslation('family');
-  const created = (useLocation().state as FamilyHomeState | null)?.created === true;
+  const state = useLocation().state as FamilyHomeState | null;
+  const created = state?.created === true;
+  const personAdded = state?.personAdded;
+  const canAddPersons = family.myRole === 'ADMIN' || family.myRole === 'CONTRIBUTOR';
+  const isEmpty = family.stats.personCount === 0;
 
   return (
     <>
@@ -56,10 +64,7 @@ function FamilyContent({ family }: { family: Family }) {
         <div className="flex min-w-0 flex-1 flex-col">
           <h1 className="text-section break-words text-text">{family.name}</h1>
           <p className="text-caption text-text-muted">
-            {t('home.stats', {
-              persons: t('home.personCount', { count: family.stats.personCount }),
-              memories: t('home.memoryCount', { count: family.stats.memoryCount }),
-            })}
+            {t('home.personCount', { count: family.stats.personCount })}
           </p>
         </div>
         <AccountLink />
@@ -69,11 +74,40 @@ function FamilyContent({ family }: { family: Family }) {
           {t('home.created', { name: family.name })}
         </p>
       )}
-      {family.stats.personCount === 0 && (
+      {personAdded && (
+        <p role="status" className="rounded-xl border border-border bg-surface px-4 py-3 text-body">
+          {personAdded.self
+            ? t('home.selfAdded', { family: family.name })
+            : t('home.personAdded', { name: personAdded.name })}
+        </p>
+      )}
+      {isEmpty ? (
         <section className="flex flex-1 flex-col items-center justify-center gap-2 text-center">
           <h2 className="text-display text-text">{t('home.emptyTitle', { name: family.name })}</h2>
           <p className="text-body text-text-muted">{t('home.emptyBody')}</p>
+          {canAddPersons && (
+            <div className="mt-6 flex w-full max-w-sm flex-col gap-3">
+              <Link
+                to={addPersonPath(family.id, { startWithMe: true })}
+                className={buttonClassName('primary')}
+              >
+                {t('home.startWithMe')}
+              </Link>
+              <Link to={addPersonPath(family.id)} className={buttonClassName('secondary')}>
+                {t('home.addSomeoneElse')}
+              </Link>
+            </div>
+          )}
         </section>
+      ) : (
+        canAddPersons && (
+          <Link
+            to={addPersonPath(family.id)}
+            className={buttonClassName('secondary', 'sm:w-auto sm:self-start')}
+          >
+            {t('home.addPerson')}
+          </Link>
+        )
       )}
     </>
   );

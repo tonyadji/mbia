@@ -1,5 +1,7 @@
 {
   "unexpected": "Une erreur inattendue s'est produite. Réessayez.",
   "VALIDATION_FAILED": "Certaines informations ne sont pas valides. Vérifiez-les puis réessayez.",
-  "FAMILY_NOT_FOUND": "Cette famille est introuvable, ou vous n'en faites pas partie."
+  "FAMILY_NOT_FOUND": "Cette famille est introuvable, ou vous n'en faites pas partie.",
+  "PERMISSION_DENIED": "Votre rôle dans cette famille ne permet pas cette action.",
+  "USER_ALREADY_LINKED": "Vous faites déjà partie de l'arbre de cette famille."
 }
