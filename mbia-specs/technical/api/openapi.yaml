@@ -411,12 +411,25 @@ paths:
     get:
       tags: [Persons]
       operationId: searchPersons
-      summary: Search or list active persons in a family
+      summary: Search or list persons in a family
+      description: |
+        Returns ACTIVE Persons by default, ordered by display name (locale-independent,
+        case-folded), then creation date, then id. `status=ARCHIVED` lists archived
+        Persons instead, so that an ADMIN can restore them; it is ADMIN only.
+        MERGED Persons are never listed.
       parameters:
+        - name: status
+          in: query
+          required: false
+          description: ACTIVE (default) or ARCHIVED. ARCHIVED requires the ADMIN role (403 otherwise).
+          schema:
+            type: string
+            enum: [ACTIVE, ARCHIVED]
+            default: ACTIVE
         - name: search
           in: query
           required: false
-          description: Search first name, last name and preferred name.
+          description: Case- and accent-insensitive substring search, after trimming, in first name, last name and preferred name.
           schema:
             type: string
             maxLength: 200
@@ -470,6 +483,10 @@ paths:
       tags: [Persons]
       operationId: getPerson
       summary: Get a person profile
+      description: |
+        Returns the Person whatever its status. An ARCHIVED Person stays readable so
+        that an ADMIN can open and restore it; a MERGED Person carries
+        `mergedIntoPersonId`. Normal lists and the tree only contain ACTIVE Persons.
       responses:
         '200':
           description: Person
@@ -686,6 +703,32 @@ paths:
         '404':
           $ref: '#/components/responses/NotFound'
 
+  /families/{familyId}/persons/{personId}/archived-relationships:
+    parameters:
+      - $ref: '#/components/parameters/FamilyId'
+      - $ref: '#/components/parameters/PersonId'
+    get:
+      tags: [Relationships]
+      operationId: listArchivedPersonRelationships
+      summary: List the removed relationships of a person
+      description: |
+        ADMIN only. Returns the ARCHIVED relationships in which the Person is source
+        or target, most recently archived first, each with the other Person, so that
+        the ADMIN can restore them (`restoreRelationship`).
+      responses:
+        '200':
+          description: Archived relationships of the person
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/ArchivedRelationshipResponse'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
   /families/{familyId}/relationships:
     parameters:
       - $ref: '#/components/parameters/FamilyId'
@@ -791,7 +834,7 @@ paths:
         Each node carries `hasMoreParents` / `hasMoreChildren` so the UI can show
         continuation indicators. When `focusPersonId` is omitted, the server uses
         the current user's linked Person, otherwise the ACTIVE Person with the most
-        active relationships (ties: earliest created). For an empty family, the
+        active relationships (ties: earliest created, then lowest id). For an empty family, the
         response has `focusPersonId = null` and no nodes.
       parameters:
         - name: focusPersonId
@@ -833,8 +876,9 @@ paths:
         `relationship` describes what `to` is to `from`
         (from = Tony, to = Paul → GRANDFATHER). Gendered codes are used when the
         `to` Person's gender is MALE or FEMALE, neutral codes otherwise. The path
-        starts at `from` and ends at `to`; it is the shortest known path,
-        preferring paths made only of PARENT/CHILD steps.
+        starts at `from` and ends at `to`; it is the shortest known path over
+        ACTIVE Persons and relationships, preferring paths made only of
+        PARENT/CHILD steps, then ordered deterministically by Person id.
       parameters:
         - name: from
           in: query
@@ -1814,6 +1858,35 @@ components:
         createdAt:
           type: string
           format: date-time
+
+    ArchivedRelationshipResponse:
+      type: object
+      required: [id, type, sourcePersonId, targetPersonId, version, archivedAt, relatedPerson]
+      properties:
+        id:
+          type: string
+          format: uuid
+        type:
+          $ref: '#/components/schemas/RelationshipType'
+        sourcePersonId:
+          type: string
+          format: uuid
+          description: For PARENT_OF, this is the parent.
+        targetPersonId:
+          type: string
+          format: uuid
+          description: For PARENT_OF, this is the child.
+        version:
+          type: integer
+          format: int64
+          description: Current version, to send in `If-Match` when restoring.
+        archivedAt:
+          type: string
+          format: date-time
+        relatedPerson:
+          allOf:
+            - $ref: '#/components/schemas/PersonSummary'
+          description: The other Person of the relationship; it may itself be ARCHIVED or MERGED.
 
     TreeNode:
       allOf:

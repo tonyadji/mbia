@@ -420,7 +420,9 @@ persons (
 )
 ```
 
-Additional foreign keys are added after `media_assets` exists:
+`profile_media_asset_id` and its foreign key are created by the migration that introduces `media_assets`; the `persons` migration does not create them. The self-referencing merge foreign key is created with the table.
+
+Additional foreign keys:
 
 ```sql
 ALTER TABLE persons
@@ -900,7 +902,7 @@ Admin unclaim is an audited operation.
 
 Duplicate detection is advisory.
 
-Initial implementation may score candidates using normalized values:
+Candidates are selected with the deterministic rule of `product/domain/person-relationships-collaboration.md` §4.1, on normalized values of:
 
 ```text
 first_name
@@ -925,7 +927,7 @@ status = ACTIVE
 first_name / last_name / preferred_name
 ```
 
-For MVP, normalized B-tree indexes plus `ILIKE` may be sufficient for small/medium family sizes.
+Matching is case- and accent-insensitive (`product/mvp.md` §19). For MVP, normalized B-tree indexes plus `ILIKE` on `unaccent`-normalized values may be sufficient for small/medium family sizes; the `unaccent` extension is created in its own migration (`genealogy.md` §11).
 
 If usage requires it, PostgreSQL `pg_trgm` can be enabled later without changing the domain model.
 
@@ -952,6 +954,19 @@ CREATE INDEX idx_rel_target_active
 ON family_relationships (family_id, target_person_id, type)
 WHERE status = 'ACTIVE';
 ```
+
+### 23.2bis Removed relationships of a Person
+
+Used by the ADMIN "Removed links" area:
+
+```text
+family_id
+status = ARCHIVED
+source_person_id = person or target_person_id = person
+order by archived_at desc
+```
+
+Volumes are small; indexes `(family_id, status, source_person_id)` and `(family_id, status, target_person_id)` serve both this query and the active traversal.
 
 ### 23.3 Person memories
 

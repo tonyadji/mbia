@@ -67,11 +67,13 @@ ACTIVE ADMIN / CONTRIBUTOR / VIEWER.
 
 ## Primary action
 
-`View my tree`
+`View family tree`
 
 ## Secondary actions
 
-- add relative;
+ADMIN / CONTRIBUTOR only:
+
+- `Add a relative` when the current User has a linked Person (choices: `family-tree-ux.md` §9.1), otherwise `Add a person`;
 - add Memory.
 
 ## Empty state
@@ -86,6 +88,10 @@ Let's add the first person.
 [ Start with me ]
 [ Add someone else ]
 ```
+
+ADMIN / CONTRIBUTOR see both actions; a VIEWER sees the explanatory text only.
+
+`Start with me` opens SCREEN-004 in "Start with me" mode.
 
 ---
 
@@ -115,13 +121,15 @@ Primary visible structure (layout rules: `family-tree-ux.md` §6.1):
 
 Empty state (Family without Persons): same as the Family Home empty state.
 
+Loading: skeleton Person cards. When recentering, keep the current tree visible until the new one is loaded; never blank the canvas.
+
 Tap/click Person:
 
 ```text
 → Person Quick View
 ```
 
-Search is available.
+Search is available (SCREEN-007).
 
 ADMIN/CONTRIBUTOR may see contextual add actions.
 
@@ -162,9 +170,11 @@ Side panel/popover.
 
 ADMIN / CONTRIBUTOR.
 
-## Context
+## Modes
 
-Created from a current Person and a human relationship label, or with no relationship ("Someone else").
+- **Start with me:** creates a new Person and links it to the current User in the same operation.
+- **Standalone Person** ("Add someone else", "Add a person"): creates a Person without relationship.
+- **Relative of a Person:** created from a current Person and a human relationship label.
 
 Example:
 
@@ -174,13 +184,15 @@ Add the father of Marie
 
 The relationship choice may preset the gender (`family-tree-ux.md` §9.1).
 
-## First option
+## First option (relative mode)
 
-Search existing Family Persons.
+Search existing Family Persons (SCREEN-007).
 
 ## Second option
 
 Create a new Person.
+
+When a new Person is created but the relationship is then refused, the Person stays created: explain that they were added but not linked, and let the User link them from the tree or profile.
 
 ## Initial fields
 
@@ -206,9 +218,9 @@ biography
 
 The system creates the technical relationship automatically.
 
-Possible duplicate: if the server reports similar Persons, show them with `View existing person` (links the existing Person instead) and `Create anyway`.
+Possible duplicate: if the server reports similar Persons, show them as cards with `View existing person` (links the existing Person instead) and `Create anyway`. Never merge automatically.
 
-Date warnings (for example parent born after child): show the warning in human language with `Confirm` and `Cancel`.
+Date warnings (for example parent born after child): explain the warning in human language with `Correct information` and `Add relationship anyway`.
 
 ---
 
@@ -236,7 +248,9 @@ Any ACTIVE Family member.
 ```text
 Memories
 Family
+Removed links   (ADMIN only)
 About
+History
 ```
 
 ## Family section
@@ -246,9 +260,43 @@ About
 - children;
 - siblings.
 
+For a parent, partner or child, ADMIN / CONTRIBUTOR see `Remove link` (SCREEN-COMPONENT-003). Siblings have no such action: the sibling link comes from shared parents.
+
+## Removed links (ADMIN only)
+
+Below the Family section, a collapsed "Removed links" area lists the removed relationships of this Person, most recent first:
+
+- the other Person (display name, archived mark when relevant);
+- the human relationship ("Marie's father");
+- removal date;
+- `Restore`.
+
+When restoring is refused (for example the other Person is archived, or the link would now make someone their own ancestor), explain why in human language.
+
+The area is hidden when there is nothing to restore.
+
+## Archived Person
+
+When the Person is ARCHIVED, the profile shows a clear "Archived" notice and no mutation action except, for the ADMIN, `Restore`. An archived profile is reached only from the ADMIN "Archived people" list (SCREEN-007) or from a removed link.
+
+## About section
+
+- middle names and preferred name when relevant;
+- birth/death details;
+- biography.
+
+## History section
+
+Presentation-safe recent important changes (`technical/data-model.md` §18), collapsed by default.
+
 ## Mutation actions
 
-Show only when permission rules allow them.
+Show only when permission rules allow them:
+
+- `Edit` (SCREEN-012);
+- `This is me` when the Person can be claimed;
+- unlink from the current User's own linked Person;
+- ADMIN: archive / restore, merge a duplicate (SCREEN-COMPONENT-004).
 
 ---
 
@@ -295,17 +343,27 @@ relatedPersons[] * (at least one)
 
 Any ACTIVE Family member.
 
+## Entry points
+
+- Family Tree;
+- Add Relative, "search existing";
+- general navigation.
+
 ## Search fields
 
 - firstName;
 - lastName;
 - preferredName.
 
+Matching and ordering: `mvp.md` §19. The search starts after 2 characters, debounced (about 250 ms). An empty query may list the first page of Persons.
+
+In general navigation, the ADMIN also has an "Archived people" view: the same search over archived Persons only; a result opens the archived profile (SCREEN-005). This view is never offered from the tree or Add Relative.
+
 ## Result card
 
 - avatar/photo;
 - display name;
-- birth year when known;
+- birth/death years when known;
 - relationship to current User when known.
 
 ## Navigation
@@ -320,6 +378,12 @@ Tree-context search:
 
 ```text
 result -> recenter tree
+```
+
+Add Relative search:
+
+```text
+result -> used as the Person of the pending relationship
 ```
 
 ---
@@ -442,6 +506,72 @@ Any authenticated User.
 - sign out;
 - `Delete my account` → explains the procedure and opens the support contact (mvp.md §30);
 - links to terms of use, privacy policy and support.
+
+---
+
+# SCREEN-012 — Edit Person
+
+## Access
+
+ADMIN / CONTRIBUTOR, within the linked-Person protection rules (`domain/person-relationships-collaboration.md` §2).
+
+## Sections
+
+```text
+Identity
+Life
+About
+```
+
+## Behavior
+
+The form sends the version of the Person it loaded. On `CONCURRENT_MODIFICATION`:
+
+```text
+This person was changed since you opened the page.
+[ Reload latest version ]
+```
+
+Never merge form values automatically.
+
+---
+
+# SCREEN-COMPONENT-002 — Siblings List
+
+Opened from the `Siblings (n)` chip next to the focused Person (`family-tree-ux.md` §6.1).
+
+Mobile: bottom sheet. Desktop: side panel. Selecting a sibling recenters the tree.
+
+---
+
+# SCREEN-COMPONENT-003 — Remove Relationship Confirmation
+
+Message:
+
+> Removing this link may change family relationships calculated by Mbia.
+
+Actions: `Cancel`, `Remove link`.
+
+---
+
+# SCREEN-COMPONENT-004 — Merge Persons
+
+## Access
+
+ADMIN only.
+
+## Display
+
+A focused modal or panel, not a general data-merging editor. Source and target summaries side by side, with an explanation:
+
+- the target remains;
+- the source becomes merged into the target;
+- relationships (and Memories) are moved and deduplicated;
+- when both have a value for an identity field, the target value is kept.
+
+## Behavior
+
+Requires explicit confirmation. When the merge is refused, explain the conflict; never offer to force it.
 
 ---
 

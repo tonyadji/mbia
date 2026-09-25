@@ -68,6 +68,20 @@ Duplicate detection is advisory.
 
 No automatic merge.
 
+### 4.1 Possible duplicate candidate
+
+Detection is deterministic. An ACTIVE Person of the same Family is a **possible duplicate candidate** of the Person being created when:
+
+1. `firstName` matches after trim, whitespace collapse, case folding and accent-insensitive comparison; and
+2. at least one of `lastName` or `preferredName` matches the same way, when present on both Persons; and
+3. if both Persons have a known birth year, the years are equal.
+
+A missing optional value never counts as a match by itself.
+
+When at least one candidate exists and the User has not confirmed, creation is refused with `POSSIBLE_DUPLICATE` and the candidates. The User may view an existing candidate or create anyway.
+
+### 4.2 Merge
+
 ADMIN may merge two Persons.
 
 Merge rules:
@@ -94,6 +108,8 @@ An archived Person:
 - cannot receive new relationships;
 - remains restorable;
 - retains historical data.
+
+Only the ADMIN can list archived Persons and open their profile to restore them.
 
 ## 6. Relationship structure
 
@@ -148,9 +164,21 @@ Block:
 - self-relation;
 - exact duplicate;
 - cross-Family relation;
+- relation involving an ARCHIVED or MERGED Person;
 - parental cycle.
 
 Warn, but permit confirmation, for probable inconsistencies such as suspicious dates or generation gaps.
+
+### 7.1 Date warnings
+
+For a `PARENT_OF` relation, when both birth years are known:
+
+- `PARENT_BORN_AFTER_CHILD` when `parentBirthYear >= childBirthYear`;
+- `IMPLAUSIBLE_PARENT_AGE` when the parent's age at the child's birth is `< 12` or `> 80`.
+
+`IMPLAUSIBLE_GENERATION_GAP` is reserved: no threshold is defined yet, so it is never emitted.
+
+When warnings exist and the User has not confirmed, the relation is not created and the warnings are returned. The User may retry with explicit confirmation.
 
 ## 8. Relationship removal
 
@@ -160,7 +188,7 @@ Removal means `ARCHIVED`, not physical delete.
 
 Before removal, UI warns that derived kinship may change.
 
-ADMIN may restore if the restored graph remains valid.
+ADMIN may restore if the restored graph remains valid. The ADMIN finds removed relationships from the profile of either Person involved.
 
 ## 9. Derived relations
 
@@ -194,7 +222,9 @@ Marie -> parent of -> Tony
 
 Direction convention: a kinship result always describes **what the target Person is to the reference Person** (`kinship(from = Tony, to = Paul) = GRANDFATHER`). The relationship shown on a Person "to the current User" uses the current User's linked Person as reference.
 
-When several paths exist, return the shortest one; when several shortest paths exist, prefer the one with only `PARENT`/`CHILD` steps.
+Paths use ACTIVE Persons and ACTIVE relationships only. Each step is `PARENT`, `CHILD` or `PARTNER`.
+
+When several paths exist, return the shortest one; when several shortest paths exist, prefer the one with only `PARENT`/`CHILD` steps; when still tied, choose deterministically by Person UUID order so that results are stable.
 
 User-facing labels (French and English, gender-aware) are defined in `../ux/localization-and-kinship-labels.md`.
 

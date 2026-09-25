@@ -158,6 +158,16 @@ UNKNOWN
 
 The system must never fabricate a precise date from an approximate year.
 
+If the Person is not deceased, the death date is `UNKNOWN`. A deceased Person may still have an unknown death date.
+
+### Display name
+
+1. When `preferredName` is not blank, it is the display name.
+2. Otherwise the display name is `firstName` followed by `lastName` when present.
+3. `middleNames` appear on the full profile, not in tree cards.
+
+The display name is computed for presentation; it is not stored.
+
 ### Person lifecycle
 
 ```text
@@ -243,6 +253,8 @@ View existing person
 Create anyway
 ```
 
+The matching rule is defined in `domain/person-relationships-collaboration.md` §4.1.
+
 ## 12. Person merge
 
 ADMIN only.
@@ -269,6 +281,8 @@ ADMIN may archive/restore Persons.
 ADMIN and CONTRIBUTOR may remove a relationship; removal archives it.
 
 Restoration of a relationship is ADMIN-only and must re-run graph validity checks.
+
+Archived items stay hidden from the tree and normal search, but the ADMIN can find them to restore them: the list of archived Persons, and the removed relationships of each Person.
 
 ## 14. Family creation
 
@@ -435,6 +449,12 @@ firstName
 lastName
 preferredName
 ```
+
+Rules:
+
+- only ACTIVE Persons are returned;
+- matching is a substring match after trimming, case-insensitive and accent-insensitive;
+- results are paginated and ordered by display name (locale-independent, case-folded), then creation date, then UUID.
 
 ## 20. Family home
 

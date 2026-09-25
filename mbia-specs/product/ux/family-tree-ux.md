@@ -107,7 +107,9 @@ Siblings remain accessible but must not make every view unreadable.
 
 The last focused Person is remembered per Family on the device (browser storage). If it is no longer ACTIVE, fall back to the next rule.
 
-"Another suitable Person" means: the ACTIVE Person with the most active relationships; ties broken by earliest creation.
+"Another suitable Person" means: the ACTIVE Person with the most active relationships; ties broken by earliest creation, then by lowest UUID.
+
+The last focused Person is known only by the browser, which sends it as the requested focus. When no focus is requested, the server applies rules 1 and 3.
 
 ### 6.1 Layout
 

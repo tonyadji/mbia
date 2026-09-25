@@ -7,6 +7,7 @@ This directory complements the product specifications. Product behavior remains 
 - `stack.md` — selected technology baseline and version policy.
 - `architecture.md` — modular-monolith structure and code dependency rules.
 - `data-model.md` — PostgreSQL relational model, constraints, indexes and transactional invariants.
+- `genealogy.md` — Persons, relationships, tree and kinship: module structure, algorithms and query rules.
 - `api/openapi.yaml` — contract-first REST API for the MVP.
 - `adr/` — Architecture Decision Records (index in `adr/README.md`).
 

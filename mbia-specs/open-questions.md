@@ -65,3 +65,23 @@ When a question is answered, update the relevant spec, then move the entry to **
 - **Options:** `type`: A — `<configurable base URI>/<code in kebab-case>` / B — `about:blank`. `fieldErrors[].code`: A — constraint name in UPPER_SNAKE case (`NOT_BLANK`) / B — raw constraint name (`NotBlank`).
 - **Recommendation:** A for both.
 - **Answer:** A for both (human, 2026-09-25). Documented in `technical-specification.md` §12; changed in PR-07.
+
+### OQ-005 — `profileMediaAssetId` before media exists (Phase 2)
+
+- **Raised by / date:** coding agent (Phase 2 plan), 2026-09-25
+- **Context:** `CreatePersonRequest` and `UpdatePersonRequest` accept an optional `profileMediaAssetId` (`openapi.yaml`), but Phase 2 delivers Persons without media: `media_assets` and `persons.profile_media_asset_id` do not exist yet (`delivery/phase-2-core-family-graph.md` §3.1, §3.3). No spec says what the API answers when a client sends a non-null value.
+- **Question:** in Phase 2, what does `createPerson` / `updatePerson` do with a non-null `profileMediaAssetId`?
+- **Options:** A — reject with 400 `VALIDATION_FAILED` on that field (no media asset can exist yet, so the reference is invalid) / B — ignore the field silently / C — remove the field from the contract until media is delivered (breaking change, needs `api-breaking-approved`, re-added later).
+- **Recommendation:** A; the contract stays stable and nothing is silently dropped. `profilePictureUrl` is always `null` in Phase 2 responses.
+- **Blocking:** the handling of that field in PR-17 and PR-18 only; the rest of those PRs can proceed.
+- **Answer:** B (human, 2026-09-25): the value is ignored and the request behaves as if the field were absent. Documented in `delivery/phase-2-core-family-graph.md` §3.1 and PR-17 / PR-18 acceptance criteria.
+
+### OQ-006 — Where an ADMIN finds what can be restored
+
+- **Raised by / date:** coding agent (Phase 2 plan), 2026-09-25
+- **Context:** `mvp.md` §13 lets an ADMIN restore an archived relationship or Person, and the Phase 2 journey requires it (`delivery/phase-2-core-family-graph.md` §1). But archived relationships and Persons are hidden from tree and search, `archiveRelationship` returns 204 without the new version, `PersonHistoryEntry` carries no resource id or version, and no API lists archived items. `screens.md` also does not say where `Remove link` and `Restore` are offered.
+- **Question:** how does an ADMIN reach an archived relationship or Person (and its version) to restore it, and on which screens are `Remove link` / `Restore` shown?
+- **Options:** A — additive endpoints listing archived items (for example `GET /families/{familyId}/relationships?status=ARCHIVED&personId=…` and `GET /families/{familyId}/persons?status=ARCHIVED`, ADMIN only) plus a "Removed links" / "Archived people" area for the ADMIN on SCREEN-005 and in search / B — restore only from the Person's History section, adding `resourceId` and `resourceVersion` to `PersonHistoryEntry` (additive) / C — `Undo` offered only right after removal (fragile: relies on guessing the version).
+- **Recommendation:** A, with `Remove link` on each relative of SCREEN-005's Family section (and in the Quick View); it is additive (non-breaking) and matches the "correct mistakes without technical intervention" goal.
+- **Blocking:** the restore UI of PR-24 and PR-26 and the restore step of the Phase 2 journey. Backend `restoreRelationship` / `restorePerson` can be built.
+- **Answer:** A (human, 2026-09-25): additive list endpoints and an ADMIN-only area on the profile. Contract: `searchPersons` gains `status=ARCHIVED` (ADMIN only), new `listArchivedPersonRelationships`, `getPerson` documented as returning ARCHIVED Persons (checked non-breaking with oasdiff). `Remove link` is on the profile Family section only, not in the Quick View. Specs: `mvp.md` §13, `person-relationships-collaboration.md` §5 and §8, `screens.md` SCREEN-005 (Remove link, Removed links, Archived Person) and SCREEN-007, `genealogy.md` §11 and §11bis, `data-model.md` §23.2bis; delivered in PR-24 and PR-26.

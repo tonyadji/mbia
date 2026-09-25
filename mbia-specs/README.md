@@ -36,7 +36,8 @@ mbia-specs/
 ├── README.md
 ├── open-questions.md
 ├── delivery/
-│   └── phase-1-walking-skeleton.md
+│   ├── phase-1-walking-skeleton.md
+│   └── phase-2-core-family-graph.md
 ├── product/
 │   ├── vision.md
 │   ├── mvp.md
@@ -55,6 +56,7 @@ mbia-specs/
     ├── stack.md
     ├── architecture.md
     ├── data-model.md
+    ├── genealogy.md
     ├── adr/
     │   ├── README.md
     │   └── ADR-001 … ADR-008
@@ -65,6 +67,20 @@ mbia-specs/
 The visual mockup is a design reference. Product rules and screen behavior are defined in text and remain authoritative.
 
 ## Changelog
+
+### 0.3 — 2026-09-25
+
+Precisions needed to deliver Phase 2 (core family graph):
+
+- deterministic possible-duplicate rule (`person-relationships-collaboration.md` §4.1);
+- relationship date-warning thresholds (§7.1) and deterministic kinship path tie-breaking (§10);
+- display-name rule and search matching/ordering (`mvp.md` §6, §19);
+- tree focus final tie-break (`family-tree-ux.md` §6);
+- Family Home actions by role, Edit Person screen, Siblings list, remove-link confirmation, merge panel, profile History section (`screens.md`);
+- genealogy module technical specification (`technical/genealogy.md`);
+- ADMIN restoration flow (OQ-006): `searchPersons?status=ARCHIVED`, `listArchivedPersonRelationships`, profile "Removed links" area and archived-Person notice, search "Archived people" view (additive contract change);
+- `profileMediaAssetId` ignored while media is not delivered (OQ-005);
+- Phase 2 delivery plan (`delivery/phase-2-core-family-graph.md`).
 
 ### 0.2 — 2026-09-25
 
