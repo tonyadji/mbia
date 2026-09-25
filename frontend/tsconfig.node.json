@@ -18,5 +18,5 @@
     "noUnusedLocals": true,
     "noUnusedParameters": true
   },
-  "include": ["vite.config.ts", "eslint.config.js", "scripts"]
+  "include": ["vite.config.ts", "playwright.config.ts", "eslint.config.js", "scripts", "e2e"]
 }
