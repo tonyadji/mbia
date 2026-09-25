@@ -1,6 +1,6 @@
 # Mbia MVP — Person, Relationships & Collaboration
 
-**Version:** 0.2  
+**Version:** 0.3  
 **Status:** Draft
 
 ## 1. Collaboration principle
@@ -36,6 +36,17 @@ Another CONTRIBUTOR may still:
 - associate existing Memories.
 
 This gives a linked User control of their identity without preventing the family from contributing to their shared history.
+
+### Link release
+
+A Person's link to a User is released (Person becomes non-linked) when:
+
+- the linked User unclaims it;
+- an ADMIN unclaims it;
+- the linked User leaves the Family or is removed from it;
+- the linked User's account is deleted.
+
+The release is audited. The Person and its data remain unchanged.
 
 ## 3. Change history
 
@@ -181,6 +192,12 @@ Paul -> parent of -> Marie
 Marie -> parent of -> Tony
 ```
 
+Direction convention: a kinship result always describes **what the target Person is to the reference Person** (`kinship(from = Tony, to = Paul) = GRANDFATHER`). The relationship shown on a Person "to the current User" uses the current User's linked Person as reference.
+
+When several paths exist, return the shortest one; when several shortest paths exist, prefer the one with only `PARENT`/`CHILD` steps.
+
+User-facing labels (French and English, gender-aware) are defined in `../ux/localization-and-kinship-labels.md`.
+
 If there is a path but no supported concise label, return the path without inventing a kinship term.
 
 If no path is known, say that no known relationship exists in the current Mbia graph; do not claim the people are unrelated in reality.
@@ -211,7 +228,9 @@ May:
 - archive/restore Persons;
 - merge Persons;
 - manage User-Person links;
-- manage Family membership.
+- manage Family membership;
+- add Memories;
+- edit/archive any Memory.
 
 ### CONTRIBUTOR
 
@@ -222,18 +241,23 @@ May:
 - edit own linked Person;
 - create/remove relationships;
 - add Memories;
-- edit own Memories.
+- edit/archive own Memories;
+- leave the Family.
 
 May not:
 
 - merge Persons;
 - archive Persons;
 - edit another linked Person's identity;
+- edit/archive other members' Memories;
 - manage membership.
 
 ### VIEWER
 
-Read only.
+Read only, plus:
+
+- claim/unclaim their own Person;
+- leave the Family.
 
 ## 13. Privacy simplification for MVP
 

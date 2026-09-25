@@ -8,6 +8,7 @@ This directory complements the product specifications. Product behavior remains 
 - `architecture.md` — modular-monolith structure and code dependency rules.
 - `data-model.md` — PostgreSQL relational model, constraints, indexes and transactional invariants.
 - `api/openapi.yaml` — contract-first REST API for the MVP.
+- `adr/` — Architecture Decision Records (index in `adr/README.md`).
 
 ## Authority order
 

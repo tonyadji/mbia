@@ -1,6 +1,6 @@
 # Mbia — MVP Functional Specification
 
-**Version:** 0.1  
+**Version:** 0.2  
 **Status:** Draft / Product discovery  
 **Target:** first commercially testable release
 
@@ -32,6 +32,12 @@ Responsive web application, designed mobile-first.
 
 Native mobile applications are out of scope for the MVP.
 
+### Languages
+
+The MVP ships in **French (default) and English**. Every user-facing text, email and authentication page exists in both languages. The User can change language in account settings.
+
+Language rules and kinship labels are defined in `ux/localization-and-kinship-labels.md`.
+
 ## 3. Core domain concepts
 
 ```text
@@ -57,7 +63,10 @@ May:
 - manage Family members;
 - edit Family information;
 - archive/restore Persons;
-- merge duplicate Persons.
+- merge duplicate Persons;
+- edit or archive any Memory.
+
+In the MVP, the ADMIN role cannot be granted through the product: the Family creator is its only ADMIN. Transferring the ADMIN role (for example after a death or a conflict) is handled manually by Mbia support.
 
 ### CONTRIBUTOR
 
@@ -68,13 +77,14 @@ May:
 - edit non-linked Persons;
 - edit their own linked Person;
 - create/remove relationships;
-- add Memories.
+- add Memories;
+- edit or archive their own Memories.
 
-May not manage memberships, merge Persons or archive Persons.
+May not manage memberships, merge Persons, archive Persons or edit/archive other members' Memories.
 
 ### VIEWER
 
-Read-only access.
+Read-only access, except that a VIEWER may identify themselves in the tree (claim/unclaim their own Person) and leave the Family.
 
 ## 5. Membership lifecycle
 
@@ -87,6 +97,18 @@ REMOVED
 ```
 
 Technical persistence may model a pending invitation separately from an active membership.
+
+Rules:
+
+- ADMIN may remove a CONTRIBUTOR or VIEWER, and change a member's role between CONTRIBUTOR and VIEWER.
+- ADMIN cannot change their own role.
+- Any CONTRIBUTOR or VIEWER may leave a Family by themselves.
+- The Family must always keep one ACTIVE ADMIN: the last ADMIN cannot leave or be removed (`LAST_ADMIN_REQUIRED`).
+- Removing a member or leaving the Family:
+  - never deletes the Persons, relationships or Memories they contributed;
+  - releases their linked Person (the Person stays in the tree, no longer linked to that User);
+  - is recorded in audit and activity.
+- A removed User invited again returns with the role of the new invitation.
 
 ## 6. Person
 
@@ -278,6 +300,8 @@ The MVP uses a focused Person and displays a local graph around that Person, pri
 
 Users can recenter the tree on another Person.
 
+The exact layout rules are defined in `ux/family-tree-ux.md` §6.
+
 ## 16. Person profile
 
 Display at least:
@@ -331,16 +355,46 @@ createdAt
 updatedAt
 ```
 
+### Common Memory rules
+
+- Every Memory is linked to **at least one** ACTIVE Person.
+- The creator may edit or archive their own Memory; ADMIN may edit or archive any Memory of the Family.
+- Archiving hides the Memory everywhere. Restoring an archived Memory is not available in the MVP product; support may restore it on request.
+
 Structured events are out of scope for the MVP.
 
 ## 18. Invitation
 
-ADMIN may invite by email as:
+ADMIN may invite a relative as:
 
 ```text
 CONTRIBUTOR
 VIEWER
 ```
+
+### Invitation channels
+
+Two channels, same rules:
+
+```text
+EMAIL  -> Mbia sends the invitation link to an email address
+LINK   -> Mbia shows the link; the ADMIN shares it (WhatsApp, SMS, …)
+```
+
+For `LINK`, the email address is optional and only informative.
+
+Rules:
+
+- one invitation = one link = one role; the link is **single-use**;
+- an invitation expires **14 days** after creation or renewal;
+- the invitation is not bound to an email address: the first authenticated User who accepts it joins the Family (the preview shows who invited and to which Family, so the recipient can recognise it);
+- the full link is shown to the ADMIN only when the invitation is created or renewed (it is not stored in clear);
+- ADMIN can see pending invitations, **revoke** one, or **renew** one (new link, new expiry; the previous link stops working; for `EMAIL`, the email is sent again);
+- the invitation email is sent in the inviter's current language;
+- an ACTIVE member who opens a link for their own Family is simply taken to the Family; the invitation stays pending;
+- expired, revoked or already used links show a clear message and suggest asking the ADMIN for a new link.
+
+### Acceptance flow
 
 Existing User:
 
@@ -369,6 +423,8 @@ Yes -> select Person
 No -> create Person
 Later
 ```
+
+A VIEWER cannot create Persons: for a VIEWER, `No` explains that a contributor can add them, and offers `Later`.
 
 ## 19. Search
 
@@ -399,9 +455,14 @@ Minimum product capabilities:
 - sign-up;
 - sign-in;
 - sign-out;
-- forgot password.
+- forgot password;
+- email verification.
 
-Authentication may be delegated to an external OIDC identity provider.
+Authentication is delegated to Keycloak (see `technical/adr/ADR-005-keycloak-identity-provider.md`). Sign-up, sign-in and password reset pages are hosted by Keycloak, themed as Mbia, in French and English.
+
+A User must verify their email address before using Mbia.
+
+When an unauthenticated visitor accepts an invitation, they are sent to sign-in (with a sign-up option) and brought back to the same invitation afterwards.
 
 ## 22. Privacy and isolation
 
@@ -423,7 +484,14 @@ WEBP
 
 Videos are out of scope.
 
-The implementation may resize, compress and generate thumbnails.
+Rules:
+
+- maximum file size: 15 MB;
+- large photos are reduced in the browser before upload to save mobile data;
+- Mbia removes all photo metadata, including GPS location, before any photo is shown;
+- Mbia shows thumbnails in lists and a larger version on open; the original file is not kept.
+
+Technical details: `technical/adr/ADR-007-image-processing.md`.
 
 ## 24. Commercial readiness
 
@@ -482,6 +550,8 @@ Candidate metrics:
 - D+30 return.
 
 Success thresholds are intentionally not fixed yet.
+
+Analytics are pseudonymous: they never contain names, email addresses, Person data, story text or photos. Tool choice: `technical/adr/ADR-008-product-analytics.md`.
 
 ## 27. Out of scope
 
@@ -543,3 +613,19 @@ onboarding
 → invitation
 → collaboration
 ```
+
+## 30. Personal data rights
+
+Mbia stores data about living people who may not have an account, including children. The MVP handles data rights as follows:
+
+- **Terms of use** state that contributors must only publish content they have the right to share, and must respect the people concerned.
+- **Account deletion:** the User requests it from account settings (link to support). Support processes it within 30 days:
+  - all memberships are removed and linked Persons released;
+  - the Keycloak account is deleted;
+  - the Mbia User record is anonymised (email, name and identity subject removed);
+  - content contributed to a Family stays in that Family, attributed to "Former member", unless the User also asks for specific content to be removed.
+- **Request from a Person without account** (or their legal guardian) to remove their data: sent to support; the ADMIN may archive the Person immediately; support performs permanent deletion when required.
+- **Family deletion:** requested by the ADMIN through support.
+- Photo location metadata is always removed (§23).
+
+A self-service deletion feature is not required for the MVP, but the support procedure must be written and tested before the first real family is onboarded.

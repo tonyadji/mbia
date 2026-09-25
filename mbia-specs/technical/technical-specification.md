@@ -1,6 +1,6 @@
 # Mbia MVP — Technical Specification
 
-**Version:** 0.1  
+**Version:** 0.2  
 **Status:** Draft
 
 ## 1. Technical objective
@@ -48,9 +48,10 @@ mbia/
 ├── README.md
 ├── docker-compose.yml
 ├── .env.example
-├── specs/
+├── mbia-specs/
 │   ├── product/
 │   └── technical/
+│       └── adr/
 ├── backend/
 ├── frontend/
 └── infrastructure/
@@ -153,9 +154,11 @@ Binary media is stored outside PostgreSQL in S3-compatible object storage. Postg
 
 ## 9. Authentication and authorization
 
-Authentication is delegated to an external OIDC provider.
+Authentication is delegated to **Keycloak** (ADR-005): realm `mbia`, public SPA client using Authorization Code + PKCE, backend as OAuth2 Resource Server.
 
-Mbia stores the stable external subject on its User record.
+Mbia stores the stable external subject on its User record, created just-in-time on the first authenticated call. Tokens without a verified email are rejected (`EMAIL_NOT_VERIFIED`).
+
+The realm configuration is versioned in `infrastructure/keycloak/realm-mbia.json` and imported automatically locally and in CI.
 
 Authorization remains owned by Mbia:
 
@@ -299,6 +302,17 @@ Mbia -> persists/activates media metadata
 
 Do not route every large photo binary through the application server unless required by a later use case.
 
+Limits and processing (ADR-007):
+
+- browser-side downscale to ≤ 2560 px before upload;
+- maximum 15 MB per upload;
+- on completion, the server validates, strips all metadata, generates `display` (≤ 2048 px) and `thumbnail` (≤ 480 px) JPEG derivatives, and deletes the original;
+- views use pre-signed GET URLs valid 60 minutes.
+
+## 16bis. Internationalisation
+
+French (default) and English (ADR-006). The API returns stable codes, never translated text; the frontend translates. Emails are rendered server-side from localized templates. CI checks that both languages define the same translation keys.
+
 ## 17. Testing strategy
 
 ```text
@@ -320,7 +334,11 @@ Critical automated scenarios include:
 - protect linked Person;
 - merge duplicate;
 - add Memory;
-- invite Contributor;
+- invite Contributor (email and link);
+- reject reused, expired, revoked or renewed invitation token;
+- keep at least one ADMIN;
+- release linked Person when a member leaves;
+- strip photo metadata;
 - reject cross-Family access.
 
 ## 18. Local development
@@ -341,7 +359,12 @@ cd backend && ./mvnw spring-boot:run
 cd frontend && npm install && npm run dev
 ```
 
-Local dependencies may include PostgreSQL, MinIO and a local OIDC provider.
+Local dependencies started by `docker compose`:
+
+- PostgreSQL (Mbia database + Keycloak database);
+- MinIO;
+- Keycloak with the `mbia` realm imported and test users;
+- Mailpit (catches all emails, including Keycloak emails).
 
 ## 19. Observability
 
@@ -389,14 +412,7 @@ Decision
 Consequences
 ```
 
-Examples:
-
-```text
-ADR-001 modular monolith
-ADR-002 PostgreSQL instead of graph database
-ADR-003 REST/OpenAPI
-ADR-004 S3-compatible object storage
-```
+ADRs live in `technical/adr/` (index: `technical/adr/README.md`), currently ADR-001 to ADR-008.
 
 Agents may propose ADRs but must not silently change established architecture.
 

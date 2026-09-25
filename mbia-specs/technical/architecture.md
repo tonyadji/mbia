@@ -29,13 +29,14 @@ mbia/
 ├── README.md
 ├── docker-compose.yml
 ├── .env.example
-├── specs/
+├── mbia-specs/
 │   ├── product/
 │   └── technical/
 │       ├── README.md
 │       ├── stack.md
 │       ├── architecture.md
 │       ├── data-model.md
+│       ├── adr/
 │       └── api/openapi.yaml
 ├── backend/
 ├── frontend/
@@ -136,7 +137,7 @@ Person domain object
 PersonResponse
 ```
 
-`specs/technical/api/openapi.yaml` is the API contract.
+`mbia-specs/technical/api/openapi.yaml` is the API contract.
 
 Generated frontend API code must live in an isolated generated directory and must never be edited manually.
 
@@ -175,7 +176,7 @@ If reliable asynchronous delivery becomes necessary later, introduce an outbox t
 
 ## 11. Security
 
-Authentication is delegated to an OIDC provider.
+Authentication is delegated to Keycloak (ADR-005). The `identity` module maps the JWT `sub` claim to a Mbia User, created just-in-time on the first authenticated call.
 
 Authorization is owned by Mbia:
 

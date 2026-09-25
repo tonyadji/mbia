@@ -1,6 +1,6 @@
 # Mbia MVP — Data Model
 
-**Version:** 0.1  
+**Version:** 0.2  
 **Status:** Draft for implementation  
 **Database:** PostgreSQL 18  
 **Scope:** Commercial MVP
@@ -107,6 +107,18 @@ invitation_status:
   REVOKED
   EXPIRED
 
+invitation_channel:
+  EMAIL
+  LINK
+
+user_status:
+  ACTIVE
+  DELETED
+
+locale:
+  fr
+  en
+
 person_status:
   ACTIVE
   ARCHIVED
@@ -190,11 +202,18 @@ Represents a Mbia account. Authentication credentials are owned by the external 
 users (
     id                         UUID PRIMARY KEY,
     identity_provider_subject  VARCHAR(255) NOT NULL UNIQUE,
-    email                      VARCHAR(320) NOT NULL,
+    email                      VARCHAR(320),
     display_name               VARCHAR(200),
+    preferred_locale           VARCHAR(5) NOT NULL DEFAULT 'fr',
+    status                     VARCHAR(20) NOT NULL DEFAULT 'ACTIVE',
+    deleted_at                 TIMESTAMPTZ,
     created_at                 TIMESTAMPTZ NOT NULL,
     updated_at                 TIMESTAMPTZ NOT NULL,
-    version                    BIGINT NOT NULL DEFAULT 0
+    version                    BIGINT NOT NULL DEFAULT 0,
+
+    CHECK (preferred_locale IN ('fr', 'en')),
+    CHECK (status IN ('ACTIVE', 'DELETED')),
+    CHECK (status = 'DELETED' OR email IS NOT NULL)
 )
 ```
 
@@ -202,14 +221,17 @@ Recommended indexes:
 
 ```sql
 CREATE UNIQUE INDEX uq_users_email_lower
-ON users (lower(email));
+ON users (lower(email))
+WHERE status = 'ACTIVE';
 ```
 
 Notes:
 
-- `identity_provider_subject` is the stable OIDC `sub` claim.
+- `identity_provider_subject` is the stable OIDC `sub` claim from Keycloak (ADR-005).
+- Rows are created just-in-time on the first authenticated API call; `email`, `display_name` and `preferred_locale` are initialised from token claims.
 - Mbia does not store password hashes.
-- Email uniqueness is recommended for MVP account management.
+- Email uniqueness applies to active accounts.
+- Account deletion (product/mvp.md §30) anonymises the row: `status = DELETED`, `email = NULL`, `display_name = NULL`, `identity_provider_subject = 'deleted:' || id`, `deleted_at` set. Foreign keys to the user remain valid; the UI displays "Former member".
 
 ## 6. Table: `families`
 
@@ -268,7 +290,10 @@ Rules:
 
 - only `ACTIVE` memberships grant access;
 - changing a membership role is an audited operation;
-- removing a membership does not delete the user or family data.
+- removing a membership does not delete the user or family data;
+- removing a membership (removal by ADMIN or leaving) sets `linked_user_id = NULL` on the User's Person in that Family, in the same transaction, with an audit entry;
+- a Family must keep at least one ACTIVE `ADMIN` membership; the use case locks the Family's ADMIN memberships before removing or demoting one (`LAST_ADMIN_REQUIRED`);
+- accepting a new invitation for a `REMOVED` membership reactivates the existing row (`status = ACTIVE`, new role, new `joined_at`, `removed_at = NULL`).
 
 ## 8. Table: `family_invitations`
 
@@ -278,27 +303,42 @@ Represents an invitation sent before a membership exists.
 family_invitations (
     id                 UUID PRIMARY KEY,
     family_id          UUID NOT NULL REFERENCES families(id),
-    email              VARCHAR(320) NOT NULL,
+    channel            invitation_channel NOT NULL,
+    email              VARCHAR(320),
+    locale             VARCHAR(5) NOT NULL,
     role               membership_role NOT NULL,
     token_hash         VARCHAR(255) NOT NULL UNIQUE,
     status             invitation_status NOT NULL DEFAULT 'PENDING',
     invited_by         UUID NOT NULL REFERENCES users(id),
     accepted_by        UUID REFERENCES users(id),
+    revoked_by         UUID REFERENCES users(id),
     expires_at         TIMESTAMPTZ NOT NULL,
     accepted_at        TIMESTAMPTZ,
     revoked_at         TIMESTAMPTZ,
+    renewed_at         TIMESTAMPTZ,
     created_at         TIMESTAMPTZ NOT NULL,
-    updated_at         TIMESTAMPTZ NOT NULL
+    updated_at         TIMESTAMPTZ NOT NULL,
+    version            BIGINT NOT NULL DEFAULT 0,
+
+    CHECK (channel <> 'EMAIL' OR email IS NOT NULL),
+    CHECK (role <> 'ADMIN'),
+    CHECK (locale IN ('fr', 'en'))
 )
 ```
 
 Rules:
 
 - only `ADMIN` may invite;
-- the raw invitation token must never be stored, only a secure hash;
-- accepting an invitation atomically creates or activates the membership and marks the invitation `ACCEPTED`;
-- `role = ADMIN` is not accepted from the public invitation endpoint in MVP;
-- expired/revoked invitations cannot be accepted.
+- the raw token is 32 random bytes from a CSPRNG, base64url-encoded; only its SHA-256 hash is stored; the raw token is returned once, in the creation or renewal response;
+- `expires_at = created_at + 14 days` (or `renewed_at + 14 days` after renewal);
+- the invitation is not bound to `email`: any authenticated, email-verified User holding the raw token may accept it;
+- accepting an invitation atomically creates or reactivates the membership and marks the invitation `ACCEPTED` (single use);
+- if the accepting User already has an `ACTIVE` membership in the Family, nothing changes and the invitation stays `PENDING`;
+- renewal replaces `token_hash`, resets `expires_at`, sets `renewed_at` and, for `EMAIL`, sends the email again; the old token stops working immediately;
+- revocation sets `status = REVOKED`, `revoked_at`, `revoked_by`;
+- `EXPIRED` is set lazily when an expired `PENDING` invitation is read or accepted, and may also be set by a scheduled task;
+- `role = ADMIN` is not allowed in MVP;
+- expired, revoked or accepted invitations cannot be accepted.
 
 Recommended partial index:
 
@@ -560,24 +600,31 @@ Stores metadata about binary files held in S3-compatible object storage.
 media_assets (
     id                  UUID PRIMARY KEY,
     family_id           UUID NOT NULL REFERENCES families(id),
-    purpose             media_purpose NOT NULL,
-    status              media_status NOT NULL DEFAULT 'PENDING_UPLOAD',
-    storage_key         VARCHAR(1024) NOT NULL UNIQUE,
-    original_filename   VARCHAR(500),
-    mime_type           VARCHAR(100) NOT NULL,
-    size_bytes          BIGINT,
-    width_px            INTEGER,
-    height_px           INTEGER,
-    uploaded_by         UUID NOT NULL REFERENCES users(id),
-    created_at          TIMESTAMPTZ NOT NULL,
-    ready_at            TIMESTAMPTZ,
-    archived_at         TIMESTAMPTZ,
+    purpose                 media_purpose NOT NULL,
+    status                  media_status NOT NULL DEFAULT 'PENDING_UPLOAD',
+    upload_storage_key      VARCHAR(1024) NOT NULL UNIQUE,
+    display_storage_key     VARCHAR(1024) UNIQUE,
+    thumbnail_storage_key   VARCHAR(1024) UNIQUE,
+    original_filename       VARCHAR(500),
+    upload_mime_type        VARCHAR(100) NOT NULL,
+    upload_size_bytes       BIGINT NOT NULL,
+    width_px                INTEGER,
+    height_px               INTEGER,
+    failure_reason          VARCHAR(100),
+    uploaded_by             UUID NOT NULL REFERENCES users(id),
+    created_at              TIMESTAMPTZ NOT NULL,
+    ready_at                TIMESTAMPTZ,
+    archived_at             TIMESTAMPTZ,
+
+    CHECK (upload_size_bytes > 0 AND upload_size_bytes <= 15728640),
+    CHECK (status <> 'READY'
+           OR (display_storage_key IS NOT NULL AND thumbnail_storage_key IS NOT NULL)),
 
     UNIQUE (id, family_id)
 )
 ```
 
-MVP supported MIME types:
+MVP supported upload MIME types:
 
 ```text
 image/jpeg
@@ -585,13 +632,15 @@ image/png
 image/webp
 ```
 
-Rules:
+Rules (processing details: ADR-007):
 
-- an asset starts as `PENDING_UPLOAD`;
-- after successful direct upload and validation it becomes `READY`;
+- an asset starts as `PENDING_UPLOAD`; the browser uploads to `upload_storage_key`;
+- `completeMediaUpload` validates and processes the upload synchronously, writes the `display` and `thumbnail` JPEG derivatives without metadata, deletes the uploaded original, and sets `READY`; `width_px`/`height_px` describe the display derivative;
+- on validation failure the asset becomes `FAILED` with a `failure_reason`;
+- `PENDING_UPLOAD` assets older than 24 hours become `FAILED` and their objects are deleted by a scheduled task;
 - only `READY` media may be attached to a person profile or photo memory;
-- `storage_key` is internal and must not be exposed as a public permanent URL;
-- downloads/views use short-lived signed URLs or CDN URLs according to deployment design.
+- storage keys are internal and must not be exposed as public permanent URLs;
+- views use pre-signed GET URLs valid for 60 minutes.
 
 ## 14. Table: `memories`
 
@@ -701,6 +750,8 @@ RELATIONSHIP_CREATED
 RELATIONSHIP_ARCHIVED
 MEMORY_CREATED
 INVITATION_ACCEPTED
+MEMBER_LEFT
+MEMBER_REMOVED
 ```
 
 `payload` contains presentation-safe contextual data such as display names, never secrets.
@@ -745,8 +796,14 @@ PERSON_ARCHIVED
 PERSONS_MERGED
 RELATIONSHIP_ARCHIVED
 MEMBERSHIP_ROLE_CHANGED
+MEMBERSHIP_REMOVED
 PERSON_CLAIMED
 PERSON_UNCLAIMED
+INVITATION_CREATED
+INVITATION_RENEWED
+INVITATION_REVOKED
+MEMORY_ARCHIVED
+USER_DELETED
 ```
 
 ## 18. Person history view
@@ -1006,4 +1063,7 @@ The persistence layer is ready when automated integration tests prove at least:
 7. memories can reference multiple Persons without duplication;
 8. a Person merge is atomic;
 9. optimistic concurrency detects stale updates;
-10. family-scoped queries cannot leak data across Families.
+10. family-scoped queries cannot leak data across Families;
+11. an invitation token can be accepted only once, and never after expiry, revocation or renewal;
+12. a Family can never be left without an ACTIVE ADMIN;
+13. removing a membership releases the member's linked Person in the same transaction.

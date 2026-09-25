@@ -1,6 +1,6 @@
 # Mbia MVP — UI Screens Specification
 
-**Version:** 0.1  
+**Version:** 0.2  
 **Status:** Draft
 
 ## 1. Source of truth
@@ -8,6 +8,11 @@
 Visual mockups are design references. This text is authoritative for behavior, data, permissions, actions and navigation.
 
 If a mockup and this document conflict, this document wins until the spec is updated.
+
+Known mockup deviations:
+
+- the search result label "Cousin éloigné" is out of MVP scope; such a Person shows the `RELATED` label ("Membre de votre famille");
+- mockup texts are in French only; every screen also exists in English (`localization-and-kinship-labels.md`).
 
 ---
 
@@ -100,12 +105,15 @@ ACTIVE ADMIN / CONTRIBUTOR / VIEWER.
 
 Determine a focused Person and render a local graph.
 
-Primary visible structure:
+Primary visible structure (layout rules: `family-tree-ux.md` §6.1):
 
 - parents;
 - focused Person;
 - partners;
-- children.
+- children;
+- siblings chip.
+
+Empty state (Family without Persons): same as the Family Home empty state.
 
 Tap/click Person:
 
@@ -156,13 +164,15 @@ ADMIN / CONTRIBUTOR.
 
 ## Context
 
-Always created from a current Person and a human relationship label.
+Created from a current Person and a human relationship label, or with no relationship ("Someone else").
 
 Example:
 
 ```text
-Add a parent of Marie
+Add the father of Marie
 ```
+
+The relationship choice may preset the gender (`family-tree-ux.md` §9.1).
 
 ## First option
 
@@ -195,6 +205,10 @@ biography
 ```
 
 The system creates the technical relationship automatically.
+
+Possible duplicate: if the server reports similar Persons, show them with `View existing person` (links the existing Person instead) and `Create anyway`.
+
+Date warnings (for example parent born after child): show the warning in human language with `Confirm` and `Cancel`.
 
 ---
 
@@ -256,12 +270,12 @@ Tell a story
 Fields:
 
 ```text
-file *
+file *            (JPEG, PNG, WEBP; max 15 MB)
 caption optional
-relatedPersons[]
+relatedPersons[] * (at least one)
 ```
 
-When launched from a Person profile, preselect that Person.
+When launched from a Person profile, preselect that Person; otherwise preselect the User's linked Person when it exists.
 
 ## Story flow
 
@@ -270,7 +284,7 @@ Fields:
 ```text
 title *
 content *
-relatedPersons[]
+relatedPersons[] * (at least one)
 ```
 
 ---
@@ -322,9 +336,21 @@ result -> recenter tree
 
 - member name;
 - User-facing role label;
-- membership status when relevant.
+- membership status when relevant;
+- the linked Person, when any.
 
 ADMIN sees `Invite a relative`.
+
+ADMIN also sees a "Pending invitations" section:
+
+- email (or "Shared link" when no email);
+- role;
+- expiry date;
+- actions: `Renew` (new link, and email resent for email invitations), `Revoke` (with confirmation).
+
+ADMIN member actions (not on themselves): change role (Can contribute / Read only), remove from Family (with confirmation explaining that their contributions stay).
+
+Non-ADMIN members see a `Leave this family` action (with confirmation). The only ADMIN does not see it.
 
 ---
 
@@ -337,7 +363,8 @@ ADMIN only.
 ## Fields
 
 ```text
-email *
+channel *        Send by email | Share a link
+email            required for "Send by email", optional otherwise
 permission *
 ```
 
@@ -348,11 +375,73 @@ Can contribute -> CONTRIBUTOR
 Read only -> VIEWER
 ```
 
-On success:
+On success, "Send by email":
 
 ```text
 Invitation sent
 ```
+
+On success, "Share a link":
+
+- show the link with `Copy link` and `Share` (uses the device share sheet when available, which includes WhatsApp);
+- a pre-filled message in the current language, for example: "Rejoins la famille ADJI sur Mbia : {link}";
+- explain that the link works once and expires in 14 days.
+
+The link cannot be displayed again later; the ADMIN can `Renew` it from the Members screen.
+
+---
+
+# SCREEN-010 — Accept Invitation
+
+## Logical route
+
+```text
+/invitations/{token}
+```
+
+## Access
+
+Public (preview), authenticated (acceptance).
+
+## Display
+
+- Family name;
+- name of the inviting member;
+- offered permission (Can contribute / Read only);
+- `Join the family`.
+
+## Behavior
+
+```text
+Join the family
+→ if signed out: Keycloak sign-in (with sign-up option), then return here
+→ accept
+→ "Are you already in this tree?" (see mvp.md §18)
+→ Family Home
+```
+
+States:
+
+- already a member of this Family: go to Family Home directly;
+- expired, revoked or already used: explain and suggest asking the ADMIN for a new link.
+
+---
+
+# SCREEN-011 — Account Settings
+
+## Access
+
+Any authenticated User.
+
+## Content
+
+- display name (editable);
+- email (read-only, managed by the identity provider);
+- language: Français / English;
+- change password (link to Keycloak account page);
+- sign out;
+- `Delete my account` → explains the procedure and opens the support contact (mvp.md §30);
+- links to terms of use, privacy policy and support.
 
 ---
 

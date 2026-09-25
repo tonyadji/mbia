@@ -1,7 +1,7 @@
 openapi: 3.1.0
 info:
   title: Mbia API
-  version: 0.1.0
+  version: 0.2.0
   summary: REST contract for the Mbia commercial MVP
   description: |
     Contract-first API for Mbia, a private collaborative family heritage platform.
@@ -36,6 +36,9 @@ paths:
       tags: [Current User]
       operationId: getCurrentUser
       summary: Get the authenticated Mbia user
+      description: |
+        Creates the Mbia user just-in-time on first call (ADR-005). Returns 403
+        `EMAIL_NOT_VERIFIED` when the token's `email_verified` claim is not true.
       responses:
         '200':
           description: Current user
@@ -43,6 +46,29 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/UserResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+    patch:
+      tags: [Current User]
+      operationId: updateCurrentUser
+      summary: Update the current user's display name or language
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateCurrentUserRequest'
+      responses:
+        '200':
+          description: Updated current user
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UserResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
         '401':
           $ref: '#/components/responses/Unauthorized'
 
@@ -170,7 +196,9 @@ paths:
       tags: [Members]
       operationId: updateMemberRole
       summary: Change a family member role
-      description: ADMIN only. MVP public API does not grant ADMIN through this operation.
+      description: |
+        ADMIN only. MVP public API does not grant ADMIN through this operation.
+        An ADMIN cannot change their own role (`LAST_ADMIN_REQUIRED`).
       parameters:
         - $ref: '#/components/parameters/IfMatch'
       requestBody:
@@ -200,8 +228,14 @@ paths:
     delete:
       tags: [Members]
       operationId: removeFamilyMember
-      summary: Remove a member from the family
-      description: ADMIN only. Removal is logical and does not delete contributed family data.
+      summary: Remove a member from the family, or leave it
+      description: |
+        ADMIN may remove any other member. Any member may target their own
+        membership to leave the family. The last ACTIVE ADMIN cannot be removed
+        and cannot leave (409 `LAST_ADMIN_REQUIRED`).
+
+        Removal is logical and does not delete contributed family data. The
+        member's linked Person, if any, is released in the same transaction.
       parameters:
         - $ref: '#/components/parameters/IfMatch'
       responses:
@@ -217,11 +251,37 @@ paths:
   /families/{familyId}/invitations:
     parameters:
       - $ref: '#/components/parameters/FamilyId'
+    get:
+      tags: [Invitations]
+      operationId: listFamilyInvitations
+      summary: List the family's invitations
+      description: ADMIN only. Defaults to PENDING invitations. Raw tokens and links are never returned here.
+      parameters:
+        - name: status
+          in: query
+          required: false
+          schema:
+            $ref: '#/components/schemas/InvitationStatus'
+      responses:
+        '200':
+          description: Invitations
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/InvitationResponse'
+        '403':
+          $ref: '#/components/responses/Forbidden'
     post:
       tags: [Invitations]
       operationId: inviteFamilyMember
-      summary: Invite someone to a family by email
-      description: ADMIN only. Allowed invitation roles are CONTRIBUTOR and VIEWER.
+      summary: Invite someone to a family by email or shareable link
+      description: |
+        ADMIN only. Allowed invitation roles are CONTRIBUTOR and VIEWER.
+        Channel EMAIL requires `email` and sends the invitation email in `locale`.
+        Channel LINK sends nothing; the response contains `inviteUrl` to share.
+        The invitation is single-use and expires after 14 days.
       requestBody:
         required: true
         content:
@@ -230,15 +290,63 @@ paths:
               $ref: '#/components/schemas/CreateInvitationRequest'
       responses:
         '201':
-          description: Invitation created and queued for delivery
+          description: Invitation created (email queued for EMAIL channel)
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/InvitationResponse'
+                $ref: '#/components/schemas/CreatedInvitationResponse'
         '400':
           $ref: '#/components/responses/BadRequest'
         '403':
           $ref: '#/components/responses/Forbidden'
+        '409':
+          $ref: '#/components/responses/Conflict'
+
+  /families/{familyId}/invitations/{invitationId}/renew:
+    parameters:
+      - $ref: '#/components/parameters/FamilyId'
+      - $ref: '#/components/parameters/InvitationId'
+    post:
+      tags: [Invitations]
+      operationId: renewInvitation
+      summary: Issue a new link for a pending or expired invitation
+      description: |
+        ADMIN only. Generates a new token, resets the expiry to 14 days and, for
+        channel EMAIL, sends the email again. The previous link stops working.
+      parameters:
+        - $ref: '#/components/parameters/IfMatch'
+      responses:
+        '200':
+          description: Renewed invitation with its new link
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CreatedInvitationResponse'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+
+  /families/{familyId}/invitations/{invitationId}/revoke:
+    parameters:
+      - $ref: '#/components/parameters/FamilyId'
+      - $ref: '#/components/parameters/InvitationId'
+    post:
+      tags: [Invitations]
+      operationId: revokeInvitation
+      summary: Revoke a pending invitation
+      description: ADMIN only. The link stops working immediately.
+      parameters:
+        - $ref: '#/components/parameters/IfMatch'
+      responses:
+        '204':
+          description: Invitation revoked
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
         '409':
           $ref: '#/components/responses/Conflict'
 
@@ -260,7 +368,7 @@ paths:
         '404':
           $ref: '#/components/responses/NotFound'
         '410':
-          description: Invitation expired or revoked
+          description: Invitation expired, revoked, renewed or already used (`INVITATION_EXPIRED`, `INVITATION_REVOKED`, `INVITATION_ALREADY_USED`)
           content:
             application/problem+json:
               schema:
@@ -273,9 +381,15 @@ paths:
       tags: [Invitations]
       operationId: acceptInvitation
       summary: Accept an invitation as the authenticated user
+      description: |
+        Any authenticated, email-verified user holding the token may accept it;
+        the invitation is not bound to its email address. If the user is already
+        an ACTIVE member of the family, nothing changes, the invitation stays
+        PENDING and the response has `alreadyMember = true`. A REMOVED membership
+        is reactivated with the invitation role.
       responses:
         '200':
-          description: Invitation accepted and membership activated
+          description: Invitation accepted and membership activated, or user already a member
           content:
             application/json:
               schema:
@@ -285,7 +399,7 @@ paths:
         '409':
           $ref: '#/components/responses/Conflict'
         '410':
-          description: Invitation expired or revoked
+          description: Invitation expired, revoked, renewed or already used (`INVITATION_EXPIRED`, `INVITATION_REVOKED`, `INVITATION_ALREADY_USED`)
           content:
             application/problem+json:
               schema:
@@ -668,6 +782,17 @@ paths:
       tags: [Tree]
       operationId: getFamilyTree
       summary: Get a local graph around a focused person
+      description: |
+        Depth 1 (MVP UI) returns the focus, its ACTIVE parents, partners, children
+        and siblings (Persons sharing at least one parent with the focus), plus all
+        ACTIVE relationships among the returned nodes. Depth 2 additionally returns
+        the parents of the parents and the children of the children.
+
+        Each node carries `hasMoreParents` / `hasMoreChildren` so the UI can show
+        continuation indicators. When `focusPersonId` is omitted, the server uses
+        the current user's linked Person, otherwise the ACTIVE Person with the most
+        active relationships (ties: earliest created). For an empty family, the
+        response has `focusPersonId = null` and no nodes.
       parameters:
         - name: focusPersonId
           in: query
@@ -679,12 +804,12 @@ paths:
         - name: depth
           in: query
           required: false
-          description: Local traversal depth. MVP supports 1 or 2.
+          description: Local traversal depth. MVP supports 1 or 2; the MVP UI uses 1.
           schema:
             type: integer
             minimum: 1
             maximum: 2
-            default: 2
+            default: 1
       responses:
         '200':
           description: Local tree graph
@@ -704,6 +829,12 @@ paths:
       tags: [Tree]
       operationId: getKinship
       summary: Explain the known kinship path between two persons
+      description: |
+        `relationship` describes what `to` is to `from`
+        (from = Tony, to = Paul → GRANDFATHER). Gendered codes are used when the
+        `to` Person's gender is MALE or FEMALE, neutral codes otherwise. The path
+        starts at `from` and ends at `to`; it is the shortest known path,
+        preferring paths made only of PARENT/CHILD steps.
       parameters:
         - name: from
           in: query
@@ -938,6 +1069,12 @@ paths:
       tags: [Media]
       operationId: completeMediaUpload
       summary: Verify a direct upload and mark the media asset READY
+      description: |
+        Synchronously validates the uploaded object (size, magic bytes, max 40
+        megapixels), generates metadata-free JPEG `display` and `thumbnail`
+        derivatives, deletes the uploaded original and marks the asset READY
+        (ADR-007). On invalid content the asset becomes FAILED and 400
+        `MEDIA_INVALID` is returned.
       responses:
         '200':
           description: Ready media asset
@@ -1032,11 +1169,18 @@ components:
       schema:
         type: string
         format: uuid
+    InvitationId:
+      name: invitationId
+      in: path
+      required: true
+      schema:
+        type: string
+        format: uuid
     InvitationToken:
       name: token
       in: path
       required: true
-      description: Raw opaque invitation token received by email. The server stores only a hash.
+      description: Raw opaque invitation token received by email or shared link. The server stores only a hash.
       schema:
         type: string
         minLength: 20
@@ -1100,9 +1244,13 @@ components:
             $ref: '#/components/schemas/ProblemDetails'
 
   schemas:
+    Locale:
+      type: string
+      enum: [fr, en]
+
     UserResponse:
       type: object
-      required: [id, email]
+      required: [id, email, preferredLocale]
       properties:
         id:
           type: string
@@ -1113,6 +1261,19 @@ components:
         displayName:
           type: [string, 'null']
           maxLength: 200
+        preferredLocale:
+          $ref: '#/components/schemas/Locale'
+
+    UpdateCurrentUserRequest:
+      type: object
+      minProperties: 1
+      properties:
+        displayName:
+          type: string
+          minLength: 1
+          maxLength: 200
+        preferredLocale:
+          $ref: '#/components/schemas/Locale'
 
     MembershipRole:
       type: string
@@ -1129,6 +1290,10 @@ components:
     InvitationStatus:
       type: string
       enum: [PENDING, ACCEPTED, REVOKED, EXPIRED]
+
+    InvitationChannel:
+      type: string
+      enum: [EMAIL, LINK]
 
     FamilyStats:
       type: object
@@ -1212,6 +1377,9 @@ components:
           $ref: '#/components/schemas/MembershipRole'
         status:
           $ref: '#/components/schemas/MembershipStatus'
+        linkedPersonId:
+          type: [string, 'null']
+          format: uuid
         joinedAt:
           type: string
           format: date-time
@@ -1228,18 +1396,33 @@ components:
 
     CreateInvitationRequest:
       type: object
-      required: [email, role]
+      required: [channel, role]
+      description: '`email` is required when `channel` is EMAIL, optional (informative) when LINK.'
       properties:
+        channel:
+          $ref: '#/components/schemas/InvitationChannel'
         email:
-          type: string
+          type: [string, 'null']
           format: email
           maxLength: 320
         role:
           $ref: '#/components/schemas/InvitationRole'
+        locale:
+          $ref: '#/components/schemas/Locale'
+          description: Language of the invitation email. Defaults to the inviter's preferred locale.
+      if:
+        properties:
+          channel:
+            const: EMAIL
+      then:
+        required: [email]
+        properties:
+          email:
+            type: string
 
     InvitationResponse:
       type: object
-      required: [id, familyId, email, role, status, expiresAt, createdAt]
+      required: [id, familyId, channel, role, status, expiresAt, createdAt, invitedBy, version]
       properties:
         id:
           type: string
@@ -1247,28 +1430,49 @@ components:
         familyId:
           type: string
           format: uuid
+        channel:
+          $ref: '#/components/schemas/InvitationChannel'
         email:
-          type: string
+          type: [string, 'null']
           format: email
         role:
           $ref: '#/components/schemas/InvitationRole'
         status:
           $ref: '#/components/schemas/InvitationStatus'
+        invitedBy:
+          $ref: '#/components/schemas/ActivityActor'
         expiresAt:
           type: string
           format: date-time
         createdAt:
           type: string
           format: date-time
+        version:
+          type: integer
+          format: int64
+
+    CreatedInvitationResponse:
+      description: Returned only on creation and renewal. `inviteUrl` contains the raw token and is never returned again.
+      allOf:
+        - $ref: '#/components/schemas/InvitationResponse'
+        - type: object
+          required: [inviteUrl]
+          properties:
+            inviteUrl:
+              type: string
+              format: uri
+              example: https://app.mbia.example.com/invitations/Zk3...
 
     InvitationPreviewResponse:
       type: object
-      required: [familyId, familyName, role, status, expiresAt]
+      required: [familyId, familyName, invitedByDisplayName, role, status, expiresAt]
       properties:
         familyId:
           type: string
           format: uuid
         familyName:
+          type: string
+        invitedByDisplayName:
           type: string
         role:
           $ref: '#/components/schemas/InvitationRole'
@@ -1280,8 +1484,11 @@ components:
 
     AcceptInvitationResponse:
       type: object
-      required: [family, membership]
+      required: [family, membership, alreadyMember]
       properties:
+        alreadyMember:
+          type: boolean
+          description: True when the user was already an ACTIVE member; the invitation was not consumed.
         family:
           $ref: '#/components/schemas/FamilySummary'
         membership:
@@ -1354,6 +1561,10 @@ components:
         status:
           $ref: '#/components/schemas/PersonStatus'
         relationshipToCurrentUser:
+          description: |
+            What this Person is to the current user's linked Person
+            (kinship from = linked Person, to = this Person). Null when the
+            current user has no linked Person in this family.
           oneOf:
             - $ref: '#/components/schemas/KinshipCode'
             - type: 'null'
@@ -1607,6 +1818,15 @@ components:
     TreeNode:
       allOf:
         - $ref: '#/components/schemas/PersonSummary'
+        - type: object
+          required: [hasMoreParents, hasMoreChildren]
+          properties:
+            hasMoreParents:
+              type: boolean
+              description: The Person has ACTIVE parents that are not part of this response.
+            hasMoreChildren:
+              type: boolean
+              description: The Person has ACTIVE children that are not part of this response.
 
     TreeEdge:
       type: object
@@ -1632,8 +1852,9 @@ components:
       required: [focusPersonId, nodes, edges]
       properties:
         focusPersonId:
-          type: string
+          type: [string, 'null']
           format: uuid
+          description: Null only when the family has no ACTIVE Person.
         nodes:
           type: array
           items:
@@ -1675,6 +1896,7 @@ components:
 
     KinshipPathStep:
       type: object
+      description: '`toPersonId` is the `relation` of `fromPersonId` (PARENT means `to` is a parent of `from`).'
       required: [fromPersonId, toPersonId, relation]
       properties:
         fromPersonId:
@@ -1883,7 +2105,8 @@ components:
           type: integer
           format: int64
           minimum: 1
-          description: Server enforces the configured MVP maximum upload size.
+          maximum: 15728640
+          description: Maximum 15 MB. Larger files are rejected with `MEDIA_TOO_LARGE`.
 
     MediaUploadResponse:
       type: object
@@ -1929,17 +2152,24 @@ components:
         url:
           type: [string, 'null']
           format: uri
-          description: Present when the asset is READY and viewable.
+          description: Display derivative (long edge ≤ 2048 px). Pre-signed, valid 60 minutes. Present when READY.
+        thumbnailUrl:
+          type: [string, 'null']
+          format: uri
+          description: Thumbnail derivative (long edge ≤ 480 px). Pre-signed, valid 60 minutes. Present when READY.
 
     ActivityActor:
       type: object
-      required: [userId, displayName]
+      required: [userId, displayName, deleted]
       properties:
         userId:
           type: string
           format: uuid
         displayName:
-          type: string
+          type: [string, 'null']
+          description: Null when the account was deleted; the UI then shows "Former member".
+        deleted:
+          type: boolean
 
     ActivityResponse:
       type: object
@@ -2006,6 +2236,15 @@ components:
             - RELATIONSHIP_CREATES_CYCLE
             - RELATIONSHIP_WARNING_CONFIRMATION_REQUIRED
             - PERSON_MERGE_CONFLICT
+            - EMAIL_NOT_VERIFIED
+            - LAST_ADMIN_REQUIRED
+            - INVITATION_NOT_FOUND
+            - INVITATION_EXPIRED
+            - INVITATION_REVOKED
+            - INVITATION_ALREADY_USED
+            - MEDIA_TOO_LARGE
+            - MEDIA_INVALID
+            - MEDIA_NOT_READY
         detail:
           type: string
         traceId:
