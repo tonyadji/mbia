@@ -1,4 +1,9 @@
-import { ApiError, createApiClient, setAccessTokenProvider } from './client';
+import {
+  ApiError,
+  createApiClient,
+  setAccessTokenProvider,
+  setUnauthorizedHandler,
+} from './client';
 
 const BASE_URL = 'http://api.test/api/v1';
 
@@ -21,6 +26,7 @@ function problemResponse(body: object, status: number) {
 describe('apiClient', () => {
   afterEach(() => {
     setAccessTokenProvider(() => null);
+    setUnauthorizedHandler(() => undefined);
   });
 
   it('calls the contract paths under the configured base URL', async () => {
@@ -105,5 +111,23 @@ describe('apiClient', () => {
       fieldErrors: [],
       details: null,
     });
+  });
+
+  it('calls the unauthorized handler on 401 only', async () => {
+    const onUnauthorized = vi.fn();
+    setUnauthorizedHandler(onUnauthorized);
+
+    for (const [code, status] of [
+      ['AUTHENTICATION_REQUIRED', 401],
+      ['EMAIL_NOT_VERIFIED', 403],
+      ['INTERNAL_ERROR', 500],
+    ] as const) {
+      const { fetch } = fakeFetch(problemResponse({ code, status }, status));
+      await createApiClient({ baseUrl: BASE_URL, fetch })
+        .GET('/me')
+        .catch(() => undefined);
+    }
+
+    expect(onUnauthorized).toHaveBeenCalledTimes(1);
   });
 });

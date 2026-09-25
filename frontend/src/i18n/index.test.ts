@@ -13,10 +13,11 @@ describe('i18n', () => {
     expect(document.documentElement.lang).toBe('fr');
   });
 
-  it('loads the common and errors namespaces in both languages', () => {
+  it('loads the common, errors and auth namespaces in both languages', () => {
     for (const language of ['fr', 'en']) {
       expect(i18n.hasResourceBundle(language, 'common')).toBe(true);
       expect(i18n.hasResourceBundle(language, 'errors')).toBe(true);
+      expect(i18n.hasResourceBundle(language, 'auth')).toBe(true);
     }
   });
 });

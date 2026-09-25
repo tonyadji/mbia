@@ -4,7 +4,7 @@ import { join } from 'node:path';
 
 const frontendDir = join(import.meta.dirname, '..', '..');
 // Linting as an existing file keeps the type-aware configuration working.
-const filePath = join(frontendDir, 'src', 'pages', 'HomePlaceholderPage.tsx');
+const filePath = join(frontendDir, 'src', 'pages', 'WelcomePage.tsx');
 
 async function literalStringErrors(jsx: string) {
   const eslint = new ESLint({ cwd: frontendDir });
