@@ -9,6 +9,7 @@ import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
 import org.springframework.context.annotation.Import;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.MediaType;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.web.servlet.assertj.MockMvcTester;
 
@@ -39,6 +40,19 @@ class MbiaApplicationTests {
     void onlyTheHealthEndpointIsExposed() {
         assertThat(mvc.get().uri("/actuator/info")).hasStatus(HttpStatus.NOT_FOUND);
         assertThat(mvc.get().uri("/actuator/env")).hasStatus(HttpStatus.NOT_FOUND);
+    }
+
+    @Test
+    void unknownPathReturnsAProblemTracedByTheRequestId() {
+        assertThat(mvc.get().uri("/no-such-path").header("X-Request-Id", "e2e-trace-1"))
+                .hasStatus(HttpStatus.NOT_FOUND)
+                .hasContentType(MediaType.APPLICATION_PROBLEM_JSON)
+                .hasHeader("X-Request-Id", "e2e-trace-1")
+                .bodyJson()
+                .satisfies(json -> {
+                    json.assertThat().extractingPath("$.code").isEqualTo("RESOURCE_NOT_FOUND");
+                    json.assertThat().extractingPath("$.traceId").isEqualTo("e2e-trace-1");
+                });
     }
 
     @Test
