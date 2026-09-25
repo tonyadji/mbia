@@ -45,8 +45,8 @@ Avoid excessive text styles.
 
 Use:
 
-- one primary brand color (brown);
-- optionally one accent (soft green);
+- one primary brand color;
+- optionally one accent;
 - neutral backgrounds and text colors.
 
 Do not rely on stereotypes such as blue = male, pink = female as a primary comprehension mechanism.

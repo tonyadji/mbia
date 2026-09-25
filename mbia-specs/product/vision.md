@@ -160,3 +160,22 @@ Every important feature should ultimately define:
 - API behavior when relevant.
 
 An implementation agent may choose implementation details. It must not invent product meaning, permission rules, business conflict behavior or required data semantics.
+
+## 9. Benchmark rule for Nambé
+
+A stable specification snapshot such as `Mbia MVP Specification 1.0` can be frozen and supplied unchanged to Nambé, Codex, Claude Code or another implementation system.
+
+The result may then be compared on:
+
+- specification compliance;
+- functional completeness;
+- business-rule correctness;
+- code quality;
+- architecture;
+- tests;
+- security;
+- maintainability;
+- UX;
+- amount of human intervention required.
+
+The benchmark must never dictate the product. Mbia is first a real product, then a benchmark.
