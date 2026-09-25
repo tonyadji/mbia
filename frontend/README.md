@@ -28,10 +28,11 @@ Tailwind's default palette is disabled, and a test fails if a color is written a
 
 ## Translations
 
-Every user-facing string lives in `src/i18n/{fr,en}/<namespace>.json` (namespaces `common` and `errors` for now) and is
+Every user-facing string lives in `src/i18n/{fr,en}/<namespace>.json` (namespaces `common`, `errors` and `auth` for now) and is
 read with `useTranslation()` from `react-i18next`. Keys are typed from the French resources.
 
-- Initial language: stored preference (from PR-12), otherwise the browser language (`fr*` → `fr`, anything else → `en`);
+- Initial language: the browser language (`fr*` → `fr`, anything else → `en`); after sign-in, the User's stored
+  `preferredLocale` (from `GET /me`) replaces it.
   `<html lang>` follows the active language.
 - `npm run i18n:check` fails when a key or namespace exists in one language only, or when a value is empty.
 - ESLint (`i18next/no-literal-string`) fails on literal text or user-facing attributes in JSX; only the brand name
@@ -51,3 +52,20 @@ Types are generated from `../mbia-specs/technical/api/openapi.yaml` by `openapi-
   `errors:unexpected` when the code has no translation yet. Each feature adds the messages of the codes it returns.
 - `package.json` `overrides` lets `openapi-typescript` (peer `typescript ^5`) use the project's TypeScript 6; remove it
   once `openapi-typescript` supports TypeScript 6.
+
+## Authentication
+
+Keycloak (ADR-005) through `oidc-client-ts`: Authorization Code + PKCE with the public client `mbia-web`
+(`src/auth/oidcConfig.ts`). `VITE_OIDC_AUTHORITY` and `VITE_OIDC_CLIENT_ID` (see `.env.example`) default to the local
+realm.
+
+- `AuthProvider` / `useAuth()`: `signIn(returnTo)`, `signUp()` (`prompt=create`, the Keycloak registration page),
+  `signOut()`. Keycloak pages follow the UI language (`ui_locales`). The session lives in `sessionStorage` and is
+  renewed with the refresh token; the pending sign-in state is in `localStorage`, so the email verification link can
+  finish the sign-up in another tab.
+- Keycloak redirects back to `/auth/callback`, which continues to the in-app page asked for before sign-in (`/home`
+  by default).
+- `ProtectedRoute` wraps the pages for signed-in Users: it starts sign-in when there is no session, then loads
+  `GET /me` (`useCurrentUser()`) and applies the User's language. `403 EMAIL_NOT_VERIFIED` shows the "check your
+  inbox" page.
+- The access token is added to every API call; a `401` answer drops the session and starts sign-in again.

@@ -1,7 +1,9 @@
 import i18n from 'i18next';
 import { initReactI18next } from 'react-i18next';
+import enAuth from './en/auth.json';
 import enCommon from './en/common.json';
 import enErrors from './en/errors.json';
+import frAuth from './fr/auth.json';
 import frCommon from './fr/common.json';
 import frErrors from './fr/errors.json';
 import { DEFAULT_LANGUAGE, SUPPORTED_LANGUAGES, detectLanguage } from './language';
@@ -9,8 +11,8 @@ import { DEFAULT_LANGUAGE, SUPPORTED_LANGUAGES, detectLanguage } from './languag
 export const defaultNS = 'common';
 
 export const resources = {
-  fr: { common: frCommon, errors: frErrors },
-  en: { common: enCommon, errors: enErrors },
+  fr: { common: frCommon, errors: frErrors, auth: frAuth },
+  en: { common: enCommon, errors: enErrors, auth: enAuth },
 } as const;
 
 function syncDocumentLanguage(language: string) {
@@ -19,13 +21,13 @@ function syncDocumentLanguage(language: string) {
 
 i18n.on('languageChanged', syncDocumentLanguage);
 
-// The stored preference (User.preferredLocale) is passed here once account settings exist (PR-12).
+// After sign-in, the stored preference (User.preferredLocale) replaces the browser language (ProtectedRoute).
 void i18n.use(initReactI18next).init({
   resources,
   lng: detectLanguage(null, navigator.languages),
   fallbackLng: DEFAULT_LANGUAGE,
   supportedLngs: SUPPORTED_LANGUAGES,
-  ns: ['common', 'errors'],
+  ns: ['common', 'errors', 'auth'],
   defaultNS,
   interpolation: { escapeValue: false },
 });

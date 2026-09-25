@@ -7,6 +7,7 @@ import { createBrowserRouter } from 'react-router';
 import { App } from './app/App';
 import { createQueryClient } from './app/queryClient';
 import { routes } from './app/routes';
+import { createUserManager } from './auth/oidcConfig';
 
 const rootElement = document.getElementById('root');
 if (!rootElement) {
@@ -15,6 +16,10 @@ if (!rootElement) {
 
 createRoot(rootElement).render(
   <StrictMode>
-    <App router={createBrowserRouter(routes)} queryClient={createQueryClient()} />
+    <App
+      router={createBrowserRouter(routes)}
+      queryClient={createQueryClient()}
+      userManager={createUserManager()}
+    />
   </StrictMode>,
 );

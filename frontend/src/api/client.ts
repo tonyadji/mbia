@@ -59,6 +59,15 @@ export function setAccessTokenProvider(provider: AccessTokenProvider) {
   accessTokenProvider = provider;
 }
 
+type UnauthorizedHandler = () => void;
+
+let unauthorizedHandler: UnauthorizedHandler = () => undefined;
+
+/** Sets what happens when the API answers 401 (the authentication layer restarts sign-in). */
+export function setUnauthorizedHandler(handler: UnauthorizedHandler) {
+  unauthorizedHandler = handler;
+}
+
 const authentication: Middleware = {
   async onRequest({ request }) {
     const token = await accessTokenProvider();
@@ -72,6 +81,9 @@ const authentication: Middleware = {
 const problems: Middleware = {
   async onResponse({ response }) {
     if (!response.ok) {
+      if (response.status === 401) {
+        unauthorizedHandler();
+      }
       throw await toApiError(response);
     }
     return response;
