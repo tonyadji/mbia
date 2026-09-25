@@ -11,6 +11,7 @@ public enum ErrorCode {
 
     VALIDATION_FAILED(400, "Validation failed"),
     AUTHENTICATION_REQUIRED(401, "Authentication required"),
+    EMAIL_NOT_VERIFIED(403, "Email not verified"),
     FAMILY_NOT_FOUND(404, "Family not found"),
     RESOURCE_NOT_FOUND(404, "Resource not found"),
     METHOD_NOT_ALLOWED(405, "Method not allowed"),

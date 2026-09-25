@@ -2,7 +2,9 @@ package com.lehnade.mbia.shared.api.tracing;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
+import com.lehnade.mbia.identity.api.CurrentUserWebConfiguration;
 import com.lehnade.mbia.shared.api.error.ErrorTestController;
+import com.lehnade.mbia.shared.api.security.SecurityConfiguration;
 import java.util.UUID;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -10,12 +12,18 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.system.CapturedOutput;
 import org.springframework.boot.test.system.OutputCaptureExtension;
 import org.springframework.boot.webmvc.test.autoconfigure.WebMvcTest;
+import org.springframework.context.annotation.ComponentScan;
+import org.springframework.context.annotation.FilterType;
+import org.springframework.context.annotation.Import;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.web.servlet.assertj.MockMvcTester;
 import org.springframework.test.web.servlet.assertj.MvcTestResult;
 
 /** Request tracing of PR-07: {@code traceId} in the body = {@code X-Request-Id} header = log context. */
-@WebMvcTest(ErrorTestController.class)
+@WebMvcTest(
+        controllers = ErrorTestController.class,
+        excludeFilters = @ComponentScan.Filter(type = FilterType.ASSIGNABLE_TYPE, classes = CurrentUserWebConfiguration.class))
+@Import(SecurityConfiguration.class)
 @ActiveProfiles("test")
 @ExtendWith(OutputCaptureExtension.class)
 class RequestIdFilterTest {

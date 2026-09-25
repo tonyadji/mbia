@@ -19,7 +19,14 @@ When a question is answered, update the relevant spec, then move the entry to **
 
 ## Open
 
-*(none)*
+### OQ-003 — Token email already used by another Mbia account
+
+- **Raised by / date:** coding agent (PR-10), 2026-09-25
+- **Context:** ADR-005 and `data-model.md` §5 create the User just in time from the token and update its email when the claim changes. The unique index `uq_users_email_lower` allows one ACTIVE account per email. Keycloak forbids duplicate emails, but a Keycloak account deleted and recreated with the same email gets a new `sub`: its token then carries an email that an existing Mbia User with another `sub` still holds. The same happens when a user changes their email to one freed in Keycloak but still stored in Mbia.
+- **Question:** what does the API answer, and what happens to the existing Mbia account?
+- **Options:** A — reject with a dedicated 409 code (for example `EMAIL_ALREADY_IN_USE`, added to the contract) and let support resolve it / B — anonymise the old account (as account deletion, `mvp.md` §30) and create the new one / C — attach the new `sub` to the existing account (account takeover risk: not recommended).
+- **Recommendation:** A; it never merges or erases data silently.
+- **Blocking:** nothing in Phase 1. Until answered, PR-10 does not special-case it: the database refuses the row and the API answers 500 `INTERNAL_ERROR`.
 
 ## Resolved
 
