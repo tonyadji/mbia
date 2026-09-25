@@ -49,7 +49,11 @@
     "family": "Famille",
     "noRelatives": "Aucun proche n'est encore relié à cette personne.",
     "about": "À propos",
-    "name": "Prénom et nom"
+    "name": "Prénom et nom",
+    "claim": "C'est moi",
+    "unclaim": "Ce n'est pas moi",
+    "claimed": "Vous êtes maintenant relié à cette personne.",
+    "unclaimed": "Cette personne n'est plus reliée à vous."
   },
   "edit": {
     "title": "Modifier {{name}}",

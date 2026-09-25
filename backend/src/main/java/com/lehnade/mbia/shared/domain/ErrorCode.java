@@ -20,6 +20,7 @@ public enum ErrorCode {
     NOT_ACCEPTABLE(406, "Not acceptable"),
     CONCURRENT_MODIFICATION(409, "Concurrent modification"),
     POSSIBLE_DUPLICATE(409, "Possible duplicate"),
+    PERSON_ALREADY_CLAIMED(409, "Person already claimed"),
     USER_ALREADY_LINKED(409, "User already linked"),
     UNSUPPORTED_MEDIA_TYPE(415, "Unsupported media type"),
     INTERNAL_ERROR(500, "Internal error");

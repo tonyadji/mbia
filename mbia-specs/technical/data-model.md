@@ -898,6 +898,10 @@ and writes audit/activity as applicable.
 
 Creating a Person with `linkToCurrentUser = true` ("Start with me") applies the same rules in the transaction that creates the Person. When the current User already has a non-MERGED linked Person in the Family, the request is refused with 409 `USER_ALREADY_LINKED` and nothing is created; `uq_person_linked_user_per_family` is the final guard against concurrent requests.
 
+Claiming the Person already linked to the current User changes nothing. A Person linked to another User is refused with 409 `PERSON_ALREADY_CLAIMED`; a User already linked to another non-MERGED Person of the Family with 409 `USER_ALREADY_LINKED`, and `uq_person_linked_user_per_family` is the final guard against concurrent claims.
+
+Unclaim sets `person.linked_user_id = null` and is allowed to the linked User (any role) and to an ADMIN; on a Person linked to nobody, an ADMIN's unclaim changes nothing and anyone else is refused (OQ-009).
+
 Admin unclaim is an audited operation.
 
 ## 22. Duplicate detection

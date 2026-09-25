@@ -4,7 +4,8 @@ import { newUser, registerAndVerify, signInOnKeycloak } from './support/keycloak
 
 /**
  * Phase 1 journey (phase-1-walking-skeleton.md §1): sign up, verify, create a Family, sign out, sign in again;
- * with "Start with me" (PR-17) and the Person profile read & edit (PR-18) from Phase 2.
+ * with "Start with me" (PR-17), the Person profile read & edit (PR-18) and claim / unclaim (PR-19)
+ * from Phase 2.
  */
 for (const { language, locale } of [
   { language: 'fr', locale: 'fr-FR' },
@@ -68,6 +69,18 @@ for (const { language, locale } of [
       await expect(page).toHaveURL(/\/persons\/[0-9a-f-]{36}$/);
       const profileUrl = page.url();
       await expect(page.getByRole('heading', { level: 1 })).toHaveText('Alice');
+      await expect(
+        page.getByText(t(language, 'person:profile.relationship.SELF'), { exact: true }),
+      ).toBeVisible();
+
+      // Unlink, then "This is me" again (PR-19).
+      await page.getByRole('button', { name: t(language, 'person:profile.unclaim') }).click();
+      await expect(page.getByRole('status')).toHaveText(t(language, 'person:profile.unclaimed'));
+      await expect(
+        page.getByText(t(language, 'person:profile.relationship.SELF'), { exact: true }),
+      ).toBeHidden();
+      await page.getByRole('button', { name: t(language, 'person:profile.claim') }).click();
+      await expect(page.getByRole('status')).toHaveText(t(language, 'person:profile.claimed'));
       await expect(
         page.getByText(t(language, 'person:profile.relationship.SELF'), { exact: true }),
       ).toBeVisible();

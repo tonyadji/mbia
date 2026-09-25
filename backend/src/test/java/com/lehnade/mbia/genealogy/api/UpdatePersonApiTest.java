@@ -20,7 +20,7 @@ import org.springframework.test.web.servlet.assertj.MvcTestResult;
 /**
  * PR-18: {@code PATCH /families/{familyId}/persons/{personId}} (openapi {@code updatePerson};
  * mvp.md §6; person-relationships-collaboration.md §2, §11; technical-specification.md §13;
- * OQ-005, OQ-008).
+ * OQ-005, OQ-008). PR-19: linked-Person protection (mvp.md §7, OQ-009).
  */
 class UpdatePersonApiTest extends ApiTestSupport {
 
@@ -87,6 +87,53 @@ class UpdatePersonApiTest extends ApiTestSupport {
         assertThat(persons.update(family.viewer(), family.familyId(), marie, "\"0\"", "{\"lastName\": \"Ndongo\"}"))
                 .hasStatus(HttpStatus.FORBIDDEN).bodyJson().extractingPath("$.code").isEqualTo("PERMISSION_DENIED");
         assertUnchanged();
+    }
+
+    // --- Linked-Person protection: only the linked User or an ADMIN (mvp.md §7, OQ-009) ---
+
+    @Test
+    void contributorCannotEditAPersonLinkedToAnotherMember() {
+        persons.claim(family.viewer(), family.familyId(), marie, "\"0\"");
+
+        assertThat(persons.update(family.contributor(), family.familyId(), marie, "\"1\"",
+                "{\"biography\": \"Autre.\"}"))
+                .hasStatus(HttpStatus.FORBIDDEN).bodyJson().extractingPath("$.code").isEqualTo("PERMISSION_DENIED");
+        assertThat(persons.version(marie)).isEqualTo(1);
+    }
+
+    @Test
+    void adminEditsAPersonLinkedToAnotherMember() {
+        persons.claim(family.viewer(), family.familyId(), marie, "\"0\"");
+
+        assertThat(persons.update(family.admin(), family.familyId(), marie, "\"1\"", "{\"lastName\": \"Ndongo\"}"))
+                .hasStatusOk().bodyJson().extractingPath("$.lastName").isEqualTo("Ndongo");
+    }
+
+    @Test
+    void contributorEditsTheirOwnLinkedPerson() {
+        persons.claim(family.contributor(), family.familyId(), marie, "\"0\"");
+
+        assertThat(persons.update(family.contributor(), family.familyId(), marie, "\"1\"",
+                "{\"lastName\": \"Ndongo\"}"))
+                .hasStatusOk().bodyJson().extractingPath("$.lastName").isEqualTo("Ndongo");
+    }
+
+    @Test
+    void aLinkedViewerStaysReadOnly() {
+        persons.claim(family.viewer(), family.familyId(), marie, "\"0\"");
+
+        assertThat(persons.update(family.viewer(), family.familyId(), marie, "\"1\"", "{\"lastName\": \"Ndongo\"}"))
+                .hasStatus(HttpStatus.FORBIDDEN).bodyJson().extractingPath("$.code").isEqualTo("PERMISSION_DENIED");
+    }
+
+    @Test
+    void contributorEditsAgainOnceTheLinkIsReleased() {
+        persons.claim(family.viewer(), family.familyId(), marie, "\"0\"");
+        persons.unclaim(family.viewer(), family.familyId(), marie, "\"1\"");
+
+        assertThat(persons.update(family.contributor(), family.familyId(), marie, "\"2\"",
+                "{\"lastName\": \"Ndongo\"}"))
+                .hasStatusOk();
     }
 
     // --- Partial update: absent or null keeps, blank clears (OQ-008) ---

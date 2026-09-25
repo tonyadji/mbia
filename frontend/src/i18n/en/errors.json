@@ -3,6 +3,7 @@
   "VALIDATION_FAILED": "Some information is not valid. Check it and try again.",
   "FAMILY_NOT_FOUND": "This family cannot be found, or you are not one of its members.",
   "PERMISSION_DENIED": "Your role in this family does not allow this action.",
+  "PERSON_ALREADY_CLAIMED": "This person is already linked to another member of the family.",
   "USER_ALREADY_LINKED": "You are already in this family's tree.",
   "PERSON_NOT_FOUND": "This person does not exist in this family.",
   "CONCURRENT_MODIFICATION": "Someone changed this information in the meantime. Reload the page and try again."

@@ -13,9 +13,13 @@ import com.lehnade.mbia.api.generated.model.PersonResponse;
 import com.lehnade.mbia.api.generated.model.PersonStatus;
 import com.lehnade.mbia.api.generated.model.UpdatePersonRequest;
 import com.lehnade.mbia.genealogy.application.PersonView;
+import com.lehnade.mbia.genealogy.application.claimperson.ClaimPersonCommand;
+import com.lehnade.mbia.genealogy.application.claimperson.ClaimPersonUseCase;
 import com.lehnade.mbia.genealogy.application.createperson.CreatePersonCommand;
 import com.lehnade.mbia.genealogy.application.createperson.CreatePersonUseCase;
 import com.lehnade.mbia.genealogy.application.getperson.GetPersonUseCase;
+import com.lehnade.mbia.genealogy.application.unclaimperson.UnclaimPersonCommand;
+import com.lehnade.mbia.genealogy.application.unclaimperson.UnclaimPersonUseCase;
 import com.lehnade.mbia.genealogy.application.updateperson.UpdatePersonCommand;
 import com.lehnade.mbia.genealogy.application.updateperson.UpdatePersonUseCase;
 import com.lehnade.mbia.genealogy.domain.Person;
@@ -42,12 +46,16 @@ class PersonsController implements PersonsApi {
     private final CreatePersonUseCase createPerson;
     private final GetPersonUseCase getPerson;
     private final UpdatePersonUseCase updatePerson;
+    private final ClaimPersonUseCase claimPerson;
+    private final UnclaimPersonUseCase unclaimPerson;
 
     PersonsController(CreatePersonUseCase createPerson, GetPersonUseCase getPerson,
-            UpdatePersonUseCase updatePerson) {
+            UpdatePersonUseCase updatePerson, ClaimPersonUseCase claimPerson, UnclaimPersonUseCase unclaimPerson) {
         this.createPerson = createPerson;
         this.getPerson = getPerson;
         this.updatePerson = updatePerson;
+        this.claimPerson = claimPerson;
+        this.unclaimPerson = unclaimPerson;
     }
 
     /** {@code profileMediaAssetId} is ignored: Persons have no photo in Phase 2 (OQ-005). */
@@ -95,12 +103,16 @@ class PersonsController implements PersonsApi {
 
     @Override
     public ResponseEntity<PersonResponse> claimPerson(String ifMatch, UUID familyId, UUID personId) {
-        throw notAvailableYet();
+        PersonView person = claimPerson.claim(
+                new ClaimPersonCommand(familyId, personId, ETags.parseIfMatch(ifMatch)));
+        return ResponseEntity.ok().eTag(ETags.of(person.person().version())).body(toResponse(person));
     }
 
     @Override
     public ResponseEntity<PersonResponse> unclaimPerson(String ifMatch, UUID familyId, UUID personId) {
-        throw notAvailableYet();
+        PersonView person = unclaimPerson.unclaim(
+                new UnclaimPersonCommand(familyId, personId, ETags.parseIfMatch(ifMatch)));
+        return ResponseEntity.ok().eTag(ETags.of(person.person().version())).body(toResponse(person));
     }
 
     @Override

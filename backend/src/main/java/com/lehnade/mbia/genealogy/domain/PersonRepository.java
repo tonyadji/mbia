@@ -20,6 +20,8 @@ public interface PersonRepository {
      * @return the Person as persisted, with its version incremented
      * @throws org.springframework.dao.OptimisticLockingFailureException when the Person changed
      *     since it was read
+     * @throws com.lehnade.mbia.shared.domain.DomainException {@code USER_ALREADY_LINKED} when the
+     *     Person's linked User already represents another non-MERGED Person of the Family
      */
     Person update(Person person);
 

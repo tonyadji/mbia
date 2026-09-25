@@ -136,6 +136,10 @@ class PersonJpaEntity {
         this.updatedAt = updatedAt;
     }
 
+    void changeLinkedUser(UUID linkedUserId) {
+        this.linkedUserId = linkedUserId;
+    }
+
     UUID id() {
         return id;
     }
