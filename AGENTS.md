@@ -64,6 +64,7 @@ cd frontend && npm ci
 cd frontend && npm run generate:api       # regenerate the TypeScript client from openapi.yaml
 cd frontend && npm run typecheck
 cd frontend && npm run lint
+cd frontend && npm run i18n:check        # French and English translations have the same keys, no empty value
 cd frontend && npm test                   # Vitest
 cd frontend && npm run test:e2e           # Playwright (needs backend + docker compose)
 cd frontend && npm run dev                # http://localhost:5173
