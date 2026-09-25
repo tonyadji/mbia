@@ -2245,6 +2245,14 @@ components:
             - MEDIA_TOO_LARGE
             - MEDIA_INVALID
             - MEDIA_NOT_READY
+            - VALIDATION_FAILED
+            - INTERNAL_ERROR
+            - AUTHENTICATION_REQUIRED
+            - FAMILY_NOT_FOUND
+            - RESOURCE_NOT_FOUND
+            - METHOD_NOT_ALLOWED
+            - NOT_ACCEPTABLE
+            - UNSUPPORTED_MEDIA_TYPE
         detail:
           type: string
         traceId:

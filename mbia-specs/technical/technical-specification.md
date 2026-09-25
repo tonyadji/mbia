@@ -252,6 +252,14 @@ CONCURRENT_MODIFICATION
 
 The frontend translates stable codes into localized messages. It must not parse English server messages to determine behavior.
 
+Every error response is `application/problem+json` shaped as the OpenAPI `ProblemDetails` schema:
+
+- `type` is `<problems base URI>/<code in kebab-case>`, e.g. `https://mbia.example.com/problems/validation-failed`; the base URI is configuration (`mbia.problems.base-uri`).
+- `traceId` equals the `X-Request-Id` response header. The server reuses the request's `X-Request-Id` when it is safe (`[A-Za-z0-9._-]`, at most 64 characters), otherwise it generates one.
+- Bean Validation errors return 400 `VALIDATION_FAILED` with `fieldErrors`; `fieldErrors[].code` is the constraint name in UPPER_SNAKE case (`@NotBlank` → `NOT_BLANK`).
+- Requests the framework rejects before any use case use generic codes: unreadable body, wrong parameter type or missing parameter → 400 `VALIDATION_FAILED`; unknown path → 404 `RESOURCE_NOT_FOUND`; 405 `METHOD_NOT_ALLOWED`; 406 `NOT_ACCEPTABLE`; 415 `UNSUPPORTED_MEDIA_TYPE`.
+- Unexpected errors return 500 `INTERNAL_ERROR` with a generic message; the cause is only logged. No response ever contains a stack trace, SQL or exception class name.
+
 ## 13. Optimistic concurrency
 
 Mutable resources expose a version.
