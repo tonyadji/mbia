@@ -1,0 +1,33 @@
+{
+  "title": "Account settings",
+  "open": "Account settings",
+  "back": "Back",
+  "displayName": {
+    "label": "Display name",
+    "save": "Save",
+    "saved": "Your name has been saved.",
+    "required": "Enter the name to display.",
+    "tooLong": "The name cannot be longer than {{max}} characters."
+  },
+  "email": {
+    "label": "Email address",
+    "managed": "It is managed by your sign-in account."
+  },
+  "language": {
+    "label": "Language",
+    "fr": "Français",
+    "en": "English"
+  },
+  "security": {
+    "title": "Sign-in",
+    "changePassword": "Change my password"
+  },
+  "deleteAccount": {
+    "title": "Delete my account",
+    "explanation": "To delete your account, write to support. Your request is handled within 30 days: you leave all your families, your sign-in account is deleted and your name and email address are erased from Mbia.",
+    "contentKept": "What you shared stays in your families, attributed to “Former member”, unless you also ask for specific content to be removed.",
+    "contact": "Contact support",
+    "emailSubject": "Deleting my Mbia account",
+    "noContact": "The support address is not available yet."
+  }
+}
