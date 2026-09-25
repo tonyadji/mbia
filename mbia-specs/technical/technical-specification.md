@@ -362,7 +362,7 @@ cd frontend && npm install && npm run dev
 Local dependencies started by `docker compose`:
 
 - PostgreSQL (Mbia database + Keycloak database);
-- MinIO;
+- RustFS (S3-compatible storage, ADR-009);
 - Keycloak with the `mbia` realm imported and test users;
 - Mailpit (catches all emails, including Keycloak emails).
 

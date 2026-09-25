@@ -96,7 +96,7 @@ Implement PR-XX from mbia-specs/delivery/phase-1-walking-skeleton.md.
 - Create empty top-level folders `backend/`, `frontend/`, `infrastructure/` (with a short `README.md` each stating their purpose).
 - `docker-compose.yml` with:
   - PostgreSQL 18 (port 5432) with an init script creating two databases: `mbia` and `keycloak`, each with its own user;
-  - MinIO (ports 9000/9001) plus a one-shot init container creating the private bucket `mbia-media`;
+  - RustFS (ports 9000/9001, ADR-009) plus a one-shot init container creating the private bucket `mbia-media`;
   - Mailpit (SMTP 1025, UI 8025);
   - named volumes, health checks on every service.
 - `.env.example` with every variable used by compose (no real secrets).
@@ -114,7 +114,7 @@ Implement PR-XX from mbia-specs/delivery/phase-1-walking-skeleton.md.
 - Bucket `mbia-media` exists and is not publicly readable.
 - `docker compose down -v` removes everything cleanly.
 
-**Human check:** run compose, open MinIO console and Mailpit UI, connect to both databases.
+**Human check:** run compose, open RustFS console and Mailpit UI, connect to both databases.
 
 ---
 

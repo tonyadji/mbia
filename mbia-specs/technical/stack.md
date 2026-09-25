@@ -19,7 +19,7 @@
 - ArchUnit (or Spring Modulith verification) for module-boundary tests
 - OpenAPI Generator (Spring server interfaces generated from `api/openapi.yaml`)
 - TwelveMonkeys ImageIO + `metadata-extractor` for image processing (ADR-007)
-- AWS SDK for Java v2 (S3 client, compatible with MinIO)
+- AWS SDK for Java v2 (S3 client, compatible with RustFS locally)
 
 ## Frontend
 
@@ -40,7 +40,7 @@
 
 - Monorepo
 - Docker / Docker Compose for local dependencies
-- S3-compatible object storage (MinIO locally, S3-compatible managed storage in production)
+- S3-compatible object storage (RustFS locally, ADR-009; S3-compatible managed storage in production)
 - Keycloak as OIDC identity provider (ADR-005), image tag pinned in `docker-compose.yml`
 - Transactional email provider (SMTP); Mailpit locally
 - PostHog Cloud EU for product analytics (ADR-008)
