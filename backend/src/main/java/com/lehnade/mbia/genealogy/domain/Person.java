@@ -54,6 +54,19 @@ public final class Person {
                 version);
     }
 
+    /**
+     * This Person with new identity and profile data, changed by {@code updatedBy}. The version is
+     * the one the change was built from; persisting the change increments it.
+     */
+    public Person update(PersonDetails newDetails, UUID updatedBy, Instant now) {
+        return new Person(id, familyId, newDetails, linkedUserId, status, createdBy, updatedBy, createdAt, now,
+                version);
+    }
+
+    public boolean isActive() {
+        return status == PersonStatus.ACTIVE;
+    }
+
     public PersonId id() {
         return id;
     }

@@ -1,6 +1,8 @@
 package com.lehnade.mbia.genealogy;
 
+import com.jayway.jsonpath.JsonPath;
 import com.lehnade.mbia.TestJwts;
+import com.lehnade.mbia.family.FamilyFixtures;
 import java.util.UUID;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
@@ -8,7 +10,7 @@ import org.springframework.jdbc.core.simple.JdbcClient;
 import org.springframework.test.web.servlet.assertj.MockMvcTester;
 import org.springframework.test.web.servlet.assertj.MvcTestResult;
 
-/** Persons created through {@code POST /families/{familyId}/persons}, and their rows. */
+/** Persons created, read and changed through the Persons API, and their rows. */
 public final class PersonFixtures {
 
     private final MockMvcTester mvc;
@@ -25,6 +27,36 @@ public final class PersonFixtures {
                 .contentType(MediaType.APPLICATION_JSON)
                 .content(json)
                 .exchange();
+    }
+
+    /** @return the id of a Person created by {@code token}, which must be allowed to create it */
+    public UUID createId(TestJwts.Token token, UUID familyId, String json) {
+        return UUID.fromString(JsonPath.read(FamilyFixtures.body(create(token, familyId, json)), "$.id"));
+    }
+
+    public MvcTestResult get(TestJwts.Token token, UUID familyId, UUID personId) {
+        return mvc.get().uri("/api/v1/families/{familyId}/persons/{personId}", familyId, personId)
+                .header(HttpHeaders.AUTHORIZATION, token.bearer())
+                .exchange();
+    }
+
+    public MvcTestResult update(TestJwts.Token token, UUID familyId, UUID personId, String ifMatch, String json) {
+        var request = mvc.patch().uri("/api/v1/families/{familyId}/persons/{personId}", familyId, personId)
+                .header(HttpHeaders.AUTHORIZATION, token.bearer())
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(json);
+        if (ifMatch != null) {
+            request = request.header(HttpHeaders.IF_MATCH, ifMatch);
+        }
+        return request.exchange();
+    }
+
+    public long version(UUID personId) {
+        return jdbc.sql("SELECT version FROM persons WHERE id = ?").param(personId).query(Long.class).single();
+    }
+
+    public void archive(UUID personId) {
+        jdbc.sql("UPDATE persons SET status = 'ARCHIVED', archived_at = now() WHERE id = ?").param(personId).update();
     }
 
     public long count(UUID familyId) {

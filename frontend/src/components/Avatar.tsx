@@ -5,12 +5,28 @@ export function initialOf(displayName: string | null | undefined, email: string)
   return (Array.from(source)[0] ?? '').toLocaleUpperCase();
 }
 
-/** Round avatar showing the User's initial (design-guidelines.md §7); decorative. */
-export function Avatar({ displayName, email }: { displayName?: string | null; email: string }) {
+const sizes = {
+  md: 'size-10 text-body',
+  lg: 'size-20 text-display',
+} as const;
+
+/**
+ * Round avatar showing the initial of a User or a Person (design-guidelines.md §7); decorative.
+ * Persons have no photo in Phase 2.
+ */
+export function Avatar({
+  displayName,
+  email = '',
+  size = 'md',
+}: {
+  displayName?: string | null;
+  email?: string;
+  size?: keyof typeof sizes;
+}) {
   return (
     <span
       aria-hidden="true"
-      className="inline-flex size-10 items-center justify-center rounded-full bg-primary text-body font-semibold text-on-primary"
+      className={`inline-flex shrink-0 items-center justify-center rounded-full bg-primary font-semibold text-on-primary ${sizes[size]}`}
     >
       {initialOf(displayName, email)}
     </span>

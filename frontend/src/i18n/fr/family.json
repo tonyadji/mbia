@@ -18,7 +18,8 @@
     "addSomeoneElse": "Ajouter quelqu'un d'autre",
     "addPerson": "Ajouter une personne",
     "personAdded": "{{name}} fait maintenant partie de la famille.",
-    "selfAdded": "Vous faites maintenant partie de la famille {{family}}."
+    "selfAdded": "Vous faites maintenant partie de la famille {{family}}.",
+    "viewProfile": "Voir le profil"
   },
   "chooser": {
     "title": "Vos familles"

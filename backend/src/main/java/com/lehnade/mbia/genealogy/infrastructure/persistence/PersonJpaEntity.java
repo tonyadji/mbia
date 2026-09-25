@@ -115,4 +115,112 @@ class PersonJpaEntity {
         this.createdAt = createdAt;
         this.updatedAt = updatedAt;
     }
+
+    void changeDetails(String firstName, String middleNames, String lastName, String preferredName, String gender,
+            LocalDate birthDate, Short birthYear, String birthDatePrecision, boolean deceased, LocalDate deathDate,
+            Short deathYear, String deathDatePrecision, String biography, UUID updatedBy, Instant updatedAt) {
+        this.firstName = firstName;
+        this.middleNames = middleNames;
+        this.lastName = lastName;
+        this.preferredName = preferredName;
+        this.gender = gender;
+        this.birthDate = birthDate;
+        this.birthYear = birthYear;
+        this.birthDatePrecision = birthDatePrecision;
+        this.deceased = deceased;
+        this.deathDate = deathDate;
+        this.deathYear = deathYear;
+        this.deathDatePrecision = deathDatePrecision;
+        this.biography = biography;
+        this.updatedBy = updatedBy;
+        this.updatedAt = updatedAt;
+    }
+
+    UUID id() {
+        return id;
+    }
+
+    UUID familyId() {
+        return familyId;
+    }
+
+    String firstName() {
+        return firstName;
+    }
+
+    String middleNames() {
+        return middleNames;
+    }
+
+    String lastName() {
+        return lastName;
+    }
+
+    String preferredName() {
+        return preferredName;
+    }
+
+    String gender() {
+        return gender;
+    }
+
+    LocalDate birthDate() {
+        return birthDate;
+    }
+
+    Short birthYear() {
+        return birthYear;
+    }
+
+    String birthDatePrecision() {
+        return birthDatePrecision;
+    }
+
+    boolean deceased() {
+        return deceased;
+    }
+
+    LocalDate deathDate() {
+        return deathDate;
+    }
+
+    Short deathYear() {
+        return deathYear;
+    }
+
+    String deathDatePrecision() {
+        return deathDatePrecision;
+    }
+
+    String biography() {
+        return biography;
+    }
+
+    UUID linkedUserId() {
+        return linkedUserId;
+    }
+
+    String status() {
+        return status;
+    }
+
+    UUID createdBy() {
+        return createdBy;
+    }
+
+    UUID updatedBy() {
+        return updatedBy;
+    }
+
+    Instant createdAt() {
+        return createdAt;
+    }
+
+    Instant updatedAt() {
+        return updatedAt;
+    }
+
+    long version() {
+        return version;
+    }
 }

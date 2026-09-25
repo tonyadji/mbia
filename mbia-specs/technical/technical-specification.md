@@ -275,7 +275,7 @@ Stale updates return conflict rather than silently overwriting newer data.
 - A versioned resource returns its version as a strong `ETag`: `"<version>"`, for example `"3"`.
 - A mutation sends it back in `If-Match` (exactly one such tag; weak tags, `*` and lists are rejected). Missing or malformed `If-Match` → 400 `VALIDATION_FAILED`.
 - An `If-Match` different from the persisted version → 409 `CONCURRENT_MODIFICATION`. The write itself is also guarded by the `version` column, so a change committed between the check and the write returns the same 409.
-- Each successful mutation increments the version by one.
+- Each successful mutation increments the version by one. A request that changes nothing (same values, or only ignored fields) is checked like any other, then answers 200 without writing: the version is unchanged (OQ-008).
 
 This applies especially to Person, relationship and editable Memory flows.
 

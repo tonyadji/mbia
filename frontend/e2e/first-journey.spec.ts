@@ -4,7 +4,7 @@ import { newUser, registerAndVerify, signInOnKeycloak } from './support/keycloak
 
 /**
  * Phase 1 journey (phase-1-walking-skeleton.md §1): sign up, verify, create a Family, sign out, sign in again;
- * with "Start with me" from Phase 2 (PR-17).
+ * with "Start with me" (PR-17) and the Person profile read & edit (PR-18) from Phase 2.
  */
 for (const { language, locale } of [
   { language: 'fr', locale: 'fr-FR' },
@@ -14,8 +14,9 @@ for (const { language, locale } of [
     // The UI language comes from the browser language (localization-and-kinship-labels.md §1).
     test.use({ locale });
 
-    test('a new User signs up, creates a Family, starts with themselves and finds it again after signing in', async ({
+    test('a new User signs up, creates a Family, starts with themselves, edits their profile and finds it again after signing in', async ({
       page,
+      context,
       request,
     }) => {
       const user = newUser();
@@ -52,7 +53,7 @@ for (const { language, locale } of [
       await page.getByRole('button', { name: t(language, 'person:form.submitMe') }).click();
 
       await expect(page).toHaveURL(familyUrl);
-      await expect(page.getByRole('status')).toHaveText(
+      await expect(page.getByRole('status')).toContainText(
         t(language, 'family:home.selfAdded', { family: familyName }),
       );
       await expect(
@@ -61,6 +62,48 @@ for (const { language, locale } of [
       await expect(
         page.getByRole('link', { name: t(language, 'family:home.addPerson') }),
       ).toBeVisible();
+
+      // Profile (SCREEN-005) and Edit Person (SCREEN-012).
+      await page.getByRole('link', { name: t(language, 'family:home.viewProfile') }).click();
+      await expect(page).toHaveURL(/\/persons\/[0-9a-f-]{36}$/);
+      const profileUrl = page.url();
+      await expect(page.getByRole('heading', { level: 1 })).toHaveText('Alice');
+      await expect(
+        page.getByText(t(language, 'person:profile.relationship.SELF'), { exact: true }),
+      ).toBeVisible();
+
+      // A second tab opens the same form before the first one saves.
+      const otherTab = await context.newPage();
+      await otherTab.goto(`${profileUrl}/edit`);
+      await expect(
+        otherTab.getByLabel(t(language, 'person:form.lastName'), { exact: true }),
+      ).toHaveValue('');
+
+      await page.getByRole('link', { name: t(language, 'person:profile.edit') }).click();
+      await page.getByLabel(t(language, 'person:form.lastName'), { exact: true }).fill('Martin');
+      await page
+        .getByLabel(t(language, 'person:form.birthPrecision'), { exact: true })
+        .selectOption('YEAR_ONLY');
+      await page.getByLabel(t(language, 'person:form.birthYear'), { exact: true }).fill('1990');
+      await page.getByRole('button', { name: t(language, 'person:edit.submit') }).click();
+      await expect(page).toHaveURL(profileUrl);
+      await expect(page.getByRole('heading', { level: 1 })).toHaveText('Alice Martin');
+      await expect(
+        page.getByText(t(language, 'person:profile.birthYear', { year: '1990' })),
+      ).toBeVisible();
+
+      // The stale tab is told to reload; nothing is overwritten.
+      await otherTab.getByLabel(t(language, 'person:form.lastName'), { exact: true }).fill('Stale');
+      await otherTab.getByRole('button', { name: t(language, 'person:edit.submit') }).click();
+      await expect(otherTab.getByRole('alert')).toContainText(t(language, 'person:edit.conflict'));
+      await otherTab.getByRole('button', { name: t(language, 'person:edit.reload') }).click();
+      await expect(
+        otherTab.getByLabel(t(language, 'person:form.lastName'), { exact: true }),
+      ).toHaveValue('Martin');
+      await otherTab.close();
+
+      await page.getByRole('link', { name: t(language, 'settings:back') }).click();
+      await expect(page).toHaveURL(familyUrl);
 
       await page.getByRole('link', { name: t(language, 'settings:open') }).click();
       await page.getByRole('button', { name: t(language, 'auth:signOut') }).click();

@@ -389,6 +389,10 @@ describe('Family screens', () => {
         'Vous faites maintenant partie de la famille ADJI.',
       );
       expect(router.state.location.pathname).toBe(`/families/${ADJI_ID}`);
+      expect(screen.getByRole('link', { name: 'Voir le profil' })).toHaveAttribute(
+        'href',
+        `/families/${ADJI_ID}/persons/${MARIE_ID}`,
+      );
       expect(await screen.findByText('1 personne')).toBeInTheDocument();
       expect(await postedBody(api)).toEqual({
         firstName: 'Marie',
