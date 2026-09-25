@@ -12,7 +12,7 @@ import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.NullSource;
 import org.junit.jupiter.params.provider.ValueSource;
 
-/** Family name rules of PR-13: trimmed, not blank, 1–200 characters. */
+/** Family name rules of PR-13 and rename of PR-14: trimmed, not blank, 1–200 characters. */
 class FamilyTest {
 
     private static final Instant NOW = Instant.parse("2026-09-25T10:00:00Z");
@@ -70,6 +70,42 @@ class FamilyTest {
 
         assertThat(Family.create(FamilyId.newId(), name, CREATOR, NOW).name()).isEqualTo(name);
         assertInvalid(name + "🌳");
+    }
+
+    @Test
+    void renameTrimsTheNewNameAndKeepsIdentityAndVersion() {
+        Family family = Family.restore(FamilyId.newId(), "Famille Mbida", CREATOR, NOW, NOW, 4);
+        Instant later = NOW.plusSeconds(60);
+
+        Family renamed = family.rename("  Famille Ndongo ", later);
+
+        assertThat(renamed.id()).isEqualTo(family.id());
+        assertThat(renamed.name()).isEqualTo("Famille Ndongo");
+        assertThat(renamed.createdBy()).isEqualTo(CREATOR);
+        assertThat(renamed.createdAt()).isEqualTo(NOW);
+        assertThat(renamed.updatedAt()).isEqualTo(later);
+        assertThat(renamed.version()).isEqualTo(4);
+        assertThat(family.name()).isEqualTo("Famille Mbida");
+    }
+
+    @ParameterizedTest
+    @NullSource
+    @ValueSource(strings = {"", "   "})
+    void renameToABlankNameIsRejected(String name) {
+        Family family = Family.create(FamilyId.newId(), "Famille Mbida", CREATOR, NOW);
+
+        assertThatThrownBy(() -> family.rename(name, NOW))
+                .isInstanceOfSatisfying(DomainException.class,
+                        e -> assertThat(e.code()).isEqualTo(ErrorCode.VALIDATION_FAILED));
+    }
+
+    @Test
+    void renameToMoreThan200CharactersIsRejected() {
+        Family family = Family.create(FamilyId.newId(), "Famille Mbida", CREATOR, NOW);
+
+        assertThatThrownBy(() -> family.rename("x".repeat(201), NOW))
+                .isInstanceOfSatisfying(DomainException.class,
+                        e -> assertThat(e.code()).isEqualTo(ErrorCode.VALIDATION_FAILED));
     }
 
     private static void assertInvalid(String name) {

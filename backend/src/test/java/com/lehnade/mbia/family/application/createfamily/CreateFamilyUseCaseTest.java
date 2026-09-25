@@ -6,9 +6,9 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.doThrow;
 
 import com.lehnade.mbia.ApiTestSupport;
+import com.lehnade.mbia.family.application.FamilyRole;
 import com.lehnade.mbia.family.application.FamilyView;
 import com.lehnade.mbia.family.domain.FamilyMembershipRepository;
-import com.lehnade.mbia.family.domain.MembershipRole;
 import java.sql.Timestamp;
 import java.time.Instant;
 import java.util.Map;
@@ -54,7 +54,7 @@ class CreateFamilyUseCaseTest extends ApiTestSupport {
         assertThat(membership.get("joined_at")).isNotNull();
 
         assertThat(view.name()).isEqualTo("Famille Mbida");
-        assertThat(view.myRole()).isEqualTo(MembershipRole.ADMIN);
+        assertThat(view.myRole()).isEqualTo(FamilyRole.ADMIN);
         assertThat(view.version()).isZero();
         assertThat(view.stats().activeMemberCount()).isEqualTo(1);
     }

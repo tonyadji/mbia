@@ -168,7 +168,12 @@ membership -> which Family may they access?
 role + domain rule -> what may they do?
 ```
 
-Every Family-scoped backend use case verifies ACTIVE membership.
+Every Family-scoped backend use case verifies ACTIVE membership, as its first step, through the `family` module's `FamilyAccess` guard (the only entry point other modules use):
+
+- unknown Family, or caller without an ACTIVE membership in it (never a member, or `REMOVED`) → **404 `FAMILY_NOT_FOUND`, never 403**. Both cases return the same response, so an outsider cannot learn whether a Family exists;
+- ACTIVE member whose role does not allow the operation → 403 `PERMISSION_DENIED`.
+
+The same applies to any resource of a Family the caller cannot access: it answers as if it did not exist.
 
 Frontend-hidden actions are UX only, never a security mechanism.
 
@@ -265,6 +270,11 @@ Every error response is `application/problem+json` shaped as the OpenAPI `Proble
 Mutable resources expose a version.
 
 Stale updates return conflict rather than silently overwriting newer data.
+
+- A versioned resource returns its version as a strong `ETag`: `"<version>"`, for example `"3"`.
+- A mutation sends it back in `If-Match` (exactly one such tag; weak tags, `*` and lists are rejected). Missing or malformed `If-Match` → 400 `VALIDATION_FAILED`.
+- An `If-Match` different from the persisted version → 409 `CONCURRENT_MODIFICATION`. The write itself is also guarded by the `version` column, so a change committed between the check and the write returns the same 409.
+- Each successful mutation increments the version by one.
 
 This applies especially to Person, relationship and editable Memory flows.
 

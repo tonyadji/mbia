@@ -3,6 +3,7 @@ package com.lehnade.mbia.shared.api.error;
 import com.lehnade.mbia.shared.api.tracing.RequestIdFilter;
 import com.lehnade.mbia.shared.domain.DomainException;
 import com.lehnade.mbia.shared.domain.ErrorCode;
+import com.lehnade.mbia.shared.domain.Versions;
 import jakarta.validation.ConstraintViolationException;
 import java.util.List;
 import java.util.Map;
@@ -12,6 +13,7 @@ import java.util.stream.Stream;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.dao.OptimisticLockingFailureException;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatusCode;
 import org.springframework.http.MediaType;
@@ -50,6 +52,15 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
     ResponseEntity<Object> handleDomainException(DomainException ex, WebRequest request) {
         Map<String, Object> details = ex.details().isEmpty() ? null : ex.details();
         return respond(problem(ex.code(), ex.detail(), null, details), new HttpHeaders(), request);
+    }
+
+    /**
+     * The row changed between the use case's version check and its write (the JPA {@code @Version}
+     * guard): the same conflict as a stale {@code If-Match} (architecture.md §12).
+     */
+    @ExceptionHandler(OptimisticLockingFailureException.class)
+    ResponseEntity<Object> handleOptimisticLockingFailure(OptimisticLockingFailureException ex, WebRequest request) {
+        return respond(generic(ErrorCode.CONCURRENT_MODIFICATION), new HttpHeaders(), request);
     }
 
     @ExceptionHandler(ConstraintViolationException.class)
@@ -163,6 +174,7 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
             case METHOD_NOT_ALLOWED -> "This HTTP method is not supported for this path.";
             case NOT_ACCEPTABLE -> "No acceptable representation is available.";
             case UNSUPPORTED_MEDIA_TYPE -> "This content type is not supported.";
+            case CONCURRENT_MODIFICATION -> Versions.STALE_DETAIL;
             default -> "An unexpected error occurred.";
         };
     }

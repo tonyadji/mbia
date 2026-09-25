@@ -4,10 +4,8 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 import com.lehnade.mbia.ApiTestSupport;
 import com.lehnade.mbia.TestJwts;
+import com.lehnade.mbia.family.FamilyFixtures;
 import com.jayway.jsonpath.JsonPath;
-import java.nio.charset.StandardCharsets;
-import java.sql.Timestamp;
-import java.time.Instant;
 import java.util.List;
 import java.util.UUID;
 import org.junit.jupiter.api.Test;
@@ -99,7 +97,7 @@ class FamiliesApiTest extends ApiTestSupport {
         UUID aliceFamily = createOk(alice, "Famille Mbida");
         createOk(bob, "Famille Atangana");
         UUID bobId = userId(bob);
-        insertMembership(aliceFamily, bobId, "CONTRIBUTOR", "ACTIVE");
+        families().insertMembership(aliceFamily, bobId, "CONTRIBUTOR", "ACTIVE");
         assertThat(familyNamesOf(bob)).containsExactlyInAnyOrder("Famille Atangana", "Famille Mbida");
 
         jdbc.sql("""
@@ -117,7 +115,7 @@ class FamiliesApiTest extends ApiTestSupport {
         TestJwts.Token bob = TestJwts.newUserToken();
         UUID aliceFamily = createOk(alice, "Famille Mbida");
         assertThat(list(bob)).hasStatusOk();
-        insertMembership(aliceFamily, userId(bob), "VIEWER", "ACTIVE");
+        families().insertMembership(aliceFamily, userId(bob), "VIEWER", "ACTIVE");
 
         assertThat(list(bob)).bodyJson().satisfies(json -> {
             json.assertThat().extractingPath("$[0].myRole").isEqualTo("VIEWER");
@@ -152,9 +150,7 @@ class FamiliesApiTest extends ApiTestSupport {
     }
 
     private UUID createOk(TestJwts.Token token, String name) {
-        MvcTestResult result = create(token, "{\"name\": \"" + name + "\"}");
-        assertThat(result).hasStatus(HttpStatus.CREATED);
-        return UUID.fromString(JsonPath.read(body(result), "$.id"));
+        return families().createFamily(token, name);
     }
 
     private MvcTestResult list(TestJwts.Token token) {
@@ -164,25 +160,10 @@ class FamiliesApiTest extends ApiTestSupport {
     private List<Object> familyNamesOf(TestJwts.Token token) {
         MvcTestResult result = list(token);
         assertThat(result).hasStatusOk();
-        return JsonPath.read(body(result), "$[*].name");
+        return JsonPath.read(FamilyFixtures.body(result), "$[*].name");
     }
 
     private UUID userId(TestJwts.Token token) {
-        return jdbc.sql("SELECT id FROM users WHERE identity_provider_subject = ?")
-                .param(token.subject()).query(UUID.class).single();
-    }
-
-    private void insertMembership(UUID familyId, UUID userId, String role, String status) {
-        Timestamp now = Timestamp.from(Instant.now());
-        jdbc.sql("""
-                INSERT INTO family_memberships (id, family_id, user_id, role, status, joined_at, created_at, updated_at)
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?)
-                """)
-                .params(UUID.randomUUID(), familyId, userId, role, status, now, now, now)
-                .update();
-    }
-
-    private static String body(MvcTestResult result) {
-        return new String(result.getResponse().getContentAsByteArray(), StandardCharsets.UTF_8);
+        return families().userId(token);
     }
 }

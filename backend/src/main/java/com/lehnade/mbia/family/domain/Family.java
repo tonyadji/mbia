@@ -40,6 +40,14 @@ public final class Family {
         return new Family(id, name, createdBy, createdAt, updatedAt, version);
     }
 
+    /**
+     * The same Family under a new name, following the creation rules. The version is unchanged:
+     * persisting the rename increments it.
+     */
+    public Family rename(String newName, Instant now) {
+        return new Family(id, validName(newName), createdBy, createdAt, now, version);
+    }
+
     private static String validName(String name) {
         String trimmed = name == null ? "" : name.strip();
         if (trimmed.isEmpty()) {
