@@ -47,6 +47,12 @@
     },
     "family": "Family",
     "noRelatives": "No relatives are linked to this person yet.",
+    "relatives": {
+      "parents": "Parents",
+      "partners": "Partners",
+      "children": "Children",
+      "siblings": "Siblings"
+    },
     "about": "About",
     "name": "First and last name",
     "claim": "This is me",

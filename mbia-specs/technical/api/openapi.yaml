@@ -864,6 +864,14 @@ paths:
         the current user's linked Person, otherwise the ACTIVE Person with the most
         active relationships (ties: earliest created, then lowest id). For an empty family, the
         response has `focusPersonId = null` and no nodes.
+
+        A requested focus that is ARCHIVED or MERGED is replaced the same way, as is a
+        linked Person that is not ACTIVE; `focusPersonId` names the focus actually used.
+        A focus unknown in this family returns 404 `PERSON_NOT_FOUND`.
+
+        Order: `nodes` start with the focus, then follow birth (a year-only date counts
+        as the start of that year, unknown births last), then Person creation, then id;
+        `edges` follow relationship creation, then id.
       parameters:
         - name: focusPersonId
           in: query

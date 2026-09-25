@@ -68,6 +68,17 @@ Rules:
 - Never invent a label that is not in this table (the mockup's "Cousin éloigné" is out of scope and shows as `RELATED`).
 - On the profile, `NONE_KNOWN` may be explained as: FR "Aucun lien connu dans Mbia pour l'instant" / EN "No known relationship in Mbia yet". Never state that the people are unrelated.
 
+## 3bis. Family section headings
+
+The profile Family section (SCREEN-005) groups the Person's relatives under these headings (OQ-016). Each relative then shows its §3 badge.
+
+| Group | FR | EN |
+|---|---|---|
+| parents | Parents | Parents |
+| partners | Partenaires | Partners |
+| children | Enfants | Children |
+| siblings | Frères et sœurs | Siblings |
+
 ## 4. Path explanation
 
 A `KinshipPathStep` `{fromPersonId, toPersonId, relation}` means: *`to` is the `relation` of `from`*.

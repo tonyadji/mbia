@@ -47,6 +47,12 @@
     },
     "family": "Famille",
     "noRelatives": "Aucun proche n'est encore relié à cette personne.",
+    "relatives": {
+      "parents": "Parents",
+      "partners": "Partenaires",
+      "children": "Enfants",
+      "siblings": "Frères et sœurs"
+    },
     "about": "À propos",
     "name": "Prénom et nom",
     "claim": "C'est moi",

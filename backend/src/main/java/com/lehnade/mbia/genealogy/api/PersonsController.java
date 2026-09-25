@@ -2,7 +2,6 @@ package com.lehnade.mbia.genealogy.api;
 
 import com.lehnade.mbia.api.generated.PersonsApi;
 import com.lehnade.mbia.api.generated.model.CreatePersonRequest;
-import com.lehnade.mbia.api.generated.model.DatePrecision;
 import com.lehnade.mbia.api.generated.model.Gender;
 import com.lehnade.mbia.api.generated.model.KinshipCode;
 import com.lehnade.mbia.api.generated.model.MergePersonRequest;
@@ -144,8 +143,8 @@ class PersonsController implements PersonsApi {
         Person person = view.person();
         PersonDetails details = person.details();
         return new PersonResponse(person.id().value(), person.familyId(), details.firstName(),
-                Gender.fromValue(details.gender().name()), toApi(details.birth()), details.deceased(),
-                toApi(details.death()), PersonStatus.fromValue(person.status().name()), person.version(),
+                Gender.fromValue(details.gender().name()), PersonApiMapping.toApi(details.birth()), details.deceased(),
+                PersonApiMapping.toApi(details.death()), PersonStatus.fromValue(person.status().name()), person.version(),
                 details.biography(), toDateTime(person.createdAt()), toDateTime(person.updatedAt()))
                 .middleNames(details.middleNames())
                 .lastName(details.lastName())
@@ -169,12 +168,6 @@ class PersonsController implements PersonsApi {
                 date.getPrecision() == null ? null
                         : com.lehnade.mbia.genealogy.domain.DatePrecision.valueOf(date.getPrecision().name()),
                 date.getDate(), date.getYear());
-    }
-
-    private static PartialDate toApi(com.lehnade.mbia.genealogy.domain.PartialDate date) {
-        return new PartialDate(DatePrecision.fromValue(date.precision().name()))
-                .date(date.date())
-                .year(date.year());
     }
 
     private static OffsetDateTime toDateTime(Instant instant) {

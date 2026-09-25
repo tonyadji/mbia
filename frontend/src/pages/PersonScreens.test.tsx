@@ -65,6 +65,52 @@ function person(overrides: Record<string, unknown> = {}) {
   };
 }
 
+/** A tree node, as returned by `GET /tree` (PersonSummary + continuation indicators). */
+function treeNode(id: string, firstName: string, overrides: Record<string, unknown> = {}) {
+  return {
+    id,
+    familyId: ADJI_ID,
+    firstName,
+    displayName: firstName,
+    gender: 'UNKNOWN',
+    birth: { precision: 'UNKNOWN' },
+    isDeceased: false,
+    death: { precision: 'UNKNOWN' },
+    status: 'ACTIVE',
+    relationshipToCurrentUser: null,
+    profilePictureUrl: null,
+    version: 0,
+    hasMoreParents: false,
+    hasMoreChildren: false,
+    ...overrides,
+  };
+}
+
+function parentOf(source: string, target: string) {
+  return {
+    relationshipId: `${source}-${target}`,
+    type: 'PARENT_OF',
+    sourcePersonId: source,
+    targetPersonId: target,
+    version: 0,
+  };
+}
+
+function partners(source: string, target: string) {
+  return {
+    relationshipId: `${source}-${target}`,
+    type: 'PARTNER_OF',
+    sourcePersonId: source,
+    targetPersonId: target,
+    version: 0,
+  };
+}
+
+/** Marie alone: no relative yet. */
+function lonelyTree() {
+  return { focusPersonId: MARIE_ID, nodes: [treeNode(MARIE_ID, 'Marie')], edges: [] };
+}
+
 type Handler = (request: Request) => Response | Promise<Response>;
 
 /** A fake API answering by method and path (after `/api/v1`). */
@@ -83,6 +129,7 @@ function fakeApi(handlers: Record<string, Handler>) {
   return {
     patches: () => requests.filter((request) => request.method === 'PATCH'),
     claims: () => requests.filter((request) => new URL(request.url).pathname.endsWith('/claim')),
+    trees: () => requests.filter((request) => new URL(request.url).pathname.endsWith('/tree')),
   };
 }
 
@@ -92,16 +139,19 @@ function personApi({
   patch,
   claim,
   unclaim,
+  tree = () => jsonResponse(lonelyTree()),
 }: {
   role?: string;
   get?: Handler;
   patch?: Handler;
   claim?: Handler;
   unclaim?: Handler;
+  tree?: Handler;
 } = {}) {
   return fakeApi({
     [`GET /families/${ADJI_ID}`]: () => jsonResponse(family(role)),
     [`GET /families/${ADJI_ID}/persons/${MARIE_ID}`]: get,
+    [`GET /families/${ADJI_ID}/tree`]: tree,
     ...(patch ? { [`PATCH /families/${ADJI_ID}/persons/${MARIE_ID}`]: patch } : {}),
     ...(claim ? { [`POST /families/${ADJI_ID}/persons/${MARIE_ID}/claim`]: claim } : {}),
     ...(unclaim ? { [`DELETE /families/${ADJI_ID}/persons/${MARIE_ID}/claim`]: unclaim } : {}),
@@ -142,7 +192,7 @@ describe('Person screens', () => {
       expect(screen.getByText('Décès : 2020')).toBeInTheDocument();
       expect(screen.getByRole('heading', { level: 2, name: 'Famille' })).toBeInTheDocument();
       expect(
-        screen.getByText("Aucun proche n'est encore relié à cette personne."),
+        await screen.findByText("Aucun proche n'est encore relié à cette personne."),
       ).toBeInTheDocument();
       const about = screen.getByRole('region', { name: 'À propos' });
       expect(within(about).getByText('Jeanne')).toBeInTheDocument();
@@ -154,6 +204,122 @@ describe('Person screens', () => {
         'href',
         `${PROFILE}/edit`,
       );
+    });
+
+    it('lists parents, partners, children and siblings with what they are to me', async () => {
+      const [jeanne, paul, andre, tony, awa, samuel, zoe] = [
+        'a0000000-0000-4000-8000-000000000001',
+        'a0000000-0000-4000-8000-000000000002',
+        'a0000000-0000-4000-8000-000000000003',
+        'a0000000-0000-4000-8000-000000000004',
+        'a0000000-0000-4000-8000-000000000005',
+        'a0000000-0000-4000-8000-000000000006',
+        'a0000000-0000-4000-8000-000000000007',
+      ];
+      const requests = personApi({
+        tree: () =>
+          jsonResponse({
+            focusPersonId: MARIE_ID,
+            nodes: [
+              treeNode(MARIE_ID, 'Marie', { relationshipToCurrentUser: 'MOTHER' }),
+              treeNode(jeanne, 'Jeanne', {
+                gender: 'FEMALE',
+                relationshipToCurrentUser: 'GRANDMOTHER',
+                birth: { precision: 'YEAR_ONLY', year: 1930 },
+                isDeceased: true,
+                death: { precision: 'YEAR_ONLY', year: 2001 },
+              }),
+              treeNode(paul, 'Paul', { gender: 'MALE', relationshipToCurrentUser: 'GRANDFATHER' }),
+              treeNode(andre, 'André', { gender: 'MALE', relationshipToCurrentUser: 'FATHER' }),
+              treeNode(samuel, 'Samuel', {
+                gender: 'MALE',
+                relationshipToCurrentUser: 'NONE_KNOWN',
+              }),
+              treeNode(tony, 'Tony', { gender: 'MALE', relationshipToCurrentUser: 'SELF' }),
+              treeNode(awa, 'Awa', { gender: 'FEMALE', relationshipToCurrentUser: 'SISTER' }),
+              treeNode(zoe, 'Zoé', { gender: 'FEMALE', relationshipToCurrentUser: 'RELATED' }),
+            ],
+            edges: [
+              parentOf(jeanne, MARIE_ID),
+              partners(andre, MARIE_ID),
+              parentOf(MARIE_ID, tony),
+              parentOf(paul, MARIE_ID),
+              partners(MARIE_ID, samuel),
+              parentOf(MARIE_ID, awa),
+              parentOf(paul, zoe),
+            ],
+          }),
+      });
+      renderApp(PROFILE);
+
+      // Each row: avatar initial, name, badge, years.
+      const parents = await screen.findByRole('list', { name: 'Parents' });
+      expect(
+        within(parents)
+          .getAllByRole('link')
+          .map((link) => link.textContent),
+      ).toEqual(['JJeanneVotre grand-mèreNaissance : 1930Décès : 2001', 'PPaulVotre grand-père']);
+      expect(within(parents).getByRole('link', { name: /Jeanne/ })).toHaveAttribute(
+        'href',
+        `/families/${ADJI_ID}/persons/${jeanne}`,
+      );
+      const partnersList = screen.getByRole('list', { name: 'Partenaires' });
+      // In relationship creation order; no badge for NONE_KNOWN.
+      expect(
+        within(partnersList)
+          .getAllByRole('link')
+          .map((link) => link.textContent),
+      ).toEqual(['AAndréVotre père', 'SSamuel']);
+      const children = screen.getByRole('list', { name: 'Enfants' });
+      expect(
+        within(children)
+          .getAllByRole('link')
+          .map((link) => link.textContent),
+      ).toEqual(['TTonyVous', 'AAwaVotre sœur']);
+      const siblings = screen.getByRole('list', { name: 'Frères et sœurs' });
+      expect(within(siblings).getByText('Membre de votre famille')).toBeInTheDocument();
+      expect(screen.queryByText("Aucun proche n'est encore relié à cette personne.")).toBeNull();
+      expect(requests.trees()[0]?.url).toContain(`focusPersonId=${MARIE_ID}`);
+
+      await act(() => i18n.changeLanguage('en'));
+      expect(await screen.findByRole('list', { name: 'Siblings' })).toBeInTheDocument();
+      expect(screen.getByRole('list', { name: 'Partners' })).toBeInTheDocument();
+      expect(screen.getByRole('list', { name: 'Children' })).toBeInTheDocument();
+      expect(screen.getByText('Your grandmother')).toBeInTheDocument();
+    });
+
+    it('lists no relative when the tree is not centred on the Person', async () => {
+      personApi({
+        tree: () =>
+          jsonResponse({
+            focusPersonId: 'a0000000-0000-4000-8000-000000000001',
+            nodes: [treeNode('a0000000-0000-4000-8000-000000000001', 'Tony')],
+            edges: [],
+          }),
+      });
+      renderApp(PROFILE);
+
+      expect(
+        await screen.findByText("Aucun proche n'est encore relié à cette personne."),
+      ).toBeInTheDocument();
+      expect(screen.queryByText('Tony')).toBeNull();
+    });
+
+    it('does not load the relatives of an archived Person', async () => {
+      const requests = personApi({ get: () => jsonResponse(person({ status: 'ARCHIVED' })) });
+      renderApp(PROFILE);
+
+      await screen.findByRole('heading', { level: 1, name: 'Marie Adji' });
+      expect(screen.queryByRole('heading', { level: 2, name: 'Famille' })).toBeNull();
+      expect(requests.trees()).toHaveLength(0);
+    });
+
+    it('translates an error while loading the relatives', async () => {
+      personApi({ tree: () => problemResponse('VALIDATION_FAILED', 400) });
+      renderApp(PROFILE);
+
+      expect(await screen.findByRole('button', { name: /réessayer/i })).toBeInTheDocument();
+      expect(screen.queryByText('raw server detail')).not.toBeInTheDocument();
     });
 
     it('shows the real name next to a preferred name, and unknown dates in English', async () => {
