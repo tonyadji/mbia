@@ -1,5 +1,6 @@
 import js from '@eslint/js';
 import prettier from 'eslint-config-prettier';
+import i18next from 'eslint-plugin-i18next';
 import reactHooks from 'eslint-plugin-react-hooks';
 import { defineConfig, globalIgnores } from 'eslint/config';
 import globals from 'globals';
@@ -21,6 +22,21 @@ export default defineConfig([
         projectService: true,
         tsconfigRootDir: import.meta.dirname,
       },
+    },
+  },
+  {
+    // Every user-facing string goes through translations (AGENTS.md §8); only the brand name is allowed.
+    files: ['src/**/*.tsx'],
+    ignores: ['**/*.test.tsx'],
+    plugins: { i18next },
+    rules: {
+      'i18next/no-literal-string': [
+        'error',
+        {
+          mode: 'jsx-only',
+          words: { exclude: ['[0-9!-/:-@[-`{-~]+', '[A-Z_-]+', 'Mbia'] },
+        },
+      ],
     },
   },
   {
