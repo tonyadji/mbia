@@ -51,6 +51,30 @@ public final class PersonFixtures {
         return request.exchange();
     }
 
+    public MvcTestResult claim(TestJwts.Token token, UUID familyId, UUID personId, String ifMatch) {
+        var request = mvc.post().uri("/api/v1/families/{familyId}/persons/{personId}/claim", familyId, personId)
+                .header(HttpHeaders.AUTHORIZATION, token.bearer());
+        if (ifMatch != null) {
+            request = request.header(HttpHeaders.IF_MATCH, ifMatch);
+        }
+        return request.exchange();
+    }
+
+    public MvcTestResult unclaim(TestJwts.Token token, UUID familyId, UUID personId, String ifMatch) {
+        var request = mvc.delete().uri("/api/v1/families/{familyId}/persons/{personId}/claim", familyId, personId)
+                .header(HttpHeaders.AUTHORIZATION, token.bearer());
+        if (ifMatch != null) {
+            request = request.header(HttpHeaders.IF_MATCH, ifMatch);
+        }
+        return request.exchange();
+    }
+
+    /** @return the User the Person represents, or {@code null} */
+    public UUID linkedUserId(UUID personId) {
+        return jdbc.sql("SELECT linked_user_id FROM persons WHERE id = ?").param(personId)
+                .query((row, index) -> row.getObject(1, UUID.class)).list().getFirst();
+    }
+
     public long version(UUID personId) {
         return jdbc.sql("SELECT version FROM persons WHERE id = ?").param(personId).query(Long.class).single();
     }

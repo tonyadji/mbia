@@ -104,3 +104,12 @@ When a question is answered, update the relevant spec, then move the entry to **
 - **Recommendation:** A for all three.
 - **Answer:** A for all three (human, 2026-09-25). Documented in `openapi.yaml` (`updatePerson`, `UpdatePersonRequest`) and `technical-specification.md` §13; changed in PR-18.
 
+
+### OQ-009 — Claim / unclaim edge cases and scope of linked-Person protection
+
+- **Raised by / date:** coding agent (PR-19), 2026-09-25
+- **Context:** `claimPerson` / `unclaimPerson` (`openapi.yaml`, `data-model.md` §21) and the linked-Person rules (`mvp.md` §4, §7, `person-relationships-collaboration.md` §2, §12) do not say (1) what `unclaimPerson` answers for a Person linked to nobody (no error code exists), (2) what `claimPerson` answers for the Person already linked to the caller, nor (3) which `updatePerson` fields are the protected "identity fields".
+- **Question:** (1) unclaim of a non-linked Person; (2) claim of one's own Person; (3) protected fields.
+- **Options:** (1) A — only the linked User or an ADMIN may unclaim: a non-ADMIN gets 403 `PERMISSION_DENIED`, an ADMIN gets 200 with the unchanged Person and version / B — new 409 `PERSON_NOT_CLAIMED` / C — 200 no-op for everyone. (2) A — 200, nothing written / B — 409 `USER_ALREADY_LINKED`. (3) A — every `updatePerson` field: a CONTRIBUTOR edits a linked Person only when it is their own (`mvp.md` §4 "edit their own linked Person") / B — identity only, the biography stays open to every CONTRIBUTOR.
+- **Recommendation:** A for all three; as for `updatePerson` (OQ-008), claiming or unclaiming a non-ACTIVE Person returns 404 `PERSON_NOT_FOUND`, and a linked VIEWER stays read-only on their Person.
+- **Answer:** A for all three (human, 2026-09-25). Documented in `openapi.yaml` (`claimPerson`, `unclaimPerson`, `updatePerson` descriptions) and `data-model.md` §21; changed in PR-19.

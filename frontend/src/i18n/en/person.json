@@ -49,7 +49,11 @@
     "family": "Family",
     "noRelatives": "No relatives are linked to this person yet.",
     "about": "About",
-    "name": "First and last name"
+    "name": "First and last name",
+    "claim": "This is me",
+    "unclaim": "This is not me",
+    "claimed": "You are now linked to this person.",
+    "unclaimed": "This person is no longer linked to you."
   },
   "edit": {
     "title": "Edit {{name}}",

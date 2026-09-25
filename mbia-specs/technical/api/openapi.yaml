@@ -512,7 +512,8 @@ paths:
       description: |
         ADMIN or authorized CONTRIBUTOR according to linked-person protection rules.
         A linked person's protected identity can be changed only by that linked user
-        or an ADMIN.
+        or an ADMIN: every field of the request is protected, and another CONTRIBUTOR
+        gets 403 `PERMISSION_DENIED`.
         Only an ACTIVE Person can be edited: an ARCHIVED or MERGED Person returns 404
         `PERSON_NOT_FOUND`. A request that changes nothing (same values, or only
         `profileMediaAssetId`, which is ignored until media exist) returns 200 with the
@@ -608,6 +609,12 @@ paths:
       tags: [Persons]
       operationId: claimPerson
       summary: Link the current user to this Person as “me”
+      description: |
+        Any ACTIVE member, VIEWER included. Only an ACTIVE Person can be claimed: an ARCHIVED
+        or MERGED Person returns 404 `PERSON_NOT_FOUND`. A Person linked to another user
+        returns 409 `PERSON_ALREADY_CLAIMED`; a caller already linked to another Person of the
+        family returns 409 `USER_ALREADY_LINKED`. Claiming the Person already linked to the
+        caller returns 200 with the unchanged Person and version.
       parameters:
         - $ref: '#/components/parameters/IfMatch'
       responses:
@@ -630,7 +637,11 @@ paths:
       tags: [Persons]
       operationId: unclaimPerson
       summary: Remove the User ↔ Person link
-      description: The linked user may unlink themselves. ADMIN may correct an erroneous link.
+      description: |
+        The linked user may unlink themselves, whatever their role. ADMIN may correct an
+        erroneous link; any other caller gets 403 `PERMISSION_DENIED`. On a Person linked to
+        nobody, an ADMIN gets 200 with the unchanged Person and version. Only an ACTIVE Person
+        can be unlinked: an ARCHIVED or MERGED Person returns 404 `PERSON_NOT_FOUND`.
       parameters:
         - $ref: '#/components/parameters/IfMatch'
       responses:

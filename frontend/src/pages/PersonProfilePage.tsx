@@ -7,9 +7,12 @@ import { Avatar } from '../components/Avatar';
 import { buttonClassName } from '../components/Button';
 import { ErrorState } from '../components/ErrorState';
 import { Skeleton } from '../components/Skeleton';
+import { errorMessage } from '../api/errorMessage';
+import { Button } from '../components/Button';
 import { useFamily } from '../families/useFamily';
 import { isSupportedLanguage, DEFAULT_LANGUAGE } from '../i18n/language';
 import { formatPartialDate, yearOf } from '../persons/formatPartialDate';
+import { useClaimPerson } from '../persons/useClaimPerson';
 import { usePerson, type Person } from '../persons/usePerson';
 import { familyHomePath } from './FamilyHomePage';
 import { FamilyNotFoundPage } from './FamilyNotFoundPage';
@@ -26,9 +29,29 @@ export function displayNameOf(person: Person) {
   return person.displayName ?? person.firstName;
 }
 
-/** Whether the caller's role lets them edit this Person (person-relationships-collaboration.md §2). */
+/**
+ * Whether the caller may edit this Person: ADMIN always, CONTRIBUTOR unless the Person is linked to
+ * another User (person-relationships-collaboration.md §2). The backend enforces the same rule.
+ */
 export function canEditPerson(person: Person, role: Role | undefined) {
-  return person.status === 'ACTIVE' && (role === 'ADMIN' || role === 'CONTRIBUTOR');
+  if (person.status !== 'ACTIVE') return false;
+  if (role === 'ADMIN') return true;
+  return (
+    role === 'CONTRIBUTOR' &&
+    (person.linkedUserId == null || person.relationshipToCurrentUser === 'SELF')
+  );
+}
+
+/**
+ * Whether the caller may say "This is me": the Person is ACTIVE and linked to nobody, and the
+ * caller has no linked Person in the Family (`relationshipToCurrentUser` is then null, mvp.md §7).
+ */
+export function canClaimPerson(person: Person) {
+  return (
+    person.status === 'ACTIVE' &&
+    person.linkedUserId == null &&
+    person.relationshipToCurrentUser == null
+  );
 }
 
 /**
@@ -158,6 +181,7 @@ function PersonProfile({
             {t('person:profile.edit')}
           </Link>
         )}
+        <ClaimAction familyId={familyId} person={person} />
       </header>
 
       <section aria-labelledby="profile-family" className="flex flex-col gap-2">
@@ -188,6 +212,42 @@ function PersonProfile({
           )}
         </dl>
       </section>
+    </div>
+  );
+}
+
+/**
+ * SCREEN-005 `This is me` on a Person that can be claimed, and unlink on the caller's own linked
+ * Person. Correcting another member's link stays an ADMIN operation of the API.
+ */
+function ClaimAction({ familyId, person }: { familyId: string; person: Person }) {
+  const { t, i18n } = useTranslation('person');
+  const claim = useClaimPerson(familyId, person.id);
+  const isMine = person.relationshipToCurrentUser === 'SELF';
+  if (!isMine && !canClaimPerson(person)) return null;
+
+  return (
+    <div className="flex flex-col gap-2">
+      <Button
+        variant="secondary"
+        className="sm:w-auto sm:self-start"
+        disabled={claim.isPending}
+        onClick={() => {
+          claim.mutate({ claim: !isMine, version: person.version });
+        }}
+      >
+        {t(isMine ? 'profile.unclaim' : 'profile.claim')}
+      </Button>
+      {claim.isError && (
+        <p role="alert" className="text-body text-text">
+          {errorMessage(i18n, claim.error)}
+        </p>
+      )}
+      {claim.isSuccess && (
+        <p role="status" className="text-caption text-text-muted">
+          {t(isMine ? 'profile.claimed' : 'profile.unclaimed')}
+        </p>
+      )}
     </div>
   );
 }

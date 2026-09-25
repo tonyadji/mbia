@@ -63,6 +63,27 @@ public final class Person {
                 version);
     }
 
+    /**
+     * This Person linked to {@code userId}, its User from now on (mvp.md §7). The claim rules
+     * (data-model.md §21) are checked by the caller.
+     */
+    public Person claim(UUID userId, UUID updatedBy, Instant now) {
+        return new Person(id, familyId, details, Objects.requireNonNull(userId, "userId"), status, createdBy,
+                updatedBy, createdAt, now, version);
+    }
+
+    /**
+     * This Person no longer linked to any User; its data is unchanged
+     * (person-relationships-collaboration.md §2, link release).
+     */
+    public Person unclaim(UUID updatedBy, Instant now) {
+        return new Person(id, familyId, details, null, status, createdBy, updatedBy, createdAt, now, version);
+    }
+
+    public boolean isLinkedTo(UUID userId) {
+        return linkedUserId != null && linkedUserId.equals(userId);
+    }
+
     public boolean isActive() {
         return status == PersonStatus.ACTIVE;
     }

@@ -42,11 +42,7 @@ class JpaPersonRepository implements PersonRepository {
                     person.status().name(), person.createdBy(), person.updatedBy(), person.createdAt(),
                     person.updatedAt()));
         } catch (DataIntegrityViolationException e) {
-            if (violates(e, LINKED_USER_UNIQUE_INDEX)) {
-                throw new DomainException(ErrorCode.USER_ALREADY_LINKED,
-                        "You are already linked to a person of this family.");
-            }
-            throw e;
+            throw translated(e);
         }
     }
 
@@ -70,7 +66,12 @@ class JpaPersonRepository implements PersonRepository {
                 details.birth().precision().name(), details.deceased(), details.death().date(),
                 year(details.death()), details.death().precision().name(), details.biography(),
                 person.updatedBy(), person.updatedAt());
-        return toDomain(jpa.saveAndFlush(entity));
+        entity.changeLinkedUser(person.linkedUserId().orElse(null));
+        try {
+            return toDomain(jpa.saveAndFlush(entity));
+        } catch (DataIntegrityViolationException e) {
+            throw translated(e);
+        }
     }
 
     @Override
@@ -95,6 +96,15 @@ class JpaPersonRepository implements PersonRepository {
 
     private static Short year(PartialDate date) {
         return date.year() == null ? null : date.year().shortValue();
+    }
+
+    /** A concurrent link of the same User to another Person of the Family is the caller's conflict. */
+    private static RuntimeException translated(DataIntegrityViolationException error) {
+        if (violates(error, LINKED_USER_UNIQUE_INDEX)) {
+            return new DomainException(ErrorCode.USER_ALREADY_LINKED,
+                    "You are already linked to a person of this family.");
+        }
+        return error;
     }
 
     private static boolean violates(Throwable error, String constraint) {

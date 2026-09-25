@@ -82,6 +82,7 @@ function fakeApi(handlers: Record<string, Handler>) {
   });
   return {
     patches: () => requests.filter((request) => request.method === 'PATCH'),
+    claims: () => requests.filter((request) => new URL(request.url).pathname.endsWith('/claim')),
   };
 }
 
@@ -89,11 +90,21 @@ function personApi({
   role = 'ADMIN',
   get = () => jsonResponse(person()),
   patch,
-}: { role?: string; get?: Handler; patch?: Handler } = {}) {
+  claim,
+  unclaim,
+}: {
+  role?: string;
+  get?: Handler;
+  patch?: Handler;
+  claim?: Handler;
+  unclaim?: Handler;
+} = {}) {
   return fakeApi({
     [`GET /families/${ADJI_ID}`]: () => jsonResponse(family(role)),
     [`GET /families/${ADJI_ID}/persons/${MARIE_ID}`]: get,
     ...(patch ? { [`PATCH /families/${ADJI_ID}/persons/${MARIE_ID}`]: patch } : {}),
+    ...(claim ? { [`POST /families/${ADJI_ID}/persons/${MARIE_ID}/claim`]: claim } : {}),
+    ...(unclaim ? { [`DELETE /families/${ADJI_ID}/persons/${MARIE_ID}/claim`]: unclaim } : {}),
   });
 }
 
@@ -185,6 +196,111 @@ describe('Person screens', () => {
 
       await screen.findByRole('heading', { level: 1, name: 'Marie Adji' });
       expect(screen.queryByRole('link', { name: 'Modifier' })).not.toBeInTheDocument();
+    });
+
+    it('offers This is me to a VIEWER without a linked Person, then shows the link', async () => {
+      let claimed = false;
+      const api = personApi({
+        role: 'VIEWER',
+        get: () =>
+          jsonResponse(
+            claimed
+              ? person({ linkedUserId: 'u1', relationshipToCurrentUser: 'SELF', version: 3 })
+              : person(),
+          ),
+        claim: () => {
+          claimed = true;
+          return jsonResponse(
+            person({ linkedUserId: 'u1', relationshipToCurrentUser: 'SELF', version: 3 }),
+          );
+        },
+      });
+      renderApp(PROFILE);
+
+      fireEvent.click(await screen.findByRole('button', { name: "C'est moi" }));
+
+      expect(
+        await screen.findByText('Vous êtes maintenant relié à cette personne.'),
+      ).toBeInTheDocument();
+      expect(screen.getByText('Vous')).toBeInTheDocument();
+      expect(screen.getByRole('button', { name: "Ce n'est pas moi" })).toBeInTheDocument();
+      expect(screen.queryByRole('link', { name: 'Modifier' })).not.toBeInTheDocument();
+      const [request] = api.claims();
+      expect(request?.method).toBe('POST');
+      expect(request?.headers.get('If-Match')).toBe('"2"');
+    });
+
+    it('unlinks the current User from their own Person', async () => {
+      let released = false;
+      const api = personApi({
+        role: 'CONTRIBUTOR',
+        get: () =>
+          jsonResponse(
+            released
+              ? person({ version: 3 })
+              : person({ linkedUserId: 'u1', relationshipToCurrentUser: 'SELF' }),
+          ),
+        unclaim: () => {
+          released = true;
+          return jsonResponse(person({ version: 3 }));
+        },
+      });
+      renderApp(PROFILE);
+
+      expect(await screen.findByRole('link', { name: 'Modifier' })).toBeInTheDocument();
+      fireEvent.click(screen.getByRole('button', { name: "Ce n'est pas moi" }));
+
+      expect(
+        await screen.findByText("Cette personne n'est plus reliée à vous."),
+      ).toBeInTheDocument();
+      expect(screen.getByRole('button', { name: "C'est moi" })).toBeInTheDocument();
+      expect(api.claims()[0]?.method).toBe('DELETE');
+      expect(api.claims()[0]?.headers.get('If-Match')).toBe('"2"');
+    });
+
+    it('protects a Person linked to another member from a CONTRIBUTOR', async () => {
+      personApi({
+        role: 'CONTRIBUTOR',
+        get: () =>
+          jsonResponse(person({ linkedUserId: 'u2', relationshipToCurrentUser: 'NONE_KNOWN' })),
+      });
+      renderApp(PROFILE);
+
+      await screen.findByRole('heading', { level: 1, name: 'Marie Adji' });
+      expect(screen.queryByRole('link', { name: 'Modifier' })).not.toBeInTheDocument();
+      expect(screen.queryByRole('button', { name: "C'est moi" })).not.toBeInTheDocument();
+      expect(screen.queryByRole('button', { name: "Ce n'est pas moi" })).not.toBeInTheDocument();
+    });
+
+    it('lets an ADMIN edit a Person linked to another member', async () => {
+      personApi({
+        get: () =>
+          jsonResponse(person({ linkedUserId: 'u2', relationshipToCurrentUser: 'NONE_KNOWN' })),
+      });
+      renderApp(PROFILE);
+
+      expect(await screen.findByRole('link', { name: 'Modifier' })).toBeInTheDocument();
+      expect(screen.queryByRole('button', { name: "C'est moi" })).not.toBeInTheDocument();
+    });
+
+    it('does not offer This is me to a User who already has a linked Person', async () => {
+      personApi({ get: () => jsonResponse(person({ relationshipToCurrentUser: 'NONE_KNOWN' })) });
+      renderApp(PROFILE);
+
+      await screen.findByRole('heading', { level: 1, name: 'Marie Adji' });
+      expect(screen.queryByRole('button', { name: "C'est moi" })).not.toBeInTheDocument();
+    });
+
+    it('translates a refused claim', async () => {
+      personApi({ claim: () => problemResponse('PERSON_ALREADY_CLAIMED', 409) });
+      renderApp(PROFILE);
+
+      fireEvent.click(await screen.findByRole('button', { name: "C'est moi" }));
+
+      expect(await screen.findByRole('alert')).toHaveTextContent(
+        'Cette personne est déjà reliée à un autre membre de la famille.',
+      );
+      expect(screen.queryByText('raw server detail')).not.toBeInTheDocument();
     });
 
     it('shows a friendly page for a Person of no or another Family', async () => {
@@ -313,6 +429,20 @@ describe('Person screens', () => {
 
     it('sends a VIEWER back to the profile', async () => {
       personApi({ role: 'VIEWER' });
+      const { router } = renderApp(`${PROFILE}/edit`);
+
+      expect(
+        await screen.findByRole('heading', { level: 1, name: 'Marie Adji' }),
+      ).toBeInTheDocument();
+      expect(router.state.location.pathname).toBe(PROFILE);
+    });
+
+    it("sends a CONTRIBUTOR back from another member's linked Person", async () => {
+      personApi({
+        role: 'CONTRIBUTOR',
+        get: () =>
+          jsonResponse(person({ linkedUserId: 'u2', relationshipToCurrentUser: 'NONE_KNOWN' })),
+      });
       const { router } = renderApp(`${PROFILE}/edit`);
 
       expect(

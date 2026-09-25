@@ -13,6 +13,8 @@ import com.lehnade.mbia.genealogy.domain.PersonDetails;
 import com.lehnade.mbia.genealogy.domain.PersonId;
 import com.lehnade.mbia.genealogy.domain.PersonRepository;
 import com.lehnade.mbia.identity.application.CurrentUserAccessor;
+import com.lehnade.mbia.shared.domain.DomainException;
+import com.lehnade.mbia.shared.domain.ErrorCode;
 import com.lehnade.mbia.shared.domain.Versions;
 import java.time.Clock;
 import java.time.Instant;
@@ -23,8 +25,9 @@ import org.springframework.transaction.annotation.Transactional;
 /**
  * Changes the identity and profile of an ACTIVE Person, from its current version (openapi
  * {@code updatePerson}, SCREEN-012, technical-specification.md §13). ADMIN or CONTRIBUTOR
- * (person-relationships-collaboration.md §2). A request that changes nothing writes nothing and
- * keeps the version (OQ-008).
+ * (person-relationships-collaboration.md §2); a Person linked to a User is protected: only that
+ * User or an ADMIN may change it (mvp.md §7, OQ-009). A request that changes nothing writes nothing
+ * and keeps the version (OQ-008).
  */
 @Service
 public class UpdatePersonUseCase {
@@ -50,10 +53,14 @@ public class UpdatePersonUseCase {
     @Transactional
     public PersonView update(UpdatePersonCommand command) {
         UUID callerId = currentUserAccessor.currentUser().id();
-        familyAccess.requireRole(command.familyId(), FamilyRole.ADMIN, FamilyRole.CONTRIBUTOR);
+        FamilyRole role = familyAccess.requireRole(command.familyId(), FamilyRole.ADMIN, FamilyRole.CONTRIBUTOR);
         Person person = persons.findInFamily(command.familyId(), new PersonId(command.personId()))
                 .filter(Person::isActive)
                 .orElseThrow(PersonNotFound::exception);
+        if (role != FamilyRole.ADMIN && person.linkedUserId().isPresent() && !person.isLinkedTo(callerId)) {
+            throw new DomainException(ErrorCode.PERMISSION_DENIED,
+                    "Only this member or an administrator can change their identity.");
+        }
         Versions.requireCurrent(command.expectedVersion(), person.version());
 
         PersonDetails current = person.details();
