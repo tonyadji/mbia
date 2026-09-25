@@ -142,6 +142,8 @@ Kinship is a read-time graph calculation over ACTIVE Persons and relationships (
 
 Use a breadth-first traversal, since the shortest path is required. Neighbour ordering is deterministic so that tie-breaking and tests are stable (`product/domain/person-relationships-collaboration.md` §10).
 
+Among shortest paths made of the same kind of steps, the chosen one is the path whose sequence of Person ids comes first, ids being compared in PostgreSQL `uuid` order (their lowercase hexadecimal form, as for partner canonicalisation, §6). The result must not depend on the order in which relationships are loaded.
+
 Traversal steps:
 
 - `PARENT_OF A -> B`: from B to A = `PARENT`; from A to B = `CHILD`;

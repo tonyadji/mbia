@@ -907,6 +907,8 @@ paths:
         starts at `from` and ends at `to`; it is the shortest known path over
         ACTIVE Persons and relationships, preferring paths made only of
         PARENT/CHILD steps, then ordered deterministically by Person id.
+        When `from` or `to` is ARCHIVED or MERGED, the result is `NONE_KNOWN`
+        with an empty path (unless `from` = `to`: `SELF`).
       parameters:
         - name: from
           in: query

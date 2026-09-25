@@ -65,13 +65,9 @@ public final class FamilyRelationship {
                 updatedAt, version);
     }
 
-    /**
-     * The canonical partner order of data-model.md §11.2. PostgreSQL orders {@code uuid} values
-     * byte by byte, which is the order of their lowercase hexadecimal form; {@link UUID#compareTo}
-     * compares signed longs and would disagree with the database check.
-     */
+    /** The canonical partner order of data-model.md §11.2, the one of the database check. */
     static boolean precedes(PersonId first, PersonId second) {
-        return first.value().toString().compareTo(second.value().toString()) < 0;
+        return PersonId.ORDER.compare(first, second) < 0;
     }
 
     public RelationshipId id() {

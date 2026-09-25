@@ -140,3 +140,12 @@ When a question is answered, update the relevant spec, then move the entry to **
 - **Options:** A — only `PARENT_BORN_AFTER_CHILD`; age = difference of birth years, also with exact dates / B — both.
 - **Recommendation:** A; the second message repeats the first.
 - **Answer:** A (human, 2026-09-25). Documented in `person-relationships-collaboration.md` §7.1; changed in PR-20.
+
+### OQ-013 — Kinship with an ARCHIVED or MERGED Person
+
+- **Raised by / date:** coding agent (PR-21), 2026-09-25
+- **Context:** `person-relationships-collaboration.md` §10 and `genealogy.md` §9: paths use ACTIVE Persons only, but `getKinship` may be called with an ARCHIVED or MERGED `from` or `to`, and `getPerson` returns an archived Person with its `relationshipToCurrentUser`.
+- **Question:** what does `getKinship` answer when `from` or `to` is not ACTIVE?
+- **Options:** A — 200 `NONE_KNOWN` with an empty path (`from = to` stays `SELF`) / B — 409 `PERSON_NOT_ACTIVE` / C — 404 `PERSON_NOT_FOUND`.
+- **Recommendation:** A; consistent with the badge of an archived Person's profile, and no new error on a read.
+- **Answer:** A (human, 2026-09-25). Documented in `person-relationships-collaboration.md` §10 and the `getKinship` description of `openapi.yaml` (text only); changed in PR-21.

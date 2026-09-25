@@ -5,7 +5,8 @@ import { newUser, registerAndVerify } from './support/keycloak';
 /**
  * PR-20 (phase-2-core-family-graph.md): from "me", add a mother, a father with a date warning
  * confirmed by the User, then a grandparent from the mother's profile (SCREEN-004, family-tree-ux.md
- * §9 and §9.1, person-relationships-collaboration.md §7.1).
+ * §9 and §9.1, person-relationships-collaboration.md §7.1). PR-21: the father's profile shows the
+ * localized kinship label (localization-and-kinship-labels.md §3).
  */
 for (const { language, locale } of [
   { language: 'fr', locale: 'fr-FR' },
@@ -79,6 +80,10 @@ for (const { language, locale } of [
       // A grandparent, from the father's profile.
       await page.getByRole('link', { name: t(language, 'family:home.viewProfile') }).click();
       await expect(page.getByRole('heading', { level: 1 })).toHaveText('Paul');
+      // PR-21: the profile says what Paul is to the current User.
+      await expect(
+        page.getByText(t(language, 'person:kinship.label.FATHER'), { exact: true }),
+      ).toBeVisible();
       const paulUrl = page.url();
       await page.getByRole('button', { name: t(language, 'person:relative.menu') }).click();
       await page

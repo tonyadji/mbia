@@ -1,5 +1,6 @@
 package com.lehnade.mbia.genealogy.infrastructure.persistence;
 
+import java.util.List;
 import java.util.UUID;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
@@ -28,6 +29,18 @@ interface FamilyRelationshipJpaRepository extends JpaRepository<FamilyRelationsh
             SELECT EXISTS (SELECT 1 FROM descendants WHERE person_id = :sought)
             """)
     boolean isDescendant(UUID familyId, UUID start, UUID sought);
+
+    /** The relations a kinship path may use: ACTIVE, between two ACTIVE Persons (genealogy.md §9). */
+    @Query("""
+            SELECT new com.lehnade.mbia.genealogy.infrastructure.persistence.KinshipEdgeRow(
+                r.type, r.sourcePersonId, r.targetPersonId)
+            FROM FamilyRelationshipJpaEntity r
+            JOIN PersonJpaEntity source ON source.id = r.sourcePersonId
+            JOIN PersonJpaEntity target ON target.id = r.targetPersonId
+            WHERE r.familyId = :familyId AND r.status = 'ACTIVE'
+              AND source.status = 'ACTIVE' AND target.status = 'ACTIVE'
+            """)
+    List<KinshipEdgeRow> findKinshipEdges(UUID familyId);
 
     /** Transaction-scoped PostgreSQL advisory lock, keyed by the Family. */
     @Query(nativeQuery = true, value = """

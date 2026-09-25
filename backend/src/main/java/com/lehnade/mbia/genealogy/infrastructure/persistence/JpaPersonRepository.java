@@ -79,6 +79,12 @@ class JpaPersonRepository implements PersonRepository {
         return jpa.existsByFamilyIdAndLinkedUserIdAndStatusNot(familyId, userId, PersonStatus.MERGED.name());
     }
 
+    @Override
+    public Optional<Person> findLinkedTo(UUID familyId, UUID userId) {
+        return jpa.findByFamilyIdAndLinkedUserIdAndStatusNot(familyId, userId, PersonStatus.MERGED.name())
+                .map(JpaPersonRepository::toDomain);
+    }
+
     private static Person toDomain(PersonJpaEntity entity) {
         PersonDetails details = new PersonDetails(entity.firstName(), entity.middleNames(), entity.lastName(),
                 entity.preferredName(), Gender.valueOf(entity.gender()),

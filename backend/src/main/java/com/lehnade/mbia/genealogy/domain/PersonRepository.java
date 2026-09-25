@@ -27,4 +27,7 @@ public interface PersonRepository {
 
     /** @return whether the User represents a non-MERGED Person of the Family (data-model.md §21) */
     boolean existsLinkedTo(UUID familyId, UUID userId);
+
+    /** @return the non-MERGED Person of the Family that represents the User, if any */
+    Optional<Person> findLinkedTo(UUID familyId, UUID userId);
 }

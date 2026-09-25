@@ -190,6 +190,25 @@ describe('Person screens', () => {
       ).toBeInTheDocument();
     });
 
+    it('shows what the Person is to the current User, in both languages', async () => {
+      personApi({ get: () => jsonResponse(person({ relationshipToCurrentUser: 'GRANDMOTHER' })) });
+      renderApp(PROFILE);
+
+      expect(await screen.findByText('Votre grand-mère')).toBeInTheDocument();
+      await act(() => i18n.changeLanguage('en'));
+      expect(await screen.findByText('Your grandmother')).toBeInTheDocument();
+    });
+
+    it("genders a first cousin by the Person's gender", async () => {
+      personApi({
+        get: () =>
+          jsonResponse(person({ relationshipToCurrentUser: 'FIRST_COUSIN', gender: 'FEMALE' })),
+      });
+      renderApp(PROFILE);
+
+      expect(await screen.findByText('Votre cousine')).toBeInTheDocument();
+    });
+
     it('does not offer Edit to a VIEWER', async () => {
       personApi({ role: 'VIEWER' });
       renderApp(PROFILE);
