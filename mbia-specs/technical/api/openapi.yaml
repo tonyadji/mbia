@@ -452,6 +452,8 @@ paths:
         ADMIN or CONTRIBUTOR only. If the server detects likely duplicates and
         `confirmPossibleDuplicate` is false, the server returns 409 with code
         `POSSIBLE_DUPLICATE` and candidate summaries in `details.candidates`.
+        With `linkToCurrentUser`, the server returns 409 `USER_ALREADY_LINKED` when the
+        current user already has a linked Person in this family; nothing is created.
       requestBody:
         required: true
         content:
@@ -472,6 +474,8 @@ paths:
           $ref: '#/components/responses/BadRequest'
         '403':
           $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
         '409':
           $ref: '#/components/responses/Conflict'
 
@@ -2304,6 +2308,7 @@ components:
             - PERMISSION_DENIED
             - POSSIBLE_DUPLICATE
             - PERSON_ALREADY_CLAIMED
+            - USER_ALREADY_LINKED
             - RELATIONSHIP_ALREADY_EXISTS
             - SELF_RELATIONSHIP_NOT_ALLOWED
             - RELATIONSHIP_CREATES_CYCLE

@@ -1,0 +1,41 @@
+{
+  "form": {
+    "title": "Ajouter une personne",
+    "titleMe": "Commencer par moi",
+    "intro": "Seul le prénom est obligatoire. Vous pourrez compléter plus tard.",
+    "introMe": "Ajoutez-vous à la famille. Seul votre prénom est obligatoire.",
+    "firstName": "Prénom",
+    "lastName": "Nom",
+    "more": "Plus d'informations",
+    "middleNames": "Autres prénoms",
+    "preferredName": "Nom d'usage ou surnom",
+    "gender": "Genre",
+    "genders": {
+      "UNKNOWN": "Non précisé",
+      "FEMALE": "Femme",
+      "MALE": "Homme",
+      "OTHER": "Autre"
+    },
+    "birth": "Naissance",
+    "birthPrecision": "Date de naissance",
+    "birthDate": "Date exacte de naissance",
+    "birthYear": "Année de naissance",
+    "death": "Décès",
+    "isDeceased": "Cette personne est décédée",
+    "deathPrecision": "Date de décès",
+    "deathDate": "Date exacte de décès",
+    "deathYear": "Année de décès",
+    "precision": {
+      "UNKNOWN": "Inconnue",
+      "YEAR_ONLY": "Seulement l'année",
+      "EXACT": "Date exacte"
+    },
+    "biography": "Biographie",
+    "required": "Indiquez le prénom.",
+    "tooLong": "Ce champ ne peut pas dépasser {{max}} caractères.",
+    "dateRequired": "Indiquez la date.",
+    "invalidYear": "Indiquez une année entre {{min}} et {{max}}.",
+    "submit": "Ajouter à la famille",
+    "submitMe": "M'ajouter à la famille"
+  }
+}

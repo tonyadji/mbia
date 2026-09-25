@@ -11,12 +11,14 @@
   "home": {
     "personCount_one": "{{count}} person",
     "personCount_other": "{{count}} people",
-    "memoryCount_one": "{{count}} memory",
-    "memoryCount_other": "{{count}} memories",
-    "stats": "{{persons}} • {{memories}}",
     "created": "The {{name}} family has been created.",
     "emptyTitle": "Welcome to the {{name}} family",
-    "emptyBody": "Let's add the first person."
+    "emptyBody": "Let's add the first person.",
+    "startWithMe": "Start with me",
+    "addSomeoneElse": "Add someone else",
+    "addPerson": "Add a person",
+    "personAdded": "{{name}} is now part of the family.",
+    "selfAdded": "You are now part of the {{family}} family."
   },
   "chooser": {
     "title": "Your families"

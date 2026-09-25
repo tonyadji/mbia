@@ -1,0 +1,41 @@
+{
+  "form": {
+    "title": "Add a person",
+    "titleMe": "Start with me",
+    "intro": "Only the first name is required. You can add more later.",
+    "introMe": "Add yourself to the family. Only your first name is required.",
+    "firstName": "First name",
+    "lastName": "Last name",
+    "more": "More information",
+    "middleNames": "Middle names",
+    "preferredName": "Preferred name or nickname",
+    "gender": "Gender",
+    "genders": {
+      "UNKNOWN": "Not specified",
+      "FEMALE": "Female",
+      "MALE": "Male",
+      "OTHER": "Other"
+    },
+    "birth": "Birth",
+    "birthPrecision": "Date of birth",
+    "birthDate": "Exact date of birth",
+    "birthYear": "Year of birth",
+    "death": "Death",
+    "isDeceased": "This person has died",
+    "deathPrecision": "Date of death",
+    "deathDate": "Exact date of death",
+    "deathYear": "Year of death",
+    "precision": {
+      "UNKNOWN": "Unknown",
+      "YEAR_ONLY": "Year only",
+      "EXACT": "Exact date"
+    },
+    "biography": "Biography",
+    "required": "Enter the first name.",
+    "tooLong": "This field cannot be longer than {{max}} characters.",
+    "dateRequired": "Enter the date.",
+    "invalidYear": "Enter a year between {{min}} and {{max}}.",
+    "submit": "Add to the family",
+    "submitMe": "Add me to the family"
+  }
+}

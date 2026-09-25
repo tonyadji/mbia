@@ -85,3 +85,12 @@ When a question is answered, update the relevant spec, then move the entry to **
 - **Recommendation:** A, with `Remove link` on each relative of SCREEN-005's Family section (and in the Quick View); it is additive (non-breaking) and matches the "correct mistakes without technical intervention" goal.
 - **Blocking:** the restore UI of PR-24 and PR-26 and the restore step of the Phase 2 journey. Backend `restoreRelationship` / `restorePerson` can be built.
 - **Answer:** A (human, 2026-09-25): additive list endpoints and an ADMIN-only area on the profile. Contract: `searchPersons` gains `status=ARCHIVED` (ADMIN only), new `listArchivedPersonRelationships`, `getPerson` documented as returning ARCHIVED Persons (checked non-breaking with oasdiff). `Remove link` is on the profile Family section only, not in the Quick View. Specs: `mvp.md` §13, `person-relationships-collaboration.md` §5 and §8, `screens.md` SCREEN-005 (Remove link, Removed links, Archived Person) and SCREEN-007, `genealogy.md` §11 and §11bis, `data-model.md` §23.2bis; delivered in PR-24 and PR-26.
+
+### OQ-007 — Error code when "Start with me" finds an existing linked Person
+
+- **Raised by / date:** coding agent (PR-17), 2026-09-25
+- **Context:** `createPerson` with `linkToCurrentUser = true` follows the claim rules (`openapi.yaml`, `data-model.md` §21: "no other non-MERGED person in family linked to current user"), but no spec names the error returned when the current User already has a linked Person in the Family. `PERSON_ALREADY_CLAIMED` describes a Person linked to someone else.
+- **Question:** which code does the API return?
+- **Options:** A — new 409 `USER_ALREADY_LINKED` (additive in `ProblemDetails.code` examples) / B — reuse 409 `PERSON_ALREADY_CLAIMED`.
+- **Recommendation:** A; the frontend can explain the right situation ("you are already in this family's tree"), and PR-19 can reuse it for "claiming a second Person".
+- **Answer:** A (human, 2026-09-25). Added to `openapi.yaml` (`createPerson` description, `ProblemDetails.code` examples), `technical-specification.md` §12 and `data-model.md` §21; changed in PR-17.
