@@ -21,5 +21,27 @@
     "PERSON_NOT_ACTIVE": "Une des personnes choisies a été archivée ou fusionnée entre-temps. Retirez-la, puis publiez à nouveau.",
     "PERSON_NOT_FOUND": "Une des personnes choisies ne fait plus partie de la famille. Retirez-la, puis publiez à nouveau."
   },
-  "published": "Votre souvenir « {{title}} » a été publié."
+  "published": "Votre souvenir « {{title}} » a été publié.",
+  "profile": {
+    "title": "Souvenirs",
+    "empty": "Aucun souvenir n'est encore lié à {{name}}.",
+    "add": "Ajouter un souvenir",
+    "more": "Voir plus"
+  },
+  "screen": {
+    "persons": "Personnes concernées",
+    "status": {
+      "ARCHIVED": "Profil archivé",
+      "MERGED": "Profil fusionné"
+    },
+    "addedBy": "Ajouté par {{actor}} le {{date}}",
+    "formerMember": "Ancien membre",
+    "member": "Un membre",
+    "back": "Retour",
+    "notFound": {
+      "title": "Souvenir introuvable",
+      "body": "Ce souvenir n'existe pas ou n'est plus visible dans cette famille.",
+      "back": "Retour à la famille"
+    }
+  }
 }

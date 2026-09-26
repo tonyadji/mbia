@@ -42,6 +42,10 @@ class MemoryPersonJpaEntity implements Persistable<MemoryPersonJpaEntity.Key> {
         this.createdAt = createdAt;
     }
 
+    UUID memoryId() {
+        return memoryId;
+    }
+
     UUID personId() {
         return personId;
     }

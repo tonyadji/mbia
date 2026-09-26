@@ -94,6 +94,7 @@ function memoryFrom(body: { title: string; content: string; relatedPersonIds: st
     relatedPersons: body.relatedPersonIds.map((id) => ({
       id,
       displayName: byId[id]?.displayName ?? '?',
+      status: 'ACTIVE',
     })),
     createdBy: { userId: 'u1', displayName: 'Marie', deleted: false },
     createdAt: '2026-09-26T10:00:00Z',
@@ -142,6 +143,10 @@ function fakeApi({
       const handler = create[posted.length];
       posted.push(body);
       return handler ? handler(request) : jsonResponse(memoryFrom(body), 201);
+    }
+    const last = posted.at(-1) as Parameters<typeof memoryFrom>[0] | undefined;
+    if (key === `GET /families/${ADJI_ID}/memories/${MEMORY_ID}` && last) {
+      return jsonResponse(memoryFrom(last));
     }
     return problemResponse('RESOURCE_NOT_FOUND', 404);
   });
@@ -325,7 +330,7 @@ describe('Add a Memory (SCREEN-006)', () => {
     expect(api.posted).toHaveLength(0);
   });
 
-  it('publishes the story as typed and lands on the first related Person', async () => {
+  it('publishes the story as typed and lands on the Memory (SCREEN-013)', async () => {
     const api = fakeApi();
     const { router } = renderApp(addMemoryPath(ADJI_ID));
     const content = 'Chaque samedi,\n\ngrand-mère allait au marché.\n<b>pas du HTML</b>';
@@ -336,7 +341,8 @@ describe('Add a Memory (SCREEN-006)', () => {
       await screen.findByText('Votre souvenir « Le marché » a été publié.'),
     ).toBeInTheDocument();
     expect(api.posted).toEqual([{ title: 'Le marché', content, relatedPersonIds: [MARIE_ID] }]);
-    expect(router.state.location.pathname).toBe(`/families/${ADJI_ID}/persons/${MARIE_ID}`);
+    expect(router.state.location.pathname).toBe(`/families/${ADJI_ID}/memories/${MEMORY_ID}`);
+    expect(screen.getByRole('heading', { level: 1, name: 'Le marché' })).toBeInTheDocument();
   });
 
   describe('refusals keep everything typed', () => {

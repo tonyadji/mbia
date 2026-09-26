@@ -11,6 +11,7 @@ import { errorMessage } from '../api/errorMessage';
 import { Button } from '../components/Button';
 import { useFamily } from '../families/useFamily';
 import { isSupportedLanguage, DEFAULT_LANGUAGE } from '../i18n/language';
+import { PersonMemories } from '../memories/PersonMemories';
 import { AddRelativeMenu } from '../persons/AddRelativeMenu';
 import { ArchivePersonDialog } from '../persons/ArchivePersonDialog';
 import { MergePersonDialog } from '../persons/MergePersonDialog';
@@ -49,8 +50,6 @@ export interface PersonProfileState {
   relativeAdded?: { name: string; existing?: boolean };
   /** The duplicate just merged into this Person (SCREEN-COMPONENT-004). */
   merged?: { name: string };
-  /** The story just published about this Person (SCREEN-006). */
-  memoryPublished?: { title: string };
 }
 
 export function displayNameOf(person: Pick<Person, 'displayName' | 'firstName'>) {
@@ -75,6 +74,14 @@ export function canEditPerson(person: Person, role: Role | undefined) {
  * (mvp.md §13). Restoring a removed link is for the ADMIN only.
  */
 export function canRemoveLinks(person: Person, role: Role | undefined) {
+  return person.status === 'ACTIVE' && (role === 'ADMIN' || role === 'CONTRIBUTOR');
+}
+
+/**
+ * Whether the caller may add a Memory about this Person: ADMIN or CONTRIBUTOR, ACTIVE Person (an
+ * archived Person cannot be newly linked to a Memory, OQ-035).
+ */
+export function canAddMemory(person: Person, role: Role | undefined) {
   return person.status === 'ACTIVE' && (role === 'ADMIN' || role === 'CONTRIBUTOR');
 }
 
@@ -151,10 +158,10 @@ export function PersonRoute({
 }
 
 /**
- * SCREEN-005 — Person profile: header, Family (ACTIVE Persons only), the ADMIN's Removed links,
- * About and History; no Memory or photo in this phase (Phase 2 plan §3.1, §3.2). An ARCHIVED Person
- * shows a notice and no mutation action except, for the ADMIN, `Restore`; a MERGED Person, a notice
- * leading to the kept profile.
+ * SCREEN-005 — Person profile: header, Memories (first, family-tree-ux.md §12), Family (ACTIVE
+ * Persons only), the ADMIN's Removed links, About and History. An ARCHIVED Person keeps its Memories
+ * (OQ-035) and shows a notice and no mutation action except, for the ADMIN, `Restore`; a MERGED
+ * Person, a notice leading to the kept profile.
  */
 export function PersonProfilePage() {
   return (
@@ -175,12 +182,11 @@ function PersonProfile({
   person: Person;
   role: Role | undefined;
 }) {
-  const { t, i18n } = useTranslation(['person', 'settings', 'memory']);
+  const { t, i18n } = useTranslation(['person', 'settings']);
   const { t: tPerson } = useTranslation('person');
   const profileState = useLocation().state as PersonProfileState | null;
   const relativeAdded = profileState?.relativeAdded;
   const merged = profileState?.merged;
-  const memoryPublished = profileState?.memoryPublished;
   const [notice, setNotice] = useState<LinkNotice | null>(null);
   const language = isSupportedLanguage(i18n.resolvedLanguage)
     ? i18n.resolvedLanguage
@@ -251,11 +257,6 @@ function PersonProfile({
         <MergeAction familyId={familyId} person={person} role={role} />
       </header>
 
-      {memoryPublished && (
-        <p role="status" className="rounded-xl border border-border bg-surface px-4 py-3 text-body">
-          {t('memory:published', { title: memoryPublished.title })}
-        </p>
-      )}
       {merged && (
         <p role="status" className="rounded-xl border border-border bg-surface px-4 py-3 text-body">
           {t('person:merge.done', { name: merged.name, kept: displayNameOf(person) })}
@@ -284,6 +285,15 @@ function PersonProfile({
             })}
           </p>
         )
+      )}
+
+      {person.status !== 'MERGED' && (
+        <PersonMemories
+          familyId={familyId}
+          personId={person.id}
+          name={displayNameOf(person)}
+          canAdd={canAddMemory(person, role)}
+        />
       )}
 
       {person.status === 'ACTIVE' && (

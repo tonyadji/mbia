@@ -1,5 +1,6 @@
 package com.lehnade.mbia.memory.domain;
 
+import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 
@@ -10,4 +11,12 @@ public interface MemoryRepository {
 
     /** @return the ACTIVE Memory of this Family; empty when unknown, of another Family or ARCHIVED */
     Optional<Memory> findActiveInFamily(UUID familyId, MemoryId id);
+
+    /**
+     * @return one page of the ACTIVE Memories linked to this Person, most recently added first, then
+     *     by id (data-model.md §23.3, OQ-034)
+     */
+    List<Memory> findActiveForPerson(UUID familyId, UUID personId, int page, int size);
+
+    long countActiveForPerson(UUID familyId, UUID personId);
 }

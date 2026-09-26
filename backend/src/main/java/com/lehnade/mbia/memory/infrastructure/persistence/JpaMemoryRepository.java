@@ -5,10 +5,13 @@ import com.lehnade.mbia.memory.domain.MemoryId;
 import com.lehnade.mbia.memory.domain.MemoryRepository;
 import com.lehnade.mbia.memory.domain.MemoryStatus;
 import com.lehnade.mbia.memory.domain.MemoryType;
+import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
 import java.util.stream.Collectors;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Repository;
 
 @Repository
@@ -40,6 +43,27 @@ class JpaMemoryRepository implements MemoryRepository {
                 .map(entity -> toDomain(entity, links.findByMemoryIdAndFamilyId(entity.id(), familyId).stream()
                         .map(MemoryPersonJpaEntity::personId)
                         .collect(Collectors.toSet())));
+    }
+
+    @Override
+    public List<Memory> findActiveForPerson(UUID familyId, UUID personId, int page, int size) {
+        List<MemoryJpaEntity> found = jpa.findActiveForPerson(familyId, personId, PageRequest.of(page, size));
+        if (found.isEmpty()) {
+            return List.of();
+        }
+        // The Persons of the whole page in one query.
+        Map<UUID, Set<UUID>> personsByMemory = links
+                .findByFamilyIdAndMemoryIdIn(familyId, found.stream().map(MemoryJpaEntity::id).toList()).stream()
+                .collect(Collectors.groupingBy(MemoryPersonJpaEntity::memoryId,
+                        Collectors.mapping(MemoryPersonJpaEntity::personId, Collectors.toSet())));
+        return found.stream()
+                .map(entity -> toDomain(entity, personsByMemory.getOrDefault(entity.id(), Set.of())))
+                .toList();
+    }
+
+    @Override
+    public long countActiveForPerson(UUID familyId, UUID personId) {
+        return jpa.countActiveForPerson(familyId, personId);
     }
 
     private static Memory toDomain(MemoryJpaEntity entity, Set<UUID> relatedPersonIds) {
