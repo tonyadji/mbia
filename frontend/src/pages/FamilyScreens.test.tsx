@@ -238,14 +238,15 @@ describe('Family screens', () => {
       ).not.toBeInTheDocument();
     });
 
-    it('shows the Person count and Add a person once Persons exist, without Memories', async () => {
+    it('shows the Person count and Add a person once Persons exist, without a Memory count', async () => {
       fakeApi({
         [`GET /families/${ADJI_ID}`]: () => jsonResponse(family(ADJI_ID, 'ADJI', 3, 1)),
       });
       renderApp(`/families/${ADJI_ID}`);
 
       expect(await screen.findByText('3 personnes')).toBeInTheDocument();
-      expect(screen.queryByText(/souvenir/)).not.toBeInTheDocument();
+      // The Memory count arrives with Family Memories (phase-3-family-memories.md PR-32).
+      expect(screen.queryByText(/\d+ souvenirs?/)).not.toBeInTheDocument();
       expect(screen.queryByText('Ajoutons la première personne.')).not.toBeInTheDocument();
       expect(screen.getByRole('link', { name: 'Ajouter une personne' })).toHaveAttribute(
         'href',

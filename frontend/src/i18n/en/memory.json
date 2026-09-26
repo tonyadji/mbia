@@ -1,0 +1,25 @@
+{
+  "form": {
+    "title": "Tell a story",
+    "intro": "Write a memory and link it to the people it is about. The whole family will be able to read it.",
+    "titleLabel": "Title",
+    "contentLabel": "Your story",
+    "required": "This field is required.",
+    "tooLong": "This text cannot be longer than {{max, number}} characters.",
+    "invalid": "Check this field.",
+    "persons": "Who is this memory about?",
+    "personsHint": "Choose at least one person to publish.",
+    "addPerson": "Add a person",
+    "removePerson": "Remove {{name}}",
+    "chooseTitle": "Choose a person",
+    "searchLabel": "Search the family",
+    "allChosen": "The people found are already chosen.",
+    "publish": "Publish",
+    "readOnly": "Your role in this family does not allow adding a memory."
+  },
+  "errors": {
+    "PERSON_NOT_ACTIVE": "One of the chosen people was archived or merged in the meantime. Remove them, then publish again.",
+    "PERSON_NOT_FOUND": "One of the chosen people is no longer part of the family. Remove them, then publish again."
+  },
+  "published": "Your memory “{{title}}” has been published."
+}
