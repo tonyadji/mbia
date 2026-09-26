@@ -51,7 +51,7 @@ export function PersonQuickView({
   return (
     <BottomSheet title={name} onClose={onClose}>
       <div className="flex items-center gap-4">
-        <Avatar displayName={name} photoUrl={person.profilePictureUrl} size="lg" />
+        <Avatar displayName={name} photoUrl={person.profilePictureUrl} size="lg" alt={name} />
         <div className="flex min-w-0 flex-col gap-1">
           {years && <p className="text-body text-text-muted">{years}</p>}
           {relationship && (

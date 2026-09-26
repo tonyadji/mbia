@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { useTranslation } from 'react-i18next';
 import { Link, Navigate, useNavigate } from 'react-router';
@@ -83,6 +83,22 @@ function EditMemoryForm({
   const code = update.error instanceof ApiError ? update.error.code : null;
   const memoryError = MEMORY_ERRORS.find((known) => known === code);
 
+  const heading = useRef<HTMLHeadingElement>(null);
+  const conflict = useRef<HTMLDivElement>(null);
+  // The screen is announced by its title; the keyboard of a phone opens only when the User picks a field.
+  useEffect(() => {
+    heading.current?.focus();
+  }, []);
+  // A refusal because someone else changed the Memory is read at once, with its reload action.
+  useEffect(() => {
+    if (isConflict) conflict.current?.focus();
+  }, [isConflict]);
+  // Once the latest version is shown, the User continues from its title.
+  const reloaded = useRef(false);
+  useEffect(() => {
+    if (reloaded.current) form.setFocus('title');
+  }, [base, form]);
+
   const personsChanged = !sameIds(persons, toPersons(base));
   // Changed Persons keep at least one ACTIVE Person (OQ-035); unchanged ones may all be archived (OQ-043).
   const lacksActivePerson = personsChanged && persons.every((person) => person.archived);
@@ -116,6 +132,7 @@ function EditMemoryForm({
       setPersons(toPersons(latest));
       form.reset(toFormValues(latest));
       update.reset();
+      reloaded.current = true;
     }
   };
 
@@ -129,7 +146,9 @@ function EditMemoryForm({
         >
           {t('settings:back')}
         </Link>
-        <h1 className="text-display text-text">{t('edit.title')}</h1>
+        <h1 ref={heading} tabIndex={-1} className="text-display text-text outline-none">
+          {t('edit.title')}
+        </h1>
       </header>
       <form noValidate onSubmit={(event) => void submit(event)} className="flex flex-col gap-6">
         <StoryFields form={form} />
@@ -146,7 +165,9 @@ function EditMemoryForm({
         )}
         {isConflict ? (
           <div
+            ref={conflict}
             role="alert"
+            tabIndex={-1}
             className="flex flex-col gap-3 rounded-xl border border-border bg-surface px-4 py-3"
           >
             <p className="text-body">{t('edit.conflict')}</p>

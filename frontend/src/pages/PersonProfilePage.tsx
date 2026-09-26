@@ -235,6 +235,7 @@ function PersonProfile({
             displayName={displayNameOf(person)}
             photoUrl={person.profilePictureUrl}
             size="lg"
+            alt={displayNameOf(person)}
           />
           <div className="flex min-w-0 flex-col gap-1">
             <h1 className="text-display break-words text-text">{displayNameOf(person)}</h1>
