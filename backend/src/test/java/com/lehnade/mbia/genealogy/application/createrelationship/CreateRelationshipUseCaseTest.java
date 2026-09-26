@@ -13,8 +13,6 @@ import static org.mockito.Mockito.when;
 
 import com.lehnade.mbia.family.application.FamilyAccess;
 import com.lehnade.mbia.family.application.FamilyRole;
-import com.lehnade.mbia.genealogy.application.audit.AuditEntry;
-import com.lehnade.mbia.genealogy.application.audit.AuditLog;
 import com.lehnade.mbia.genealogy.domain.FamilyGraphLock;
 import com.lehnade.mbia.genealogy.domain.FamilyRelationship;
 import com.lehnade.mbia.genealogy.domain.ParentalCycleCheck;
@@ -29,6 +27,8 @@ import com.lehnade.mbia.genealogy.domain.RelationshipType;
 import com.lehnade.mbia.genealogy.domain.RelationshipWarningCode;
 import com.lehnade.mbia.identity.application.CurrentUser;
 import com.lehnade.mbia.identity.application.CurrentUserAccessor;
+import com.lehnade.mbia.shared.application.audit.AuditEntry;
+import com.lehnade.mbia.shared.application.audit.AuditLog;
 import com.lehnade.mbia.shared.domain.DomainException;
 import com.lehnade.mbia.shared.domain.ErrorCode;
 import java.time.Clock;

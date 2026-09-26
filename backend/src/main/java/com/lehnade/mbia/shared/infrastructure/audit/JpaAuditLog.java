@@ -1,8 +1,8 @@
-package com.lehnade.mbia.genealogy.infrastructure.audit;
+package com.lehnade.mbia.shared.infrastructure.audit;
 
-import com.lehnade.mbia.genealogy.application.audit.AuditEntry;
-import com.lehnade.mbia.genealogy.application.audit.AuditLog;
 import com.lehnade.mbia.shared.api.tracing.RequestIdFilter;
+import com.lehnade.mbia.shared.application.audit.AuditEntry;
+import com.lehnade.mbia.shared.application.audit.AuditLog;
 import java.util.UUID;
 import org.springframework.stereotype.Component;
 

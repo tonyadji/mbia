@@ -25,6 +25,9 @@ public interface PersonRepository {
      */
     List<Person> lockInFamily(UUID familyId, Collection<PersonId> ids);
 
+    /** @return these Persons of the Family, whatever their status; another Family's are absent */
+    List<Person> findAllInFamily(UUID familyId, Collection<PersonId> ids);
+
     /**
      * Persists a change of {@code person}, built from its persisted {@code version()}.
      *

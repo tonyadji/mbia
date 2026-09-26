@@ -17,6 +17,7 @@ public enum ErrorCode {
     FAMILY_NOT_FOUND(404, "Family not found"),
     RESOURCE_NOT_FOUND(404, "Resource not found"),
     PERSON_NOT_FOUND(404, "Person not found"),
+    MEMORY_NOT_FOUND(404, "Memory not found"),
     METHOD_NOT_ALLOWED(405, "Method not allowed"),
     NOT_ACCEPTABLE(406, "Not acceptable"),
     CONCURRENT_MODIFICATION(409, "Concurrent modification"),

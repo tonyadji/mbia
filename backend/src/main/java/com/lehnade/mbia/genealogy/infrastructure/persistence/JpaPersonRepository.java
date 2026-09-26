@@ -60,6 +60,16 @@ class JpaPersonRepository implements PersonRepository {
                 .toList();
     }
 
+    @Override
+    public List<Person> findAllInFamily(UUID familyId, Collection<PersonId> ids) {
+        if (ids.isEmpty()) {
+            return List.of();
+        }
+        return jpa.findByFamilyIdAndIdIn(familyId, ids.stream().map(PersonId::value).toList()).stream()
+                .map(JpaPersonRepository::toDomain)
+                .toList();
+    }
+
     /**
      * Hibernate writes {@code UPDATE … WHERE version = ?} (JPA {@code @Version}): a commit by
      * another transaction since the Person was read fails the flush instead of being overwritten.

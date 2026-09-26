@@ -13,6 +13,8 @@ interface PersonJpaRepository extends JpaRepository<PersonJpaEntity, UUID> {
 
     Optional<PersonJpaEntity> findByIdAndFamilyId(UUID id, UUID familyId);
 
+    List<PersonJpaEntity> findByFamilyIdAndIdIn(UUID familyId, Collection<UUID> ids);
+
     /** {@code SELECT … FOR UPDATE}, rows sorted by id before they are locked (genealogy.md §12). */
     @Lock(LockModeType.PESSIMISTIC_WRITE)
     @Query("""
