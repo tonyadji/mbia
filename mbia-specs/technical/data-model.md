@@ -933,7 +933,7 @@ status = ACTIVE
 first_name / last_name / preferred_name
 ```
 
-Matching is case- and accent-insensitive (`product/mvp.md` §19). For MVP, normalized B-tree indexes plus `ILIKE` on `unaccent`-normalized values may be sufficient for small/medium family sizes; the `unaccent` extension is created in its own migration (`genealogy.md` §11).
+Matching is case- and accent-insensitive (`product/mvp.md` §19). The `unaccent` extension is created in its own migration (`V005__unaccent.sql`, `genealogy.md` §11). The query filters on `family_id` and `status` (index `idx_persons_family_status`) and compares `lower(unaccent(...))` of `first_name`, `last_name`, `preferred_name` and `first_name || ' ' || last_name` with a `LIKE` pattern; it orders by `lower(unaccent(display name)) COLLATE "C"`, `created_at`, `id` (OQ-022). `unaccent` is not `IMMUTABLE`, so there is no expression index: the Family filter is enough for small/medium family sizes (a 250-Person Family is covered by a smoke test).
 
 If usage requires it, PostgreSQL `pg_trgm` can be enabled later without changing the domain model.
 

@@ -3,6 +3,7 @@ import { apiClient } from '../api/client';
 import type { components } from '../api/generated/schema';
 import { familyQueryKey } from '../families/useFamily';
 import { familiesQueryKey } from '../families/useMyFamilies';
+import { personSearchQueryKey } from './usePersonSearch';
 
 export type CreatePersonRequest = components['schemas']['CreatePersonRequest'];
 
@@ -24,6 +25,7 @@ export function useCreatePerson(familyId: string) {
       // The Person count of the Family changed.
       await queryClient.invalidateQueries({ queryKey: familyQueryKey(familyId), exact: true });
       void queryClient.invalidateQueries({ queryKey: familiesQueryKey, exact: true });
+      void queryClient.invalidateQueries({ queryKey: personSearchQueryKey(familyId) });
     },
   });
 }

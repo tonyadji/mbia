@@ -4,6 +4,7 @@ import { Link, useLocation, useNavigate, useParams, useSearchParams } from 'reac
 import { ApiError } from '../api/client';
 import { BottomSheet } from '../components/BottomSheet';
 import { ErrorState } from '../components/ErrorState';
+import { IconButton } from '../components/IconButton';
 import { NavigationBar } from '../components/NavigationBar';
 import { Skeleton } from '../components/Skeleton';
 import { useFamily } from '../families/useFamily';
@@ -16,8 +17,9 @@ import { SiblingsList } from '../tree/SiblingsList';
 import { TreeCanvas } from '../tree/TreeCanvas';
 import { layoutTree, type PlacedAdd } from '../tree/treeLayout';
 import type { FamilyTreeState } from '../tree/treePath';
-import { FamilyEmptyState, familyHomePath, type Family } from './FamilyHomePage';
+import { FamilyEmptyState, familyHomePath, SearchIcon, type Family } from './FamilyHomePage';
 import { FamilyNotFoundPage } from './FamilyNotFoundPage';
+import { searchPath } from './SearchPage';
 
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
@@ -137,11 +139,24 @@ function FamilyTree({ family }: { family: Family }) {
         >
           {family.name}
         </Link>
-        <h1 className="text-display text-text">{t('tree:title')}</h1>
+        <div className="flex items-center justify-between gap-3">
+          <h1 className="text-display text-text">{t('tree:title')}</h1>
+          {layout && (
+            <IconButton
+              label={t('tree:search')}
+              onClick={() => void navigate(searchPath(family.id, { focus: layout.focus.id }))}
+            >
+              <SearchIcon />
+            </IconButton>
+          )}
+        </div>
       </header>
       {relativeAdded && (
         <p role="status" className="rounded-xl border border-border bg-surface px-4 py-3 text-body">
-          {t('person:relative.added', relativeAdded)}
+          {t(
+            relativeAdded.existing ? 'person:relative.linked' : 'person:relative.added',
+            relativeAdded,
+          )}
         </p>
       )}
       {content}

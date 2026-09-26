@@ -16,5 +16,6 @@
     "viewProfile": "View profile",
     "center": "Center the tree on {{name}}",
     "add": "Add…"
-  }
+  },
+  "search": "Search the family"
 }

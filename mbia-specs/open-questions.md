@@ -221,3 +221,12 @@ When a question is answered, update the relevant spec, then move the entry to **
 - **Options:** A — not blocking; recomputed from the current birth data and returned in `warnings` for information / B — not blocking, `warnings` always empty / C — blocking, with a new `confirmWarnings` parameter.
 - **Recommendation:** A.
 - **Answer:** A (human, 2026-09-26). Documented in `openapi.yaml` (`restoreRelationship` description, text only) and `person-relationships-collaboration.md` §7.1 and §8; changed in PR-24.
+
+### OQ-022 — Search ordering with accents, and several words
+
+- **Raised by / date:** coding agent (PR-25), 2026-09-26
+- **Context:** `mvp.md` §19 orders results by display name "locale-independent, case-folded" and matches a substring in first name, last name or preferred name. Read literally, a byte-order sort puts "Éloïse" after "Zoé", and "Marie Dup" finds no one because no single field contains it.
+- **Question:** is the sort key also accent-folded, and does a query spanning first and last name match?
+- **Options:** sort — A: lowered and unaccented display name, compared byte by byte / B: lowered display name only. Matching — C: also "first name last name" / D: each field separately.
+- **Recommendation:** A and C.
+- **Answer:** A and C (human, 2026-09-26). Documented in `mvp.md` §19, `genealogy.md` §11, `data-model.md` §23.1 and `openapi.yaml` (`searchPersons` descriptions, text only); implemented in PR-25.

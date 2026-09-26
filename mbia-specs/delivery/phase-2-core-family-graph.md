@@ -93,14 +93,16 @@ Phase 2 migrations may create only:
 |---|---|---|
 | `V003__persons.sql` | `persons` **without** `profile_media_asset_id` | `data-model.md` §9–10 |
 | `V004__family_relationships.sql` | `family_relationships` | `data-model.md` §11, §23.2, §23.2bis |
-| `V005__audit_entries.sql` | `audit_entries`, index `(family_id, resource_type, resource_id, occurred_at DESC)` | `data-model.md` §17 |
-| `V006__unaccent.sql` (if needed) | `CREATE EXTENSION IF NOT EXISTS unaccent` | `genealogy.md` §11 |
+| `V005__unaccent.sql` (PR-25) | `CREATE EXTENSION IF NOT EXISTS unaccent` | `genealogy.md` §11 |
+| `V006__audit_entries.sql` (PR-28) | `audit_entries`, index `(family_id, resource_type, resource_id, occurred_at DESC)` | `data-model.md` §17 |
+
+Migrations are numbered in delivery order: Flyway refuses a lower version once a higher one is applied.
 
 Enumerations are checked `VARCHAR` columns, as in V001–V002.
 
 Not created in this phase: `family_invitations`, `media_assets`, `memories`, `memory_persons`, `activities`.
 
-### 3.4 Audit before V005
+### 3.4 Audit before V006
 
 Every important mutation (`genealogy.md` §13) goes through an application audit port from its first PR. Until PR-28 creates `audit_entries`, the port's implementation does nothing; PR-28 plugs the real one without changing use-case behavior.
 
@@ -347,7 +349,7 @@ Supported labels are those of `localization-and-kinship-labels.md` §3. `IMPLAUS
 
 **Scope**
 
-- Real `searchPersons`: accent- and case-insensitive, deterministic order (`V006` if `unaccent` is used).
+- Real `searchPersons`: accent- and case-insensitive, deterministic order (`V005__unaccent.sql`, §3.3).
 - SCREEN-007 with its three entry points.
 - SCREEN-004 "search existing" path.
 
@@ -419,7 +421,7 @@ Supported labels are those of `localization-and-kinship-labels.md` §3. `IMPLAUS
 
 **Scope**
 
-- `V005__audit_entries.sql`; the real audit adapter behind the §3.4 port.
+- `V006__audit_entries.sql`; the real audit adapter behind the §3.4 port.
 - `getPersonHistory`; SCREEN-005 History section.
 - Playwright spec replaying the §1 journey.
 - Check that no later-phase UI or placeholder exists (§5).

@@ -41,6 +41,14 @@ public final class GraphRows {
         return id;
     }
 
+    /** An ACTIVE Person without dates with these names, created one second after the previous row. */
+    public UUID person(String firstName, String lastName, String preferredName) {
+        UUID id = person(firstName);
+        jdbc.sql("UPDATE persons SET last_name = ?, preferred_name = ? WHERE id = ?")
+                .params(lastName, preferredName, id).update();
+        return id;
+    }
+
     public void archivePerson(UUID personId) {
         jdbc.sql("UPDATE persons SET status = 'ARCHIVED', archived_at = now() WHERE id = ?").param(personId).update();
     }

@@ -180,7 +180,7 @@ Target: a bounded set of SQL queries per tree request, independent of the Family
 
 PostgreSQL only; no Elasticsearch/OpenSearch.
 
-Matching is case- and accent-insensitive (`product/mvp.md` §19). Use the PostgreSQL `unaccent` extension (in its own migration) or a normalised search column documented in `data-model.md`. No separate search service, no materialised search infrastructure without a measured need.
+Matching is case- and accent-insensitive, in first name, last name, preferred name and "first name last name"; the order is the lowered and unaccented display name compared byte by byte, then creation date, then id (`product/mvp.md` §19, OQ-022). The `%` and `_` typed by a User are literal characters. Use the PostgreSQL `unaccent` extension (in its own migration) or a normalised search column documented in `data-model.md`. No separate search service, no materialised search infrastructure without a measured need.
 
 Search stays Family-scoped and paginated. `status=ARCHIVED` (ADMIN only) runs the same matching and ordering over ARCHIVED Persons; MERGED Persons are never returned.
 

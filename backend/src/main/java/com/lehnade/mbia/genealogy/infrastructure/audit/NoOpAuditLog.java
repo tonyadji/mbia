@@ -13,6 +13,6 @@ class NoOpAuditLog implements AuditLog {
 
     @Override
     public void append(AuditEntry entry) {
-        // Nothing to write before V005__audit_entries.sql.
+        // Nothing to write before V006__audit_entries.sql.
     }
 }

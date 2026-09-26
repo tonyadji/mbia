@@ -6,10 +6,12 @@ import com.lehnade.mbia.api.generated.model.Gender;
 import com.lehnade.mbia.api.generated.model.KinshipCode;
 import com.lehnade.mbia.api.generated.model.MergePersonRequest;
 import com.lehnade.mbia.api.generated.model.PartialDate;
+import com.lehnade.mbia.api.generated.model.PageMeta;
 import com.lehnade.mbia.api.generated.model.PersonHistoryPage;
 import com.lehnade.mbia.api.generated.model.PersonPage;
 import com.lehnade.mbia.api.generated.model.PersonResponse;
 import com.lehnade.mbia.api.generated.model.PersonStatus;
+import com.lehnade.mbia.api.generated.model.PersonSummary;
 import com.lehnade.mbia.api.generated.model.UpdatePersonRequest;
 import com.lehnade.mbia.genealogy.application.PersonView;
 import com.lehnade.mbia.genealogy.application.claimperson.ClaimPersonCommand;
@@ -17,6 +19,9 @@ import com.lehnade.mbia.genealogy.application.claimperson.ClaimPersonUseCase;
 import com.lehnade.mbia.genealogy.application.createperson.CreatePersonCommand;
 import com.lehnade.mbia.genealogy.application.createperson.CreatePersonUseCase;
 import com.lehnade.mbia.genealogy.application.getperson.GetPersonUseCase;
+import com.lehnade.mbia.genealogy.application.searchpersons.PersonSearchView;
+import com.lehnade.mbia.genealogy.application.searchpersons.SearchPersonsCommand;
+import com.lehnade.mbia.genealogy.application.searchpersons.SearchPersonsUseCase;
 import com.lehnade.mbia.genealogy.application.unclaimperson.UnclaimPersonCommand;
 import com.lehnade.mbia.genealogy.application.unclaimperson.UnclaimPersonUseCase;
 import com.lehnade.mbia.genealogy.application.updateperson.UpdatePersonCommand;
@@ -47,14 +52,17 @@ class PersonsController implements PersonsApi {
     private final UpdatePersonUseCase updatePerson;
     private final ClaimPersonUseCase claimPerson;
     private final UnclaimPersonUseCase unclaimPerson;
+    private final SearchPersonsUseCase searchPersons;
 
     PersonsController(CreatePersonUseCase createPerson, GetPersonUseCase getPerson,
-            UpdatePersonUseCase updatePerson, ClaimPersonUseCase claimPerson, UnclaimPersonUseCase unclaimPerson) {
+            UpdatePersonUseCase updatePerson, ClaimPersonUseCase claimPerson, UnclaimPersonUseCase unclaimPerson,
+            SearchPersonsUseCase searchPersons) {
         this.createPerson = createPerson;
         this.getPerson = getPerson;
         this.updatePerson = updatePerson;
         this.claimPerson = claimPerson;
         this.unclaimPerson = unclaimPerson;
+        this.searchPersons = searchPersons;
     }
 
     /** {@code profileMediaAssetId} is ignored: Persons have no photo in Phase 2 (OQ-005). */
@@ -81,7 +89,10 @@ class PersonsController implements PersonsApi {
     @Override
     public ResponseEntity<PersonPage> searchPersons(UUID familyId, String status, String search, Integer page,
             Integer size) {
-        throw notAvailableYet();
+        PersonSearchView result = searchPersons.search(new SearchPersonsCommand(familyId, toSearchStatus(status),
+                search, page, size));
+        return ResponseEntity.ok(new PersonPage(result.items().stream().map(PersonsController::toSummary).toList(),
+                new PageMeta(result.page(), result.size(), result.totalElements(), result.totalPages())));
     }
 
     /**
@@ -137,6 +148,33 @@ class PersonsController implements PersonsApi {
 
     private static DomainException notAvailableYet() {
         return new DomainException(ErrorCode.RESOURCE_NOT_FOUND, "Resource not found.");
+    }
+
+    /** The {@code status} parameter is a string in the generated interface: only its enum values pass. */
+    private static com.lehnade.mbia.genealogy.domain.PersonStatus toSearchStatus(String status) {
+        if (status == null || status.equals("ACTIVE")) {
+            return com.lehnade.mbia.genealogy.domain.PersonStatus.ACTIVE;
+        }
+        if (status.equals("ARCHIVED")) {
+            return com.lehnade.mbia.genealogy.domain.PersonStatus.ARCHIVED;
+        }
+        throw new DomainException(ErrorCode.VALIDATION_FAILED, "status must be ACTIVE or ARCHIVED.");
+    }
+
+    /** No photo in this phase: {@code profilePictureUrl} is always null (Phase 2 plan §3.1). */
+    private static PersonSummary toSummary(PersonView view) {
+        Person person = view.person();
+        PersonDetails details = person.details();
+        return new PersonSummary(person.id().value(), person.familyId(), details.firstName(),
+                Gender.fromValue(details.gender().name()), PersonApiMapping.toApi(details.birth()), details.deceased(),
+                PersonApiMapping.toApi(details.death()), PersonStatus.fromValue(person.status().name()), person.version())
+                .middleNames(details.middleNames())
+                .lastName(details.lastName())
+                .preferredName(details.preferredName())
+                .displayName(details.displayName())
+                .profilePictureUrl(null)
+                .linkedUserId(person.linkedUserId().orElse(null))
+                .relationshipToCurrentUser(view.relationshipToCurrentUser().map(KinshipCode::fromValue).orElse(null));
     }
 
     private static PersonResponse toResponse(PersonView view) {

@@ -414,7 +414,7 @@ paths:
       summary: Search or list persons in a family
       description: |
         Returns ACTIVE Persons by default, ordered by display name (locale-independent,
-        case-folded), then creation date, then id. `status=ARCHIVED` lists archived
+        case- and accent-folded), then creation date, then id. `status=ARCHIVED` lists archived
         Persons instead, so that an ADMIN can restore them; it is ADMIN only.
         MERGED Persons are never listed.
       parameters:
@@ -429,7 +429,7 @@ paths:
         - name: search
           in: query
           required: false
-          description: Case- and accent-insensitive substring search, after trimming, in first name, last name and preferred name.
+          description: Case- and accent-insensitive substring search, after trimming, in first name, last name, preferred name and "first name last name".
           schema:
             type: string
             maxLength: 200
