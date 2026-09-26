@@ -14,6 +14,8 @@ import com.lehnade.mbia.api.generated.model.RelatedPersonReference;
 import com.lehnade.mbia.api.generated.model.UpdateMemoryRequest;
 import com.lehnade.mbia.memory.application.MemoryPageView;
 import com.lehnade.mbia.memory.application.MemoryView;
+import com.lehnade.mbia.memory.application.archivememory.ArchiveMemoryCommand;
+import com.lehnade.mbia.memory.application.archivememory.ArchiveMemoryUseCase;
 import com.lehnade.mbia.memory.application.createstorymemory.CreateStoryMemoryCommand;
 import com.lehnade.mbia.memory.application.createstorymemory.CreateStoryMemoryUseCase;
 import com.lehnade.mbia.memory.application.getmemory.GetMemoryUseCase;
@@ -21,6 +23,8 @@ import com.lehnade.mbia.memory.application.listfamilymemories.ListFamilyMemories
 import com.lehnade.mbia.memory.application.listfamilymemories.ListFamilyMemoriesUseCase;
 import com.lehnade.mbia.memory.application.listpersonmemories.ListPersonMemoriesCommand;
 import com.lehnade.mbia.memory.application.listpersonmemories.ListPersonMemoriesUseCase;
+import com.lehnade.mbia.memory.application.updatememory.UpdateMemoryCommand;
+import com.lehnade.mbia.memory.application.updatememory.UpdateMemoryUseCase;
 import com.lehnade.mbia.memory.domain.Memory;
 import com.lehnade.mbia.shared.api.web.ETags;
 import com.lehnade.mbia.shared.domain.DomainException;
@@ -28,7 +32,9 @@ import com.lehnade.mbia.shared.domain.ErrorCode;
 import java.time.Instant;
 import java.time.OffsetDateTime;
 import java.time.ZoneOffset;
+import java.util.HashSet;
 import java.util.Optional;
+import java.util.Set;
 import java.util.UUID;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -36,8 +42,7 @@ import org.springframework.web.bind.annotation.RestController;
 
 /**
  * Memories of a Family. Only stories exist in this iteration (Phase 3 plan §3.1): photo Memories
- * wait for OQ-042, and the operations of later Phase 3 PRs answer like a route that does not
- * exist yet ({@code RESOURCE_NOT_FOUND}).
+ * wait for OQ-042 and answer like a route that does not exist yet ({@code RESOURCE_NOT_FOUND}).
  */
 @RestController
 class MemoriesController implements MemoriesApi {
@@ -46,13 +51,18 @@ class MemoriesController implements MemoriesApi {
     private final GetMemoryUseCase getMemory;
     private final ListFamilyMemoriesUseCase listFamilyMemories;
     private final ListPersonMemoriesUseCase listPersonMemories;
+    private final UpdateMemoryUseCase updateMemory;
+    private final ArchiveMemoryUseCase archiveMemory;
 
     MemoriesController(CreateStoryMemoryUseCase createStoryMemory, GetMemoryUseCase getMemory,
-            ListFamilyMemoriesUseCase listFamilyMemories, ListPersonMemoriesUseCase listPersonMemories) {
+            ListFamilyMemoriesUseCase listFamilyMemories, ListPersonMemoriesUseCase listPersonMemories,
+            UpdateMemoryUseCase updateMemory, ArchiveMemoryUseCase archiveMemory) {
         this.createStoryMemory = createStoryMemory;
         this.getMemory = getMemory;
         this.listFamilyMemories = listFamilyMemories;
         this.listPersonMemories = listPersonMemories;
+        this.updateMemory = updateMemory;
+        this.archiveMemory = archiveMemory;
     }
 
     @Override
@@ -89,15 +99,28 @@ class MemoriesController implements MemoriesApi {
                 page, size))));
     }
 
+    /** An absent or {@code null} field keeps its value (OQ-008). */
     @Override
     public ResponseEntity<MemoryResponse> updateMemory(String ifMatch, UUID familyId, UUID memoryId,
             UpdateMemoryRequest request) {
-        throw notAvailableYet();
+        Set<String> photoFields = new HashSet<>();
+        if (request.getCaption() != null) {
+            photoFields.add("caption");
+        }
+        if (request.getTakenAt() != null) {
+            photoFields.add("takenAt");
+        }
+        MemoryView memory = updateMemory.update(new UpdateMemoryCommand(familyId, memoryId,
+                ETags.parseIfMatch(ifMatch), Optional.ofNullable(request.getTitle()),
+                Optional.ofNullable(request.getContent()), Optional.ofNullable(request.getRelatedPersonIds()),
+                photoFields));
+        return ResponseEntity.ok().eTag(ETags.of(memory.memory().version())).body(toResponse(memory));
     }
 
     @Override
     public ResponseEntity<Void> archiveMemory(String ifMatch, UUID familyId, UUID memoryId) {
-        throw notAvailableYet();
+        archiveMemory.archive(new ArchiveMemoryCommand(familyId, memoryId, ETags.parseIfMatch(ifMatch)));
+        return ResponseEntity.noContent().build();
     }
 
     private static MemoryPage toPage(MemoryPageView memories) {

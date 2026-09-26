@@ -159,6 +159,8 @@
                                 <useBeanValidation>true</useBeanValidation>
                                 <useResponseEntity>true</useResponseEntity>
                                 <openApiNullable>false</openApiNullable>
+                                <!-- An absent optional array stays null, so that a PATCH can omit it (OQ-008). -->
+                                <containerDefaultToNull>true</containerDefaultToNull>
                                 <documentationProvider>none</documentationProvider>
                                 <annotationLibrary>none</annotationLibrary>
                                 <generateJsonIncludeAnnotations>false</generateJsonIncludeAnnotations>

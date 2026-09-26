@@ -6,6 +6,8 @@ import com.lehnade.mbia.family.FamilyFixtures;
 import java.sql.Timestamp;
 import java.time.Instant;
 import java.util.Arrays;
+import java.util.Map;
+import java.util.Set;
 import java.util.UUID;
 import java.util.stream.Collectors;
 import org.springframework.http.HttpHeaders;
@@ -53,6 +55,22 @@ public final class MemoryFixtures {
         return mvc.get().uri("/api/v1/families/{familyId}/memories/{memoryId}", familyId, memoryId)
                 .header(HttpHeaders.AUTHORIZATION, token.bearer())
                 .exchange();
+    }
+
+    /** {@code PATCH …/memories/{memoryId}} with a raw body; {@code ifMatch} may be null. */
+    public MvcTestResult update(TestJwts.Token token, UUID familyId, UUID memoryId, String ifMatch, String json) {
+        var request = mvc.patch().uri("/api/v1/families/{familyId}/memories/{memoryId}", familyId, memoryId)
+                .header(HttpHeaders.AUTHORIZATION, token.bearer())
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(json);
+        return (ifMatch == null ? request : request.header(HttpHeaders.IF_MATCH, ifMatch)).exchange();
+    }
+
+    /** {@code DELETE …/memories/{memoryId}} (archiveMemory); {@code ifMatch} may be null. */
+    public MvcTestResult archive(TestJwts.Token token, UUID familyId, UUID memoryId, String ifMatch) {
+        var request = mvc.delete().uri("/api/v1/families/{familyId}/memories/{memoryId}", familyId, memoryId)
+                .header(HttpHeaders.AUTHORIZATION, token.bearer());
+        return (ifMatch == null ? request : request.header(HttpHeaders.IF_MATCH, ifMatch)).exchange();
     }
 
     /** {@code GET …/persons/{personId}/memories}, with a query string such as {@code ?page=1}, or "". */
@@ -106,12 +124,26 @@ public final class MemoryFixtures {
                 .single();
     }
 
+    /** The stored row, whatever its status: {@code status}, {@code archived}, {@code version}, {@code title}. */
+    public Map<String, Object> row(UUID memoryId) {
+        return jdbc.sql("""
+                SELECT status, archived_at IS NOT NULL AS archived, version, title, content
+                FROM memories WHERE id = ?
+                """).param(memoryId).query().singleRow();
+    }
+
+    /** The Persons linked to the Memory, whatever its status. */
+    public Set<UUID> linkedPersons(UUID memoryId) {
+        return Set.copyOf(jdbc.sql("SELECT person_id FROM memory_persons WHERE memory_id = ?")
+                .param(memoryId).query(UUID.class).list());
+    }
+
     public long countLinks(UUID familyId) {
         return jdbc.sql("SELECT count(*) FROM memory_persons WHERE family_id = ?").param(familyId)
                 .query(Long.class).single();
     }
 
-    /** Archives the Memory directly: archiving through the API arrives with PR-33. */
+    /** Archives the Memory directly, without the API. */
     public void archive(UUID memoryId) {
         jdbc.sql("UPDATE memories SET status = 'ARCHIVED', archived_at = now() WHERE id = ?").param(memoryId)
                 .update();

@@ -371,7 +371,7 @@ updatedAt
 
 ### Common Memory rules
 
-- Every Memory is linked to **at least one** ACTIVE Person. The rule is checked when a Memory is created or edited; a Person newly linked must be ACTIVE, while an archived Person already linked may stay. Archiving a Person never changes nor hides its Memories (OQ-035).
+- Every Memory is linked to **at least one** ACTIVE Person. The rule is checked when a Memory is created, and when an edit changes its related Persons (an edit of the title or text alone is not refused, OQ-043); a Person newly linked must be ACTIVE, while an archived Person already linked may stay. Archiving a Person never changes nor hides its Memories (OQ-035).
 - The creator may edit or archive their own Memory; ADMIN may edit or archive any Memory of the Family. Both need a role that can write: a VIEWER, even the creator, is read-only (OQ-041).
 - Archiving hides the Memory everywhere. Restoring an archived Memory is not available in the MVP product; support may restore it on request.
 

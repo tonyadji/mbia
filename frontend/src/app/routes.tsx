@@ -6,6 +6,7 @@ import { AddMemoryPage } from '../pages/AddMemoryPage';
 import { AddPersonPage } from '../pages/AddPersonPage';
 import { ArchivedPeoplePage } from '../pages/ArchivedPeoplePage';
 import { CreateFamilyPage } from '../pages/CreateFamilyPage';
+import { EditMemoryPage } from '../pages/EditMemoryPage';
 import { EditPersonPage } from '../pages/EditPersonPage';
 import { FamilyGatePage } from '../pages/FamilyGatePage';
 import { FamilyHomePage } from '../pages/FamilyHomePage';
@@ -39,6 +40,7 @@ export const routes: RouteObject[] = [
           { path: 'families/:familyId/memories', element: <FamilyMemoriesPage /> },
           { path: 'families/:familyId/memories/new', element: <AddMemoryPage /> },
           { path: 'families/:familyId/memories/:memoryId', element: <MemoryPage /> },
+          { path: 'families/:familyId/memories/:memoryId/edit', element: <EditMemoryPage /> },
           { path: SETTINGS_PATH.slice(1), element: <AccountSettingsPage /> },
         ],
       },

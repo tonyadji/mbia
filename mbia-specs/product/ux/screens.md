@@ -389,7 +389,7 @@ The fields of SCREEN-006 for the Memory's type, including `More information` for
 
 ## Behavior
 
-The related Persons must keep at least one ACTIVE Person. An archived Person already on the Memory may stay, but cannot be added (OQ-035).
+When the related Persons are changed, they must keep at least one ACTIVE Person; the title and text can be corrected without changing them (OQ-043). An archived Person already on the Memory may stay, but cannot be added (OQ-035).
 
 The form sends the version of the Memory it loaded. On `CONCURRENT_MODIFICATION`, it behaves as SCREEN-012: explain and offer `Reload latest version`, never merge values.
 

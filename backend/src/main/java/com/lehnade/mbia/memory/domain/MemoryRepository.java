@@ -9,6 +9,15 @@ public interface MemoryRepository {
     /** Writes the Memory and its Person associations (data-model.md §14, §15). */
     void insert(Memory memory);
 
+    /**
+     * Writes the changes of a Memory read at {@code memory.version()}: its story, status and
+     * Person associations. A commit by another transaction since it was read fails instead of
+     * being overwritten (technical-specification.md §13).
+     *
+     * @return the Memory as stored, with its incremented version
+     */
+    Memory update(Memory memory);
+
     /** @return the ACTIVE Memory of this Family; empty when unknown, of another Family or ARCHIVED */
     Optional<Memory> findActiveInFamily(UUID familyId, MemoryId id);
 

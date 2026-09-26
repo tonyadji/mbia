@@ -1,15 +1,20 @@
+import { useState, type ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link, useLocation, useNavigate, useParams } from 'react-router';
 import { ApiError } from '../api/client';
 import type { components } from '../api/generated/schema';
-import { buttonClassName } from '../components/Button';
+import { useCurrentUser } from '../auth/useCurrentUser';
+import { Button, buttonClassName } from '../components/Button';
 import { ErrorState } from '../components/ErrorState';
 import { Skeleton } from '../components/Skeleton';
 import { useFamily } from '../families/useFamily';
 import { formatDate } from '../i18n/formatDate';
 import { DEFAULT_LANGUAGE, isSupportedLanguage } from '../i18n/language';
+import { ArchiveMemoryDialog } from '../memories/ArchiveMemoryDialog';
+import { useArchiveMemory } from '../memories/useArchiveMemory';
 import { useMemory } from '../memories/useMemory';
 import { familyHomePath } from './FamilyHomePage';
+import { familyMemoriesPath } from './FamilyMemoriesPage';
 import { FamilyNotFoundPage } from './FamilyNotFoundPage';
 import { personPath } from './PersonProfilePage';
 
@@ -23,25 +28,52 @@ export function memoryPath(familyId: string, memoryId: string) {
   return `/families/${familyId}/memories/${memoryId}`;
 }
 
-/** Navigation state set by Add Memory, for the success message. */
+export function editMemoryPath(familyId: string, memoryId: string) {
+  return `${memoryPath(familyId, memoryId)}/edit`;
+}
+
+/** Navigation state set by Add Memory and Edit Memory, for the success message. */
 export interface MemoryPageState {
   published?: boolean;
+  saved?: boolean;
 }
 
 const LINK_CLASS =
   'inline-flex min-h-12 items-center self-start text-body font-semibold text-primary underline-offset-4 hover:underline';
 
 /**
- * SCREEN-013 — Memory, for any ACTIVE member: the story's title and full text as plain text with
- * line breaks kept (OQ-032), its Persons (an archived one marked, and a link only for the ADMIN,
- * OQ-035), who added it and when. An archived or unknown Memory is not found (OQ-037). Edit and
- * archive arrive with PR-33.
+ * The creator or an ADMIN may edit or archive a Memory, with a role that can write: a VIEWER stays
+ * read-only, even on their own Memory (mvp.md §17, OQ-041). The backend checks it again.
  */
-export function MemoryPage() {
+export function canChangeMemory(
+  memory: Memory,
+  role: Role | undefined,
+  myUserId: string | undefined,
+) {
+  return role === 'ADMIN' || (role === 'CONTRIBUTOR' && memory.createdBy.userId === myUserId);
+}
+
+/**
+ * Loads the Memory of the route, the caller's role and account, then renders `children`; shows the
+ * loading, not-found and error states otherwise. An archived or unknown Memory is not found
+ * (OQ-037).
+ */
+export function MemoryRoute({
+  children,
+}: {
+  children: (props: {
+    familyId: string;
+    memory: Memory;
+    role: Role | undefined;
+    myUserId: string | undefined;
+    reload: () => Promise<Memory | undefined>;
+  }) => ReactNode;
+}) {
   const { familyId = '', memoryId = '' } = useParams();
   const isValid = UUID.test(familyId) && UUID.test(memoryId);
   const memory = useMemory(familyId, memoryId, { enabled: isValid });
   const family = useFamily(familyId, { enabled: isValid });
+  const me = useCurrentUser();
 
   if (!UUID.test(familyId)) return <FamilyNotFoundPage />;
   if (!isValid) return <MemoryNotFoundPage familyId={familyId} />;
@@ -55,7 +87,7 @@ export function MemoryPage() {
   if (memory.isError) {
     return <ErrorState error={memory.error} onRetry={() => void memory.refetch()} />;
   }
-  if (memory.isPending || family.isPending) {
+  if (memory.isPending || family.isPending || me.isPending) {
     return (
       <div className="flex flex-col gap-4" aria-busy="true">
         <Skeleton className="h-8 w-48" />
@@ -63,30 +95,68 @@ export function MemoryPage() {
       </div>
     );
   }
-  return <MemoryView familyId={familyId} memory={memory.data} role={family.data?.myRole} />;
+  return children({
+    familyId,
+    memory: memory.data,
+    role: family.data?.myRole,
+    myUserId: me.data?.id,
+    reload: async () => (await memory.refetch()).data,
+  });
+}
+
+/**
+ * SCREEN-013 — Memory, for any ACTIVE member: the story's title and full text as plain text with
+ * line breaks kept (OQ-032), its Persons (an archived one marked, and a link only for the ADMIN,
+ * OQ-035), who added it and when. Its creator or an ADMIN may edit it (SCREEN-014) or archive it
+ * after a confirmation (OQ-041).
+ */
+export function MemoryPage() {
+  return (
+    <MemoryRoute>
+      {({ familyId, memory, role, myUserId, reload }) => (
+        <MemoryView
+          familyId={familyId}
+          memory={memory}
+          role={role}
+          canChange={canChangeMemory(memory, role, myUserId)}
+          reload={reload}
+        />
+      )}
+    </MemoryRoute>
+  );
 }
 
 function MemoryView({
   familyId,
   memory,
   role,
+  canChange,
+  reload,
 }: {
   familyId: string;
   memory: Memory;
   role: Role | undefined;
+  canChange: boolean;
+  reload: () => Promise<Memory | undefined>;
 }) {
   const { t, i18n } = useTranslation('memory');
   const navigate = useNavigate();
   const location = useLocation();
-  const published = (location.state as MemoryPageState | null)?.published === true;
   const language = isSupportedLanguage(i18n.resolvedLanguage)
     ? i18n.resolvedLanguage
     : DEFAULT_LANGUAGE;
   const actor = memory.createdBy.deleted
     ? t('screen.formerMember')
     : (memory.createdBy.displayName ?? t('screen.member'));
+  const state = location.state as MemoryPageState | null;
+  const published = state?.published === true;
+  const saved = state?.saved === true;
   // Back to where the User came from; a Memory opened directly goes back to the Family.
   const hasHistory = location.key !== 'default';
+  const leave = () => {
+    if (hasHistory) void navigate(-1);
+    else void navigate(familyMemoriesPath(familyId), { replace: true });
+  };
 
   return (
     <article className="flex flex-1 flex-col gap-6">
@@ -99,9 +169,9 @@ function MemoryView({
           {t('screen.back')}
         </Link>
       )}
-      {published && (
+      {(published || saved) && (
         <p role="status" className="rounded-xl border border-border bg-surface px-4 py-3 text-body">
-          {t('published', { title: memory.title ?? '' })}
+          {t(published ? 'published' : 'saved', { title: memory.title ?? '' })}
         </p>
       )}
       <header className="flex flex-col gap-1">
@@ -110,6 +180,9 @@ function MemoryView({
           {t('screen.addedBy', { actor, date: formatDate(new Date(memory.createdAt), language) })}
         </p>
       </header>
+      {canChange && (
+        <MemoryActions familyId={familyId} memory={memory} reload={reload} onArchived={leave} />
+      )}
       {/* Plain text: rendered as a text node, never as HTML or Markdown (OQ-032). */}
       <p className="text-body break-words whitespace-pre-wrap text-text">{memory.content}</p>
       <section aria-labelledby="memory-persons" className="flex flex-col gap-2">
@@ -125,6 +198,60 @@ function MemoryView({
         </ul>
       </section>
     </article>
+  );
+}
+
+/** `Edit` (SCREEN-014) and `Archive`, confirmed in a Modal: the Memory disappears for everyone. */
+function MemoryActions({
+  familyId,
+  memory,
+  reload,
+  onArchived,
+}: {
+  familyId: string;
+  memory: Memory;
+  reload: () => Promise<Memory | undefined>;
+  onArchived: () => void;
+}) {
+  const { t } = useTranslation('memory');
+  const [confirming, setConfirming] = useState(false);
+  const archive = useArchiveMemory(familyId, memory.id);
+  return (
+    <div className="flex flex-col gap-3 sm:flex-row">
+      <Link
+        to={editMemoryPath(familyId, memory.id)}
+        replace
+        className={buttonClassName('secondary', 'sm:w-auto')}
+      >
+        {t('screen.edit')}
+      </Link>
+      <Button
+        variant="secondary"
+        className="sm:w-auto"
+        onClick={() => {
+          archive.reset();
+          setConfirming(true);
+        }}
+      >
+        {t('screen.archive')}
+      </Button>
+      {confirming && (
+        <ArchiveMemoryDialog
+          pending={archive.isPending}
+          error={archive.error}
+          onCancel={() => {
+            setConfirming(false);
+          }}
+          onReload={async () => {
+            await reload();
+            archive.reset();
+          }}
+          onConfirm={() => {
+            archive.mutate({ version: memory.version }, { onSuccess: onArchived });
+          }}
+        />
+      )}
+    </div>
   );
 }
 

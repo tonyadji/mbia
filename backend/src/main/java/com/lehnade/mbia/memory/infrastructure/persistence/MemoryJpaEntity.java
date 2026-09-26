@@ -64,6 +64,20 @@ class MemoryJpaEntity {
         this.updatedAt = updatedAt;
     }
 
+    void changeStory(String title, String content, UUID updatedBy, Instant updatedAt) {
+        this.title = title;
+        this.content = content;
+        this.updatedBy = updatedBy;
+        this.updatedAt = updatedAt;
+    }
+
+    void archive(UUID archivedBy, Instant archivedAt) {
+        this.status = "ARCHIVED";
+        this.updatedBy = archivedBy;
+        this.updatedAt = archivedAt;
+        this.archivedAt = archivedAt;
+    }
+
     UUID id() {
         return id;
     }

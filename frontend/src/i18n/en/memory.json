@@ -48,6 +48,26 @@
       "title": "Memory not found",
       "body": "This memory does not exist or is no longer visible in this family.",
       "back": "Back to the family"
+    },
+    "edit": "Edit",
+    "archive": "Archive"
+  },
+  "saved": "Your changes to “{{title}}” have been saved.",
+  "edit": {
+    "title": "Edit the memory",
+    "submit": "Save",
+    "cancel": "Cancel",
+    "conflict": "This memory was changed since you opened the page.",
+    "reload": "Reload latest version",
+    "activePersonRequired": "Keep at least one person whose profile is not archived.",
+    "errors": {
+      "PERSON_NOT_ACTIVE": "One of the added people was archived or merged in the meantime. Remove them, then save again.",
+      "PERSON_NOT_FOUND": "One of the chosen people is no longer part of the family. Remove them, then save again."
     }
+  },
+  "archive": {
+    "warning": "Archive this memory? It will disappear for the whole family.",
+    "confirm": "Archive",
+    "cancel": "Cancel"
   }
 }

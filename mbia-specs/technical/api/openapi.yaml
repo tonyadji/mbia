@@ -1090,9 +1090,9 @@ paths:
         The creator may edit their own memory; ADMIN may edit any family memory. Both need
         a role that can write: a VIEWER gets 403 `PERMISSION_DENIED` (OQ-041).
         A field irrelevant to the Memory type is rejected with 400 `VALIDATION_FAILED`.
-        The new related Persons must include at least one ACTIVE Person; a Person newly
-        added must be ACTIVE (409 `PERSON_NOT_ACTIVE`), while an archived Person already on
-        the Memory may stay (OQ-035). An unknown, other-Family or ARCHIVED Memory returns
+        When the set of related Persons changes, the new set must include at least one ACTIVE
+        Person (400 `VALIDATION_FAILED`, OQ-043); a Person newly added must be ACTIVE (409
+        `PERSON_NOT_ACTIVE`), while an archived Person already on the Memory may stay (OQ-035). An unknown, other-Family or ARCHIVED Memory returns
         404 `MEMORY_NOT_FOUND` (OQ-037).
       parameters:
         - $ref: '#/components/parameters/IfMatch'

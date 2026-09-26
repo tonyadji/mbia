@@ -467,3 +467,13 @@ When a question is answered, update the relevant spec, then move the entry to **
 - **Recommendation:** A. No uploaded photo stays stored without being visible, and no member can take over another member's upload.
 - **Blocking:** the Person photo PRs (PR-36, PR-37).
 - **Answer:** A (human, 2026-09-26). Documented in `data-model.md` §13, `openapi.yaml` (`completeMediaUpload`, `UpdatePersonRequest`, `ProblemDetails.code`) and `technical-specification.md` §12.
+
+### OQ-043 — "At least one ACTIVE Person" on an edit that keeps the Persons
+
+- **Raised by / date:** coding agent (PR-33), 2026-09-26
+- **Context:** OQ-035 checks "at least one ACTIVE Person" when a Memory is created or edited, and lets an archived Person already on the Memory stay. Once every Person of a Memory has been archived, the specs do not say whether an edit that does not change its Persons (only the title or the text, or the same list sent again) is refused.
+- **Question:** does the rule apply to every edit, or only to an edit that changes the related Persons?
+- **Options:** A — only when the set of related Persons actually changes: the title and text of such a Memory can still be corrected / B — on every edit: the editor must first add an ACTIVE Person.
+- **Recommendation:** A. Correcting a typo must not require relinking the story, and archiving a Person never changes its Memories (OQ-035).
+- **Blocking:** the related-Person rule of PR-33.
+- **Answer:** A (human, 2026-09-26). Documented in `mvp.md` §17, `data-model.md` §15, `openapi.yaml` (`updateMemory`) and `screens.md` SCREEN-014.

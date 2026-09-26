@@ -10,11 +10,14 @@ import { PersonSearch } from '../persons/PersonSearch';
 export interface RelatedPerson {
   id: string;
   name: string;
+  /** Already on an edited Memory while archived: it may stay, never be added again (OQ-035). */
+  archived?: boolean;
 }
 
 /**
  * The related Persons of SCREEN-006: the chosen ones, each removable, and `Add a person`, which
- * opens the Family search (SCREEN-007) over ACTIVE Persons not chosen yet.
+ * opens the Family search (SCREEN-007) over ACTIVE Persons not chosen yet. On SCREEN-014, an
+ * archived Person already on the Memory is marked archived.
  */
 export function RelatedPersonsPicker({
   familyId,
@@ -46,8 +49,13 @@ export function RelatedPersonsPicker({
               className="flex items-center gap-3 rounded-xl border border-border bg-surface py-1 pr-1 pl-4"
             >
               <Avatar displayName={person.name} />
-              <span className="min-w-0 flex-1 text-body font-semibold break-words text-text">
-                {person.name}
+              <span className="flex min-w-0 flex-1 flex-col">
+                <span className="text-body font-semibold break-words text-text">{person.name}</span>
+                {person.archived && (
+                  <span className="text-caption text-text-muted">
+                    {t('screen.status.ARCHIVED')}
+                  </span>
+                )}
               </span>
               <IconButton
                 label={t('form.removePerson', { name: person.name })}
