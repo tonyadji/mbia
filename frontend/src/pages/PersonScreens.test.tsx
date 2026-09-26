@@ -954,6 +954,181 @@ describe('Person screens', () => {
     });
   });
 
+  describe('Merge a duplicate (SCREEN-COMPONENT-004, PR-27)', () => {
+    const MARIA_ID = 'c0000000-0000-4000-8000-000000000001';
+    const MERGE = `POST /families/${ADJI_ID}/persons/${MARIE_ID}/merge`;
+    const maria = person({
+      id: MARIA_ID,
+      firstName: 'Maria',
+      displayName: 'Maria Adji',
+      birth: { precision: 'YEAR_ONLY', year: 1954 },
+      version: 5,
+    });
+
+    function mergeApi(merge: Handler) {
+      return personApi({
+        other: {
+          [`GET /families/${ADJI_ID}/persons`]: () =>
+            jsonResponse({
+              items: [maria],
+              page: { page: 0, size: 20, totalElements: 1, totalPages: 1 },
+            }),
+          [`GET /families/${ADJI_ID}/persons/${MARIA_ID}`]: () => jsonResponse(maria),
+          [`GET /families/${ADJI_ID}/persons/${MARIA_ID}/archived-relationships`]: () =>
+            jsonResponse([]),
+          [MERGE]: merge,
+        },
+      });
+    }
+
+    function mergeRequests() {
+      return fetchMock.mock.calls
+        .map(([input]) => input as Request)
+        .filter((request) => new URL(request.url).pathname.endsWith('/merge'));
+    }
+
+    async function chooseMaria() {
+      fireEvent.click(
+        await screen.findByRole('button', { name: 'Fusionner avec une autre fiche' }),
+      );
+      const dialog = screen.getByRole('dialog', {
+        name: 'Quelle fiche décrit la même personne que Marie Adji ?',
+      });
+      fireEvent.click(await within(dialog).findByRole('button', { name: /Maria Adji/ }));
+      await within(dialog).findByText('Fiche conservée');
+      return dialog;
+    }
+
+    it('offers Merge to the ADMIN only', async () => {
+      for (const role of ['CONTRIBUTOR', 'VIEWER']) {
+        personApi({ role });
+        const { unmount } = renderAppWithUnmount(PROFILE);
+        await screen.findByRole('heading', { level: 1, name: 'Marie Adji' });
+        expect(screen.queryByRole('button', { name: 'Fusionner avec une autre fiche' })).toBeNull();
+        unmount();
+      }
+
+      personApi({ role: 'ADMIN' });
+      renderApp(PROFILE);
+      expect(
+        await screen.findByRole('button', { name: 'Fusionner avec une autre fiche' }),
+      ).toBeVisible();
+    });
+
+    it('compares both profiles, explains the merge and merges on confirmation', async () => {
+      mergeApi(() => jsonResponse(maria));
+      const { router } = renderApp(PROFILE);
+
+      const dialog = await chooseMaria();
+
+      expect(within(dialog).getByText('Fiche en double')).toBeInTheDocument();
+      expect(within(dialog).getByText('Marie Adji')).toBeInTheDocument();
+      expect(within(dialog).getByText('Maria Adji')).toBeInTheDocument();
+      expect(within(dialog).getByText('La fiche de Maria Adji est conservée.')).toBeInTheDocument();
+      expect(
+        within(dialog).getByText(
+          "La fiche de Marie Adji est fusionnée dans celle de Maria Adji et n'apparaît plus dans la famille.",
+        ),
+      ).toBeInTheDocument();
+      expect(
+        within(dialog).getByText(
+          'Les liens familiaux passent sur la fiche conservée, sans doublon.',
+        ),
+      ).toBeInTheDocument();
+      expect(
+        within(dialog).getByText(
+          'Quand les deux fiches ont une valeur, celle de la fiche conservée est gardée.',
+        ),
+      ).toBeInTheDocument();
+      expect(mergeRequests()).toHaveLength(0);
+
+      fireEvent.click(within(dialog).getByRole('button', { name: 'Fusionner les fiches' }));
+
+      expect(
+        await screen.findByText(
+          'La fiche en double de Marie Adji a été fusionnée dans la fiche de Maria Adji.',
+        ),
+      ).toBeInTheDocument();
+      expect(router.state.location.pathname).toBe(`/families/${ADJI_ID}/persons/${MARIA_ID}`);
+      const [request] = mergeRequests();
+      expect(await request?.json()).toEqual({
+        targetPersonId: MARIA_ID,
+        sourceVersion: 2,
+        targetVersion: 5,
+      });
+    });
+
+    it.each([
+      [
+        'DIFFERENT_LINKED_USERS',
+        'Ces deux fiches sont reliées à deux membres différents de la famille : elles ne peuvent pas être fusionnées.',
+      ],
+      [
+        'SELF_RELATIONSHIP',
+        "Ces deux fiches sont reliées l'une à l'autre. Retirez d'abord ce lien, puis fusionnez-les.",
+      ],
+      [
+        'PARENTAL_CYCLE',
+        "Fusionner ces fiches ferait de quelqu'un son propre ancêtre. Vérifiez d'abord leurs liens familiaux.",
+      ],
+    ])('explains a refused merge (%s) without forcing it', async (reason, message) => {
+      mergeApi(() =>
+        jsonResponse(
+          {
+            code: 'PERSON_MERGE_CONFLICT',
+            status: 409,
+            title: 'x',
+            detail: 'raw server detail',
+            details: { reason },
+          },
+          409,
+          'application/problem+json',
+        ),
+      );
+      renderApp(PROFILE);
+
+      const dialog = await chooseMaria();
+      fireEvent.click(within(dialog).getByRole('button', { name: 'Fusionner les fiches' }));
+
+      expect(await within(dialog).findByRole('alert')).toHaveTextContent(message);
+      expect(screen.queryByText('raw server detail')).not.toBeInTheDocument();
+      expect(within(dialog).queryByRole('button', { name: /quand même|forcer/i })).toBeNull();
+    });
+
+    it('translates a stale version like any other change', async () => {
+      mergeApi(() => problemResponse('CONCURRENT_MODIFICATION', 409));
+      renderApp(PROFILE);
+
+      const dialog = await chooseMaria();
+      fireEvent.click(within(dialog).getByRole('button', { name: 'Fusionner les fiches' }));
+
+      expect(await within(dialog).findByRole('alert')).toHaveTextContent(
+        "Quelqu'un a modifié ces informations entre-temps.",
+      );
+    });
+
+    it('leads from a merged profile to the kept one, without any action', async () => {
+      personApi({
+        get: () => jsonResponse(person({ status: 'MERGED', mergedIntoPersonId: MARIA_ID })),
+      });
+      renderApp(PROFILE);
+
+      expect(
+        await screen.findByText(
+          'Cette fiche a été fusionnée dans une autre fiche, qui décrit la même personne.',
+        ),
+      ).toBeVisible();
+      expect(screen.getByRole('link', { name: 'Ouvrir la fiche conservée' })).toHaveAttribute(
+        'href',
+        `/families/${ADJI_ID}/persons/${MARIA_ID}`,
+      );
+      for (const name of ['Modifier', 'Fusionner avec une autre fiche', 'Archiver cette fiche']) {
+        expect(screen.queryByRole('button', { name })).toBeNull();
+        expect(screen.queryByRole('link', { name })).toBeNull();
+      }
+    });
+  });
+
   describe('Edit Person (SCREEN-012)', () => {
     it('sends every field with the loaded version, then shows the profile', async () => {
       const api = personApi({

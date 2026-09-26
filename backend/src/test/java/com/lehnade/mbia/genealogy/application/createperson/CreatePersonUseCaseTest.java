@@ -1,36 +1,29 @@
 package com.lehnade.mbia.genealogy.application.createperson;
 
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.argThat;
 import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.verify;
-import static org.mockito.Mockito.when;
 
 import com.lehnade.mbia.ApiTestSupport;
 import com.lehnade.mbia.family.FamilyFixtures.FamilyWithMembers;
 import com.lehnade.mbia.genealogy.PersonFixtures;
-import com.lehnade.mbia.genealogy.application.PossibleDuplicates;
 import com.lehnade.mbia.genealogy.application.audit.AuditLog;
-import com.lehnade.mbia.genealogy.domain.PersonId;
-import java.util.List;
+import java.util.UUID;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.http.HttpStatus;
-import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.context.bean.override.mockito.MockitoSpyBean;
 
 /**
  * PR-17: Person, link and audit are written in one transaction (Phase 2 plan §3.4,
- * data-model.md §21); a possible duplicate needs confirmation (openapi {@code createPerson}).
+ * data-model.md §21); a possible duplicate needs confirmation (openapi {@code createPerson}), and
+ * PR-27 reports its candidates (person-relationships-collaboration.md §4.1).
  */
 class CreatePersonUseCaseTest extends ApiTestSupport {
 
     @MockitoSpyBean
     AuditLog auditLog;
-
-    @MockitoBean
-    PossibleDuplicates possibleDuplicates;
 
     private FamilyWithMembers family;
     private PersonFixtures persons;
@@ -65,16 +58,38 @@ class CreatePersonUseCaseTest extends ApiTestSupport {
     }
 
     @Test
-    void aPossibleDuplicateIsRefusedUntilConfirmed() {
-        when(possibleDuplicates.candidatesFor(any(), any())).thenReturn(List.of(PersonId.newId()));
+    void aPossibleDuplicateIsRefusedWithItsCandidatesUntilConfirmed() {
+        UUID marie = persons.createId(family.admin(), family.familyId(),
+                "{\"firstName\": \"Marie\", \"lastName\": \"Dupont\", \"birth\": {\"precision\": \"YEAR_ONLY\", \"year\": 1954}}");
 
-        assertThat(persons.create(family.admin(), family.familyId(), "{\"firstName\": \"Marie\"}"))
+        assertThat(persons.create(family.contributor(), family.familyId(),
+                "{\"firstName\": \"marie\", \"lastName\": \"DUPONT\"}"))
+                .hasStatus(HttpStatus.CONFLICT)
+                .bodyJson().satisfies(json -> {
+                    json.assertThat().extractingPath("$.code").isEqualTo("POSSIBLE_DUPLICATE");
+                    json.assertThat().extractingPath("$.details.candidates.length()").isEqualTo(1);
+                    json.assertThat().extractingPath("$.details.candidates[0].id").isEqualTo(marie.toString());
+                    json.assertThat().extractingPath("$.details.candidates[0].displayName").isEqualTo("Marie Dupont");
+                    json.assertThat().extractingPath("$.details.candidates[0].birth.year").isEqualTo(1954);
+                    json.assertThat().extractingPath("$.details.candidates[0].status").isEqualTo("ACTIVE");
+                    json.assertThat().extractingPath("$.details.candidates[0].version").isEqualTo(0);
+                });
+        assertThat(persons.count(family.familyId())).isEqualTo(1);
+
+        assertThat(persons.create(family.contributor(), family.familyId(),
+                "{\"firstName\": \"marie\", \"lastName\": \"DUPONT\", \"confirmPossibleDuplicate\": true}"))
+                .hasStatus(HttpStatus.CREATED);
+        assertThat(persons.count(family.familyId())).isEqualTo(2);
+    }
+
+    @Test
+    void startWithMeAlsoReportsAPossibleDuplicate() {
+        persons.create(family.admin(), family.familyId(), "{\"firstName\": \"Awa\", \"lastName\": \"Ngo\"}");
+
+        assertThat(persons.create(family.contributor(), family.familyId(),
+                "{\"firstName\": \"Awa\", \"lastName\": \"Ngo\", \"linkToCurrentUser\": true}"))
                 .hasStatus(HttpStatus.CONFLICT)
                 .bodyJson().extractingPath("$.code").isEqualTo("POSSIBLE_DUPLICATE");
-        assertThat(persons.count(family.familyId())).isZero();
-
-        assertThat(persons.create(family.admin(), family.familyId(),
-                "{\"firstName\": \"Marie\", \"confirmPossibleDuplicate\": true}"))
-                .hasStatus(HttpStatus.CREATED);
+        assertThat(persons.countLinkedTo(family.familyId(), families().userId(family.contributor()))).isZero();
     }
 }

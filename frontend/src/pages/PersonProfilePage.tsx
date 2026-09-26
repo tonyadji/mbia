@@ -1,6 +1,6 @@
 import { useState, type ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Link, useLocation, useParams } from 'react-router';
+import { Link, useLocation, useNavigate, useParams } from 'react-router';
 import { ApiError } from '../api/client';
 import type { components } from '../api/generated/schema';
 import { Avatar } from '../components/Avatar';
@@ -13,6 +13,7 @@ import { useFamily } from '../families/useFamily';
 import { isSupportedLanguage, DEFAULT_LANGUAGE } from '../i18n/language';
 import { AddRelativeMenu } from '../persons/AddRelativeMenu';
 import { ArchivePersonDialog } from '../persons/ArchivePersonDialog';
+import { MergePersonDialog } from '../persons/MergePersonDialog';
 import { formatDate } from '../i18n/formatDate';
 import { formatPartialDate, yearOf } from '../persons/formatPartialDate';
 import { familySections, sectionLink, type TreeEdge } from '../persons/familySections';
@@ -23,6 +24,7 @@ import {
   type ArchivedRelationship,
 } from '../persons/useArchivedRelationships';
 import { useArchivePerson } from '../persons/useArchivePerson';
+import { useMergePerson } from '../persons/useMergePerson';
 import { useArchiveRelationship } from '../persons/useArchiveRelationship';
 import { useRestoreRelationship } from '../persons/useRestoreRelationship';
 import { relativeChoiceGroups } from '../persons/relatives';
@@ -44,6 +46,8 @@ export function personPath(familyId: string, personId: string) {
 export interface PersonProfileState {
   /** `existing` when a Person already in the Family was linked, rather than a new one added. */
   relativeAdded?: { name: string; existing?: boolean };
+  /** The duplicate just merged into this Person (SCREEN-COMPONENT-004). */
+  merged?: { name: string };
 }
 
 export function displayNameOf(person: Pick<Person, 'displayName' | 'firstName'>) {
@@ -82,6 +86,11 @@ export function canAddRelatives(person: Person, role: Role | undefined) {
  */
 export function canArchivePerson(person: Person, role: Role | undefined) {
   return role === 'ADMIN' && person.status === 'ACTIVE' && person.linkedUserId == null;
+}
+
+/** Whether the caller may merge this Person, a duplicate, into another: ADMIN, ACTIVE Person (mvp.md §12). */
+export function canMergePerson(person: Person, role: Role | undefined) {
+  return role === 'ADMIN' && person.status === 'ACTIVE';
 }
 
 /**
@@ -141,7 +150,8 @@ export function PersonRoute({
 /**
  * SCREEN-005 — Person profile: header, Family (ACTIVE Persons only), the ADMIN's Removed links and
  * About; no Memory, History or photo in this phase (Phase 2 plan §3.1, §3.2). An ARCHIVED Person
- * shows a notice and no mutation action except, for the ADMIN, `Restore`.
+ * shows a notice and no mutation action except, for the ADMIN, `Restore`; a MERGED Person, a notice
+ * leading to the kept profile.
  */
 export function PersonProfilePage() {
   return (
@@ -164,7 +174,9 @@ function PersonProfile({
 }) {
   const { t, i18n } = useTranslation(['person', 'settings']);
   const { t: tPerson } = useTranslation('person');
-  const relativeAdded = (useLocation().state as PersonProfileState | null)?.relativeAdded;
+  const profileState = useLocation().state as PersonProfileState | null;
+  const relativeAdded = profileState?.relativeAdded;
+  const merged = profileState?.merged;
   const [notice, setNotice] = useState<LinkNotice | null>(null);
   const language = isSupportedLanguage(i18n.resolvedLanguage)
     ? i18n.resolvedLanguage
@@ -232,7 +244,14 @@ function PersonProfile({
         )}
         <ClaimAction familyId={familyId} person={person} />
         <ArchiveAction familyId={familyId} person={person} role={role} />
+        <MergeAction familyId={familyId} person={person} role={role} />
       </header>
+
+      {merged && (
+        <p role="status" className="rounded-xl border border-border bg-surface px-4 py-3 text-body">
+          {t('person:merge.done', { name: merged.name, kept: displayNameOf(person) })}
+        </p>
+      )}
 
       {notice ? (
         <p role="status" className="rounded-xl border border-border bg-surface px-4 py-3 text-body">
@@ -736,6 +755,87 @@ function ArchiveAction({
         />
       )}
     </div>
+  );
+}
+
+/**
+ * SCREEN-005 merge of a duplicate (SCREEN-COMPONENT-004): the ADMIN's `Merge with another profile`
+ * on an ACTIVE Person; on a MERGED Person, a notice with the way to the kept profile.
+ */
+function MergeAction({
+  familyId,
+  person,
+  role,
+}: {
+  familyId: string;
+  person: Person;
+  role: Role | undefined;
+}) {
+  const { t } = useTranslation('person');
+  const navigate = useNavigate();
+  const mutation = useMergePerson(familyId, person.id);
+  const [merging, setMerging] = useState(false);
+
+  if (person.status === 'MERGED') {
+    return (
+      <div className="flex flex-col gap-3">
+        <p
+          role="note"
+          className="rounded-xl border border-border bg-surface px-4 py-3 text-body font-semibold text-text"
+        >
+          {t('merged.notice')}
+        </p>
+        {person.mergedIntoPersonId && (
+          <Link
+            to={personPath(familyId, person.mergedIntoPersonId)}
+            className={buttonClassName('secondary', 'sm:w-auto sm:self-start')}
+          >
+            {t('merged.open')}
+          </Link>
+        )}
+      </div>
+    );
+  }
+  if (!canMergePerson(person, role)) return null;
+  return (
+    <>
+      <Button
+        variant="secondary"
+        className="sm:w-auto sm:self-start"
+        onClick={() => {
+          mutation.reset();
+          setMerging(true);
+        }}
+      >
+        {t('merge.action')}
+      </Button>
+      {merging && (
+        <MergePersonDialog
+          familyId={familyId}
+          source={person}
+          pending={mutation.isPending}
+          error={mutation.error}
+          onCancel={() => {
+            setMerging(false);
+          }}
+          onConfirm={(target) => {
+            mutation.mutate(
+              {
+                targetPersonId: target.id,
+                sourceVersion: person.version,
+                targetVersion: target.version,
+              },
+              {
+                onSuccess: (kept) => {
+                  const state: PersonProfileState = { merged: { name: displayNameOf(person) } };
+                  void navigate(personPath(familyId, kept.id), { state });
+                },
+              },
+            );
+          }}
+        />
+      )}
+    </>
   );
 }
 

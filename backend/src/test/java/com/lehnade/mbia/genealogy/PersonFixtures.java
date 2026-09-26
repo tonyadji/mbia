@@ -77,6 +77,16 @@ public final class PersonFixtures {
         return post(token, "/api/v1/families/{familyId}/persons/{personId}/restore", familyId, personId, ifMatch);
     }
 
+    public MvcTestResult merge(TestJwts.Token token, UUID familyId, UUID sourceId, UUID targetId,
+            long sourceVersion, long targetVersion) {
+        return mvc.post().uri("/api/v1/families/{familyId}/persons/{personId}/merge", familyId, sourceId)
+                .header(HttpHeaders.AUTHORIZATION, token.bearer())
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("{\"targetPersonId\": \"%s\", \"sourceVersion\": %d, \"targetVersion\": %d}"
+                        .formatted(targetId, sourceVersion, targetVersion))
+                .exchange();
+    }
+
     private MvcTestResult post(TestJwts.Token token, String uri, UUID familyId, UUID personId, String ifMatch) {
         var request = mvc.post().uri(uri, familyId, personId).header(HttpHeaders.AUTHORIZATION, token.bearer());
         if (ifMatch != null) {

@@ -182,7 +182,8 @@ class GetFamilyTreeUseCaseTest {
     private static Person person(Gender gender, PersonStatus status, UUID linkedUserId) {
         return Person.restore(PersonId.newId(), FAMILY, new PersonDetails("Someone", null, null, null, gender, null,
                 false, null, null), linkedUserId, status, CALLER, CALLER, NOW, NOW,
-                status == PersonStatus.ARCHIVED ? NOW : null, 0);
+                status == PersonStatus.ARCHIVED ? NOW : null,
+                status == PersonStatus.MERGED ? PersonId.newId() : null, 0);
     }
 
     private static FamilyTree tree(PersonId focus, Person... nodes) {

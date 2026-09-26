@@ -21,6 +21,8 @@ import com.lehnade.mbia.genealogy.application.claimperson.ClaimPersonUseCase;
 import com.lehnade.mbia.genealogy.application.createperson.CreatePersonCommand;
 import com.lehnade.mbia.genealogy.application.createperson.CreatePersonUseCase;
 import com.lehnade.mbia.genealogy.application.getperson.GetPersonUseCase;
+import com.lehnade.mbia.genealogy.application.mergepersons.MergePersonsCommand;
+import com.lehnade.mbia.genealogy.application.mergepersons.MergePersonsUseCase;
 import com.lehnade.mbia.genealogy.application.restoreperson.RestorePersonCommand;
 import com.lehnade.mbia.genealogy.application.restoreperson.RestorePersonUseCase;
 import com.lehnade.mbia.genealogy.application.searchpersons.PersonSearchView;
@@ -32,6 +34,7 @@ import com.lehnade.mbia.genealogy.application.updateperson.UpdatePersonCommand;
 import com.lehnade.mbia.genealogy.application.updateperson.UpdatePersonUseCase;
 import com.lehnade.mbia.genealogy.domain.Person;
 import com.lehnade.mbia.genealogy.domain.PersonDetails;
+import com.lehnade.mbia.genealogy.domain.PersonId;
 import com.lehnade.mbia.shared.api.web.ETags;
 import com.lehnade.mbia.shared.domain.DomainException;
 import com.lehnade.mbia.shared.domain.ErrorCode;
@@ -59,11 +62,12 @@ class PersonsController implements PersonsApi {
     private final SearchPersonsUseCase searchPersons;
     private final ArchivePersonUseCase archivePerson;
     private final RestorePersonUseCase restorePerson;
+    private final MergePersonsUseCase mergePersons;
 
     PersonsController(CreatePersonUseCase createPerson, GetPersonUseCase getPerson,
             UpdatePersonUseCase updatePerson, ClaimPersonUseCase claimPerson, UnclaimPersonUseCase unclaimPerson,
             SearchPersonsUseCase searchPersons, ArchivePersonUseCase archivePerson,
-            RestorePersonUseCase restorePerson) {
+            RestorePersonUseCase restorePerson, MergePersonsUseCase mergePersons) {
         this.createPerson = createPerson;
         this.getPerson = getPerson;
         this.updatePerson = updatePerson;
@@ -72,6 +76,7 @@ class PersonsController implements PersonsApi {
         this.searchPersons = searchPersons;
         this.archivePerson = archivePerson;
         this.restorePerson = restorePerson;
+        this.mergePersons = mergePersons;
     }
 
     /** {@code profileMediaAssetId} is ignored: Persons have no photo in Phase 2 (OQ-005). */
@@ -150,7 +155,9 @@ class PersonsController implements PersonsApi {
 
     @Override
     public ResponseEntity<PersonResponse> mergePerson(UUID familyId, UUID personId, MergePersonRequest request) {
-        throw notAvailableYet();
+        PersonView person = mergePersons.merge(new MergePersonsCommand(familyId, personId,
+                request.getTargetPersonId(), request.getSourceVersion(), request.getTargetVersion()));
+        return ResponseEntity.ok().eTag(ETags.of(person.person().version())).body(toResponse(person));
     }
 
     @Override
@@ -204,7 +211,7 @@ class PersonsController implements PersonsApi {
                 .profilePictureUrl(null)
                 .linkedUserId(person.linkedUserId().orElse(null))
                 .relationshipToCurrentUser(view.relationshipToCurrentUser().map(KinshipCode::fromValue).orElse(null))
-                .mergedIntoPersonId(null);
+                .mergedIntoPersonId(person.mergedIntoPersonId().map(PersonId::value).orElse(null));
     }
 
     private static com.lehnade.mbia.genealogy.domain.Gender toDomain(Gender gender) {

@@ -66,6 +66,11 @@ class FamilyRelationshipJpaEntity {
         this.updatedAt = updatedAt;
     }
 
+    void changeEndpoints(UUID sourcePersonId, UUID targetPersonId) {
+        this.sourcePersonId = sourcePersonId;
+        this.targetPersonId = targetPersonId;
+    }
+
     void changeStatus(String status, Instant archivedAt, UUID updatedBy, Instant updatedAt) {
         this.status = status;
         this.archivedAt = archivedAt;

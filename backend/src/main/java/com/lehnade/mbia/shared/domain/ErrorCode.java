@@ -24,6 +24,7 @@ public enum ErrorCode {
     PERSON_ALREADY_CLAIMED(409, "Person already claimed"),
     USER_ALREADY_LINKED(409, "User already linked"),
     PERSON_NOT_ACTIVE(409, "Person not active"),
+    PERSON_MERGE_CONFLICT(409, "Person merge conflict"),
     RELATIONSHIP_ALREADY_EXISTS(409, "Relationship already exists"),
     RELATIONSHIP_CREATES_CYCLE(409, "Relationship creates a cycle"),
     UNSUPPORTED_MEDIA_TYPE(415, "Unsupported media type"),

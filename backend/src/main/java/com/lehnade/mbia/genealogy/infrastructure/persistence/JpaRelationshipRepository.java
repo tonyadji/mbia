@@ -58,6 +58,7 @@ class JpaRelationshipRepository implements RelationshipRepository {
                 .filter(found -> found.version() == relationship.version())
                 .orElseThrow(() -> new OptimisticLockingFailureException(
                         "The relationship changed since it was read."));
+        entity.changeEndpoints(relationship.source().value(), relationship.target().value());
         entity.changeStatus(relationship.status().name(), relationship.archivedAt(), relationship.updatedBy(),
                 relationship.updatedAt());
         try {
@@ -65,6 +66,11 @@ class JpaRelationshipRepository implements RelationshipRepository {
         } catch (DataIntegrityViolationException e) {
             throw translated(e);
         }
+    }
+
+    @Override
+    public List<FamilyRelationship> findAllOf(UUID familyId, PersonId person) {
+        return jpa.findAllOf(familyId, person.value()).stream().map(JpaRelationshipRepository::toDomain).toList();
     }
 
     @Override

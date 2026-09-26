@@ -37,6 +37,15 @@ When a question is answered, update the relevant spec, then move the entry to **
 - **Recommendation:** C; it keeps the user in Mbia's language without new infrastructure. Needs a SCREEN-011 wording change.
 - **Blocking:** nothing; PR-12 ships option A.
 
+### OQ-030 — What the profile of a MERGED Person shows
+
+- **Raised by / date:** coding agent (PR-27), 2026-09-26
+- **Context:** `getPerson` returns a MERGED Person with `mergedIntoPersonId`, reachable from an old link or from a removed link, but SCREEN-005 describes only the ARCHIVED case.
+- **Question:** what does the profile of a MERGED Person show?
+- **Options:** A — the identity data, a "This profile was merged into another profile" notice and a link to the kept profile, no mutation action / B — redirect to the kept profile.
+- **Recommendation:** A, the same shape as the archived notice; implemented provisionally in PR-27 and easy to change.
+- **Blocking:** nothing; only the wording and the behaviour of that notice.
+
 ## Resolved
 
 ### OQ-001 — JUnit major version with Spring Boot 4.1
@@ -257,3 +266,39 @@ When a question is answered, update the relevant spec, then move the entry to **
 - **Options:** A — 404 `PERSON_NOT_FOUND`, as `updatePerson` and `claimPerson` for a Person that can no longer change / B — 409 `PERSON_NOT_ACTIVE`.
 - **Recommendation:** A; a merged Person is never restored.
 - **Answer:** A (human, 2026-09-26). Documented in `openapi.yaml` (`archivePerson`, `restorePerson` descriptions, text only) and `person-relationships-collaboration.md` §5; implemented in PR-26.
+
+### OQ-026 — Error codes of a refused merge
+
+- **Raised by / date:** coding agent (PR-27), 2026-09-26
+- **Context:** `mergePerson` (`openapi.yaml`), `data-model.md` §19 and `person-relationships-collaboration.md` §4.2 list the refusals (two different linked Users, resulting self relation or parental cycle, non-ACTIVE Persons, `A.id != B.id`) but name only `PERSON_MERGE_CONFLICT`, without saying which refusal uses it; SCREEN-COMPONENT-004 must explain each conflict.
+- **Question:** which status and code for each refusal?
+- **Options:** A — 409 `PERSON_MERGE_CONFLICT` with `details.reason` = `DIFFERENT_LINKED_USERS` / `SELF_RELATIONSHIP` / `PARENTAL_CYCLE`; a MERGED Person or another Family's → 404 `PERSON_NOT_FOUND` (OQ-025); an ARCHIVED Person → 409 `PERSON_NOT_ACTIVE` (OQ-011); the same Person as source and target → 400 `VALIDATION_FAILED`; a stale version → 409 `CONCURRENT_MODIFICATION` / B — reuse `SELF_RELATIONSHIP_NOT_ALLOWED` and `RELATIONSHIP_CREATES_CYCLE` for the graph refusals.
+- **Recommendation:** A; one code for the merge, and the UI explains each reason.
+- **Answer:** A (human, 2026-09-26). Documented in `openapi.yaml` (`mergePerson` description, text only), `person-relationships-collaboration.md` §4.2 and `data-model.md` §19; implemented in PR-27.
+
+### OQ-027 — Removed relationships and exact duplicates in a merge
+
+- **Raised by / date:** coding agent (PR-27), 2026-09-26
+- **Context:** `data-model.md` §19 moves the duplicate's relationships to the kept Person and deduplicates identical ones, but does not say what happens to its ARCHIVED relationships, to an ACTIVE relationship identical to one of the kept Person, nor to a removed link between the two Persons (the database forbids self relations).
+- **Question:** which relationships move, and what becomes of the duplicates?
+- **Options:** A — every relationship of the duplicate (ACTIVE and ARCHIVED) moves to the kept Person and stays restorable from their profile; an ACTIVE relationship identical to an ACTIVE one of the kept Person is archived and stays on the duplicate; an ARCHIVED link between the two stays on the duplicate and does not block the merge / B — only ACTIVE relationships move.
+- **Recommendation:** A.
+- **Answer:** A (human, 2026-09-26). Documented in `data-model.md` §19 and `person-relationships-collaboration.md` §4.2; implemented in PR-27.
+
+### OQ-028 — Which target values are "empty" in a merge
+
+- **Raised by / date:** coding agent (PR-27), 2026-09-26
+- **Context:** `data-model.md` §19 step 3 keeps the target's non-empty scalar values and fills its empty ones from the source, but `gender`, dates and `isDeceased` always have a value.
+- **Question:** when is a target value empty, and how is the death handled?
+- **Options:** A — an absent text, `gender: UNKNOWN` and a date of precision `UNKNOWN` are empty; the kept Person is deceased when either Person is, and the source's death date fills an unknown death date / B — the target's `isDeceased` always wins.
+- **Recommendation:** A.
+- **Answer:** A (human, 2026-09-26). Documented in `data-model.md` §19 and `openapi.yaml` (`mergePerson` description, text only); implemented in PR-27.
+
+### OQ-029 — Where the merge starts on the profile
+
+- **Raised by / date:** coding agent (PR-27), 2026-09-26
+- **Context:** SCREEN-005 offers the ADMIN "merge a duplicate" (SCREEN-COMPONENT-004) without saying from which profile, nor how the other one is chosen.
+- **Question:** which profile opens the merge, and how is the other chosen?
+- **Options:** A — from the duplicate's profile: the ADMIN searches the profile to keep (SCREEN-007), compares both, confirms, and lands on the kept profile / B — the same, with a way to swap which profile is kept.
+- **Recommendation:** A.
+- **Answer:** A (human, 2026-09-26). Documented in `screens.md` SCREEN-005 and SCREEN-COMPONENT-004; implemented in PR-27.

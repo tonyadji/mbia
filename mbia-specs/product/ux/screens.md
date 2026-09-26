@@ -296,7 +296,7 @@ Show only when permission rules allow them:
 - `Edit` (SCREEN-012);
 - `This is me` when the Person can be claimed;
 - unlink from the current User's own linked Person;
-- ADMIN: archive / restore, merge a duplicate (SCREEN-COMPONENT-004).
+- ADMIN: archive / restore, merge a duplicate (SCREEN-COMPONENT-004), from the duplicate's profile (OQ-029).
 
 ---
 
@@ -562,7 +562,7 @@ ADMIN only.
 
 ## Display
 
-A focused modal or panel, not a general data-merging editor. Source and target summaries side by side, with an explanation:
+A focused modal or panel, not a general data-merging editor, opened from the profile of the duplicate: the ADMIN first searches the profile to keep (SCREEN-007), then sees source and target summaries side by side, with an explanation:
 
 - the target remains;
 - the source becomes merged into the target;
@@ -571,7 +571,7 @@ A focused modal or panel, not a general data-merging editor. Source and target s
 
 ## Behavior
 
-Requires explicit confirmation. When the merge is refused, explain the conflict; never offer to force it.
+Requires explicit confirmation, then opens the kept profile. When the merge is refused, explain the conflict (OQ-026); never offer to force it.
 
 ---
 

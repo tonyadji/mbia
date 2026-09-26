@@ -451,7 +451,8 @@ paths:
       description: |
         ADMIN or CONTRIBUTOR only. If the server detects likely duplicates and
         `confirmPossibleDuplicate` is false, the server returns 409 with code
-        `POSSIBLE_DUPLICATE` and candidate summaries in `details.candidates`.
+        `POSSIBLE_DUPLICATE` and candidate summaries in `details.candidates`
+        (at most 10 objects shaped as `PersonSummary`, in search order).
         With `linkToCurrentUser`, the server returns 409 `USER_ALREADY_LINKED` when the
         current user already has a linked Person in this family; nothing is created.
       requestBody:
@@ -679,8 +680,16 @@ paths:
       description: |
         ADMIN only. `personId` is the duplicate/source that will become MERGED.
         `targetPersonId` is retained. Scalar target values win when both sides are
-        non-empty; source values fill empty target fields. Relationships and memories
-        are transferred and deduplicated atomically.
+        non-empty; source values fill empty target fields (an absent text, `gender`
+        `UNKNOWN`, a date of precision `UNKNOWN`); the target is deceased when either
+        Person is. Relationships and memories are transferred and deduplicated
+        atomically; the source's linked user moves to a target linked to nobody.
+        Refusals: 409 `PERSON_MERGE_CONFLICT` with `details.reason`
+        `DIFFERENT_LINKED_USERS`, `SELF_RELATIONSHIP` (the two Persons are linked by an
+        ACTIVE relationship) or `PARENTAL_CYCLE`; 404 `PERSON_NOT_FOUND` for a MERGED
+        Person or one of another family; 409 `PERSON_NOT_ACTIVE` for an ARCHIVED one;
+        400 `VALIDATION_FAILED` when `targetPersonId` is `personId`; 409
+        `CONCURRENT_MODIFICATION` when a version is stale.
       requestBody:
         required: true
         content:

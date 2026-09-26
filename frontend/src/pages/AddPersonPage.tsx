@@ -20,6 +20,7 @@ import {
   toPersonFields,
   type PersonFormValues,
 } from '../persons/PersonFormFields';
+import { DuplicateCandidates } from '../persons/DuplicateCandidates';
 import { PersonSearch } from '../persons/PersonSearch';
 import {
   isParentRelation,
@@ -59,7 +60,8 @@ interface Relative {
  * SCREEN-004 — Add a Person, in "Start with me", standalone or "Relative of a Person" mode
  * (`relativeOf`, `relation`, `from`). In relative mode, the first option is a Person already in the
  * Family (SCREEN-007), the second a new Person (family-tree-ux.md §9). Only first and last names
- * are shown first; other details are behind "More information" (§5). No photo in Phase 2.
+ * are shown first; other details are behind "More information" (§5). Similar Persons already in the
+ * Family are shown before creating (person-relationships-collaboration.md §4.1). No photo in Phase 2.
  */
 export function AddPersonPage() {
   const { familyId = '' } = useParams();
@@ -137,6 +139,8 @@ function AddPersonForm({
   const [showMore, setShowMore] = useState(false);
   // The Person already in the Family chosen instead of a new one.
   const [chosen, setChosen] = useState<PersonSummary | null>(null);
+  // Similar Persons already in the Family, reported before creating (POSSIBLE_DUPLICATE).
+  const [candidates, setCandidates] = useState<PersonSummary[] | null>(null);
   const form = useForm<PersonFormValues>({
     defaultValues: {
       ...EMPTY_PERSON_FORM,
@@ -201,15 +205,17 @@ function AddPersonForm({
     }
   }
 
-  async function save(values: PersonFormValues) {
+  /** @param confirmDuplicate whether the User chose `Create anyway` over the similar Persons */
+  async function save(values: PersonFormValues, confirmDuplicate = false) {
     setError(null);
     setNotLinked(false);
     setWarnings(null);
+    setCandidates(null);
     setPending(true);
     try {
       let person = created;
       if (person === null) {
-        person = await createPerson.mutateAsync(toRequest(values, startWithMe));
+        person = await createPerson.mutateAsync(toRequest(values, startWithMe, confirmDuplicate));
         setCreated(person);
       } else {
         // "Correct information" after a warning: the Person exists, only their details change.
@@ -221,7 +227,11 @@ function AddPersonForm({
       }
       await link(person, false);
     } catch (failure) {
-      setError(failure);
+      if (failure instanceof ApiError && failure.code === 'POSSIBLE_DUPLICATE') {
+        setCandidates((failure.details?.candidates as PersonSummary[] | undefined) ?? []);
+      } else {
+        setError(failure);
+      }
     } finally {
       setPending(false);
     }
@@ -237,6 +247,18 @@ function AddPersonForm({
       setPending(false);
     }
   }
+
+  /** `View existing person`: link them instead in relative mode, otherwise open their profile. */
+  function viewExisting(person: PersonSummary) {
+    setCandidates(null);
+    if (relative) {
+      setChosen(person);
+      return;
+    }
+    void navigate(personPath(familyId, person.id));
+  }
+
+  const createAnyway = form.handleSubmit((values) => void save(values, true));
 
   const submit = form.handleSubmit(
     (values) => void save(values),
@@ -334,8 +356,16 @@ function AddPersonForm({
             </Link>
           </div>
         )}
+        {candidates && (
+          <DuplicateCandidates
+            candidates={candidates}
+            disabled={pending}
+            onView={viewExisting}
+            onCreateAnyway={() => void createAnyway()}
+          />
+        )}
         {error !== null && !notLinked && <p role="alert">{errorMessage(i18n, error)}</p>}
-        {!warnings && !notLinked && (
+        {!warnings && !notLinked && !candidates && (
           <Button type="submit" disabled={pending}>
             {startWithMe ? t('person:form.submitMe') : t('person:form.submit')}
           </Button>
@@ -515,7 +545,11 @@ function DateWarnings({
 }
 
 /** A blank optional value is left out of the creation. */
-function toRequest(values: PersonFormValues, startWithMe: boolean): CreatePersonRequest {
+function toRequest(
+  values: PersonFormValues,
+  startWithMe: boolean,
+  confirmPossibleDuplicate: boolean,
+): CreatePersonRequest {
   const fields = toPersonFields(values);
   return {
     ...fields,
@@ -524,7 +558,7 @@ function toRequest(values: PersonFormValues, startWithMe: boolean): CreatePerson
     preferredName: fields.preferredName || undefined,
     biography: fields.biography || undefined,
     linkToCurrentUser: startWithMe,
-    confirmPossibleDuplicate: false,
+    confirmPossibleDuplicate,
   };
 }
 

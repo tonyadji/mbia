@@ -1,15 +1,27 @@
 package com.lehnade.mbia.genealogy.infrastructure.persistence;
 
+import jakarta.persistence.LockModeType;
 import java.util.Collection;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Lock;
 import org.springframework.data.jpa.repository.Query;
 
 interface PersonJpaRepository extends JpaRepository<PersonJpaEntity, UUID> {
 
     Optional<PersonJpaEntity> findByIdAndFamilyId(UUID id, UUID familyId);
+
+    /** {@code SELECT … FOR UPDATE}, rows sorted by id before they are locked (genealogy.md §12). */
+    @Lock(LockModeType.PESSIMISTIC_WRITE)
+    @Query("""
+            SELECT p
+            FROM PersonJpaEntity p
+            WHERE p.familyId = :familyId AND p.id IN :ids
+            ORDER BY p.id
+            """)
+    List<PersonJpaEntity> lockInFamily(UUID familyId, Collection<UUID> ids);
 
     boolean existsByFamilyIdAndLinkedUserIdAndStatusNot(UUID familyId, UUID linkedUserId, String status);
 
@@ -138,6 +150,33 @@ interface PersonJpaRepository extends JpaRepository<PersonJpaEntity, UUID> {
             LIMIT :limit OFFSET :offset
             """)
     List<PersonJpaEntity> search(UUID familyId, String status, String pattern, int limit, long offset);
+
+    /**
+     * The possible duplicate candidates of person-relationships-collaboration.md §4.1 among the
+     * ACTIVE Persons of the Family. Texts are compared trimmed, with whitespace runs collapsed,
+     * lowered and unaccented; a missing value ({@code NULL}) never matches. The birth year of an
+     * EXACT date is the year of that date. Ordered and bounded like {@link #search}.
+     */
+    @Query(nativeQuery = true, value = """
+            SELECT p.*
+            FROM persons p
+            WHERE p.family_id = :familyId AND p.status = 'ACTIVE'
+              AND lower(unaccent(regexp_replace(btrim(p.first_name), '\\s+', ' ', 'g')))
+                  = lower(unaccent(regexp_replace(btrim(CAST(:firstName AS text)), '\\s+', ' ', 'g')))
+              AND (lower(unaccent(regexp_replace(btrim(p.last_name), '\\s+', ' ', 'g')))
+                       = lower(unaccent(regexp_replace(btrim(CAST(:lastName AS text)), '\\s+', ' ', 'g')))
+                   OR lower(unaccent(regexp_replace(btrim(p.preferred_name), '\\s+', ' ', 'g')))
+                       = lower(unaccent(regexp_replace(btrim(CAST(:preferredName AS text)), '\\s+', ' ', 'g'))))
+              AND (CAST(:birthYear AS integer) IS NULL
+                   OR coalesce(p.birth_year, extract(YEAR FROM p.birth_date)) IS NULL
+                   OR coalesce(p.birth_year, extract(YEAR FROM p.birth_date)) = CAST(:birthYear AS integer))
+            ORDER BY lower(unaccent(coalesce(p.preferred_name,
+                                             p.first_name || coalesce(' ' || p.last_name, '')))) COLLATE "C",
+                     p.created_at, p.id
+            LIMIT :limit
+            """)
+    List<PersonJpaEntity> findPossibleDuplicates(UUID familyId, String firstName, String lastName,
+            String preferredName, Integer birthYear, int limit);
 
     /** The number of Persons matching {@link #search} over all pages. */
     @Query(nativeQuery = true, value = """
