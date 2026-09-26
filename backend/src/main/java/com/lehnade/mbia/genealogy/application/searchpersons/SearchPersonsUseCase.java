@@ -1,6 +1,7 @@
 package com.lehnade.mbia.genealogy.application.searchpersons;
 
 import com.lehnade.mbia.family.application.FamilyAccess;
+import com.lehnade.mbia.family.application.FamilyRole;
 import com.lehnade.mbia.genealogy.application.PersonView;
 import com.lehnade.mbia.genealogy.domain.Gender;
 import com.lehnade.mbia.genealogy.domain.KinshipCode;
@@ -25,8 +26,8 @@ import org.springframework.transaction.annotation.Transactional;
  * Search or list the Persons of a Family, for any ACTIVE member (openapi {@code searchPersons};
  * mvp.md §19; genealogy.md §11; SCREEN-007). MERGED Persons are never listed.
  *
- * <p>{@code status=ARCHIVED} (ADMIN "Archived people") arrives with the Person archive (Phase 2
- * plan, PR-26); until then it answers like an operation that does not exist yet.
+ * <p>{@code status=ARCHIVED} is the ADMIN "Archived people" view (mvp.md §13): the same matching
+ * and order over ARCHIVED Persons, {@code PERMISSION_DENIED} for another role.
  * {@code relationshipToCurrentUser} of every result comes from one search over the Family graph,
  * never one per result.
  */
@@ -51,9 +52,10 @@ public class SearchPersonsUseCase {
     @Transactional(readOnly = true)
     public PersonSearchView search(SearchPersonsCommand command) {
         UUID callerId = currentUserAccessor.currentUser().id();
-        familyAccess.requireActiveMember(command.familyId());
-        if (command.status() != PersonStatus.ACTIVE) {
-            throw new DomainException(ErrorCode.RESOURCE_NOT_FOUND, "Resource not found.");
+        FamilyRole role = familyAccess.requireActiveMember(command.familyId());
+        if (command.status() != PersonStatus.ACTIVE && role != FamilyRole.ADMIN) {
+            throw new DomainException(ErrorCode.PERMISSION_DENIED,
+                    "Only an administrator can list the archived people.");
         }
         String text = command.search() == null ? "" : command.search().strip();
         PersonSearchQuery.Result result = searchQuery.search(command.familyId(), command.status(), text,
@@ -68,8 +70,8 @@ public class SearchPersonsUseCase {
     }
 
     /**
-     * Paths use ACTIVE Persons only: a linked Person that is not ACTIVE has no known kinship with
-     * the results, which are all ACTIVE (OQ-013).
+     * Paths use ACTIVE Persons only (OQ-013): a linked Person that is not ACTIVE has no known
+     * kinship with the results, and ARCHIVED results have none with anyone.
      */
     private Map<PersonId, KinshipCode> relationshipsTo(Optional<Person> me, List<Person> results) {
         if (me.isEmpty() || results.isEmpty()) {

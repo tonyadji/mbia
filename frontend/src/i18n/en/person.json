@@ -210,5 +210,26 @@
     "more": "Show more",
     "emptyFamily": "No one in this family yet.",
     "noResult": "No one in this family matches “{{text}}”."
+  },
+  "archive": {
+    "action": "Archive this profile",
+    "warning": "{{name}} will no longer appear in the family tree or in search. An administrator can restore this profile at any time.",
+    "confirm": "Archive",
+    "cancel": "Cancel",
+    "done": "{{name}}'s profile was archived.",
+    "refused": {
+      "PERSON_ALREADY_CLAIMED": "This profile is linked to a member of the family. Remove this link before archiving it."
+    }
+  },
+  "archived": {
+    "notice": "This profile is archived. It no longer appears in the family tree or in search.",
+    "restore": "Restore this profile",
+    "restored": "{{name}}'s profile was restored."
+  },
+  "archivedPeople": {
+    "title": "Archived people",
+    "intro": "Archived profiles no longer appear in the family tree or in search. Open one to restore it.",
+    "empty": "No archived profile.",
+    "adminOnly": "Only an administrator can see archived profiles."
   }
 }

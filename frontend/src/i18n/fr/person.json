@@ -210,5 +210,26 @@
     "more": "Afficher plus",
     "emptyFamily": "Personne dans cette famille pour le moment.",
     "noResult": "Personne dans cette famille ne correspond à « {{text}} »."
+  },
+  "archive": {
+    "action": "Archiver cette fiche",
+    "warning": "{{name}} n'apparaîtra plus dans l'arbre ni dans la recherche. Un administrateur pourra restaurer cette fiche à tout moment.",
+    "confirm": "Archiver",
+    "cancel": "Annuler",
+    "done": "La fiche de {{name}} a été archivée.",
+    "refused": {
+      "PERSON_ALREADY_CLAIMED": "Cette fiche est reliée à un membre de la famille. Retirez ce lien avant de l'archiver."
+    }
+  },
+  "archived": {
+    "notice": "Cette fiche est archivée. Elle n'apparaît plus dans l'arbre ni dans la recherche.",
+    "restore": "Restaurer cette fiche",
+    "restored": "La fiche de {{name}} a été restaurée."
+  },
+  "archivedPeople": {
+    "title": "Personnes archivées",
+    "intro": "Les fiches archivées n'apparaissent plus dans l'arbre ni dans la recherche. Ouvrez-en une pour la restaurer.",
+    "empty": "Aucune fiche archivée.",
+    "adminOnly": "Seul un administrateur peut voir les fiches archivées."
   }
 }

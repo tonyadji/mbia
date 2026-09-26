@@ -67,6 +67,7 @@ class JpaPersonRepository implements PersonRepository {
                 year(details.death()), details.death().precision().name(), details.biography(),
                 person.updatedBy(), person.updatedAt());
         entity.changeLinkedUser(person.linkedUserId().orElse(null));
+        entity.changeStatus(person.status().name(), person.archivedAt().orElse(null));
         try {
             return toDomain(jpa.saveAndFlush(entity));
         } catch (DataIntegrityViolationException e) {
@@ -93,7 +94,7 @@ class JpaPersonRepository implements PersonRepository {
                 entity.biography());
         return Person.restore(new PersonId(entity.id()), entity.familyId(), details, entity.linkedUserId(),
                 PersonStatus.valueOf(entity.status()), entity.createdBy(), entity.updatedBy(), entity.createdAt(),
-                entity.updatedAt(), entity.version());
+                entity.updatedAt(), entity.archivedAt(), entity.version());
     }
 
     private static PartialDate partialDate(String precision, LocalDate date, Short year) {

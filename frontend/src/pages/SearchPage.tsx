@@ -7,6 +7,7 @@ import { Skeleton } from '../components/Skeleton';
 import { useFamily } from '../families/useFamily';
 import { PersonSearch } from '../persons/PersonSearch';
 import { familyTreePath } from '../tree/treePath';
+import { archivedPeoplePath } from './ArchivedPeoplePage';
 import { familyHomePath } from './FamilyHomePage';
 import { FamilyNotFoundPage } from './FamilyNotFoundPage';
 import { personPath } from './PersonProfilePage';
@@ -24,7 +25,10 @@ export function searchPath(familyId: string, tree?: { focus?: string | undefined
   return `/families/${familyId}/search?${query.toString()}`;
 }
 
-/** SCREEN-007 — Search Person, for any ACTIVE member of the Family. */
+/**
+ * SCREEN-007 — Search Person, for any ACTIVE member of the Family. From general navigation, the
+ * ADMIN also finds the "Archived people" view; never from the tree.
+ */
 export function SearchPage() {
   const { t } = useTranslation(['person', 'settings']);
   const { familyId = '' } = useParams();
@@ -74,6 +78,14 @@ export function SearchPage() {
         <h1 className="text-display text-text">{t('person:search.title')}</h1>
       </header>
       {content}
+      {!fromTree && family.data?.myRole === 'ADMIN' && (
+        <Link
+          to={archivedPeoplePath(familyId)}
+          className="self-start text-body font-semibold text-primary underline-offset-4 hover:underline"
+        >
+          {t('person:archivedPeople.title')}
+        </Link>
+      )}
       <NavigationBar familyId={familyId} />
     </div>
   );

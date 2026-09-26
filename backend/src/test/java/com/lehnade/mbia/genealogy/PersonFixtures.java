@@ -69,6 +69,31 @@ public final class PersonFixtures {
         return request.exchange();
     }
 
+    public MvcTestResult archive(TestJwts.Token token, UUID familyId, UUID personId, String ifMatch) {
+        return post(token, "/api/v1/families/{familyId}/persons/{personId}/archive", familyId, personId, ifMatch);
+    }
+
+    public MvcTestResult restore(TestJwts.Token token, UUID familyId, UUID personId, String ifMatch) {
+        return post(token, "/api/v1/families/{familyId}/persons/{personId}/restore", familyId, personId, ifMatch);
+    }
+
+    private MvcTestResult post(TestJwts.Token token, String uri, UUID familyId, UUID personId, String ifMatch) {
+        var request = mvc.post().uri(uri, familyId, personId).header(HttpHeaders.AUTHORIZATION, token.bearer());
+        if (ifMatch != null) {
+            request = request.header(HttpHeaders.IF_MATCH, ifMatch);
+        }
+        return request.exchange();
+    }
+
+    public String status(UUID personId) {
+        return jdbc.sql("SELECT status FROM persons WHERE id = ?").param(personId).query(String.class).single();
+    }
+
+    public boolean hasArchivedAt(UUID personId) {
+        return jdbc.sql("SELECT archived_at IS NOT NULL FROM persons WHERE id = ?").param(personId)
+                .query(Boolean.class).single();
+    }
+
     /** @return the User the Person represents, or {@code null} */
     public UUID linkedUserId(UUID personId) {
         return jdbc.sql("SELECT linked_user_id FROM persons WHERE id = ?").param(personId)

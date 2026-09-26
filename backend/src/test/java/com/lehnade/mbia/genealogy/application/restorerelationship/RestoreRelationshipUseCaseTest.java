@@ -210,7 +210,8 @@ class RestoreRelationshipUseCaseTest {
 
     private void given(PersonId id, PersonStatus status, PartialDate birth) {
         Person person = Person.restore(id, FAMILY, new PersonDetails("Someone", null, null, null, null, birth, false,
-                null, null), null, status, CALLER, CALLER, CREATED, CREATED, 0);
+                null, null), null, status, CALLER, CALLER, CREATED, CREATED,
+                status == PersonStatus.ARCHIVED ? CREATED : null, 0);
         when(persons.findInFamily(FAMILY, id)).thenReturn(Optional.of(person));
     }
 

@@ -13,6 +13,7 @@ import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 
 import com.lehnade.mbia.family.application.FamilyAccess;
+import com.lehnade.mbia.family.application.FamilyRole;
 import com.lehnade.mbia.genealogy.application.PersonView;
 import com.lehnade.mbia.genealogy.domain.Gender;
 import com.lehnade.mbia.genealogy.domain.KinshipGraph;
@@ -38,7 +39,7 @@ import org.junit.jupiter.api.Test;
 /**
  * PR-25: {@code searchPersons} checks the caller's membership first, searches the trimmed text
  * over ACTIVE Persons and resolves every result's {@code relationshipToCurrentUser} over one graph
- * (mvp.md §19; genealogy.md §11, §15). ARCHIVED Persons are listed from PR-26.
+ * (mvp.md §19; genealogy.md §11, §15). PR-26: ARCHIVED Persons are listed for the ADMIN only.
  */
 class SearchPersonsUseCaseTest {
 
@@ -129,11 +130,29 @@ class SearchPersonsUseCaseTest {
     }
 
     @Test
-    void archivedPersonsAreNotListedYet() {
-        assertThatThrownBy(() -> useCase.search(command(PersonStatus.ARCHIVED, null)))
-                .isInstanceOfSatisfying(DomainException.class,
-                        error -> assertThat(error.code()).isEqualTo(ErrorCode.RESOURCE_NOT_FOUND));
-        verify(familyAccess).requireActiveMember(FAMILY);
+    void anAdminSearchesTheArchivedPersons() {
+        Person archived = person(Gender.MALE, PersonStatus.ARCHIVED, null);
+        when(familyAccess.requireActiveMember(FAMILY)).thenReturn(FamilyRole.ADMIN);
+        when(searchQuery.search(FAMILY, PersonStatus.ARCHIVED, "Paul", 2, 20))
+                .thenReturn(new PersonSearchQuery.Result(List.of(archived), 1));
+
+        PersonSearchView result = useCase.search(command(PersonStatus.ARCHIVED, " Paul "));
+
+        assertThat(result.items()).singleElement().satisfies(view -> {
+            assertThat(view.person()).isEqualTo(archived);
+            assertThat(view.relationshipToCurrentUser()).contains("NONE_KNOWN");
+        });
+    }
+
+    @Test
+    void onlyAnAdminSearchesTheArchivedPersons() {
+        for (FamilyRole role : new FamilyRole[] {FamilyRole.CONTRIBUTOR, FamilyRole.VIEWER}) {
+            when(familyAccess.requireActiveMember(FAMILY)).thenReturn(role);
+
+            assertThatThrownBy(() -> useCase.search(command(PersonStatus.ARCHIVED, null)))
+                    .isInstanceOfSatisfying(DomainException.class,
+                            error -> assertThat(error.code()).isEqualTo(ErrorCode.PERMISSION_DENIED));
+        }
         verifyNoInteractions(searchQuery);
     }
 
@@ -143,6 +162,7 @@ class SearchPersonsUseCaseTest {
 
     private static Person person(Gender gender, PersonStatus status, UUID linkedUserId) {
         return Person.restore(PersonId.newId(), FAMILY, new PersonDetails("Someone", null, null, null, gender, null,
-                false, null, null), linkedUserId, status, CALLER, CALLER, NOW, NOW, 0);
+                false, null, null), linkedUserId, status, CALLER, CALLER, NOW, NOW,
+                status == PersonStatus.ARCHIVED ? NOW : null, 0);
     }
 }

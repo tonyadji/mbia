@@ -140,6 +140,11 @@ class PersonJpaEntity {
         this.linkedUserId = linkedUserId;
     }
 
+    void changeStatus(String status, Instant archivedAt) {
+        this.status = status;
+        this.archivedAt = archivedAt;
+    }
+
     UUID id() {
         return id;
     }
@@ -222,6 +227,10 @@ class PersonJpaEntity {
 
     Instant updatedAt() {
         return updatedAt;
+    }
+
+    Instant archivedAt() {
+        return archivedAt;
     }
 
     long version() {

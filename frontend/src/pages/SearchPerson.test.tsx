@@ -7,6 +7,7 @@ import { i18n } from '../i18n';
 import { addRelativePath } from '../persons/relatives';
 import { searchTerm } from '../persons/usePersonSearch';
 import { fakeOidcUser, fakeUserManager } from '../test/fakeUserManager';
+import { archivedPeoplePath } from './ArchivedPeoplePage';
 import { searchPath } from './SearchPage';
 
 // The API client captures `fetch` when it is created: replace it before any import.
@@ -105,9 +106,11 @@ function fakeApi({
       page(url.searchParams.get('search') === 'Eloise' ? [eloise] : [eloise, marie, paul]),
     ),
   relationships = [],
+  role = 'ADMIN',
 }: {
   search?: (url: URL) => Response;
   relationships?: Handler[];
+  role?: string;
 } = {}) {
   const requests: { method: string; url: URL; body: unknown }[] = [];
   let relationshipCalls = 0;
@@ -121,7 +124,7 @@ function fakeApi({
     if (key === 'GET /me') {
       return jsonResponse({ id: 'u1', email: 'marie@mbia.local', preferredLocale: 'fr' });
     }
-    if (key === `GET /families/${ADJI_ID}`) return jsonResponse(family());
+    if (key === `GET /families/${ADJI_ID}`) return jsonResponse(family({ myRole: role }));
     if (key === `GET /families/${ADJI_ID}/persons`) return search(url);
     if (key === `GET /families/${ADJI_ID}/persons/${MARIE_ID}`) return jsonResponse(marie);
     if (key === `GET /families/${ADJI_ID}/tree`) {
@@ -287,6 +290,95 @@ describe('Search Person (SCREEN-007)', () => {
       expect(router.state.location.pathname).toBe(`/families/${ADJI_ID}/tree`);
       expect(router.state.location.search).toBe(`?focus=${ELOISE_ID}`);
     });
+  });
+});
+
+describe('Archived people (SCREEN-007, ADMIN, PR-26)', () => {
+  beforeEach(async () => {
+    fetchMock.mockReset();
+    await act(() => i18n.changeLanguage('fr'));
+  });
+
+  function archivedSearch(url: URL) {
+    return url.searchParams.get('status') === 'ARCHIVED'
+      ? jsonResponse(
+          page([{ ...paul, status: 'ARCHIVED', relationshipToCurrentUser: 'NONE_KNOWN' }]),
+        )
+      : jsonResponse(page([eloise, marie]));
+  }
+
+  it('is offered to the ADMIN from general search, never from the tree', async () => {
+    fakeApi({ search: archivedSearch });
+    renderApp(searchPath(ADJI_ID));
+    expect(await screen.findByRole('link', { name: 'Personnes archivées' })).toHaveAttribute(
+      'href',
+      archivedPeoplePath(ADJI_ID),
+    );
+  });
+
+  it('is not offered from the tree search', async () => {
+    fakeApi({ search: archivedSearch });
+    renderApp(searchPath(ADJI_ID, { focus: MARIE_ID }));
+
+    await screen.findByRole('list', { name: 'Personnes trouvées' });
+    expect(screen.queryByRole('link', { name: 'Personnes archivées' })).toBeNull();
+  });
+
+  it('is not offered to a CONTRIBUTOR or a VIEWER', async () => {
+    for (const role of ['CONTRIBUTOR', 'VIEWER']) {
+      fakeApi({ search: archivedSearch, role });
+      const { unmount } = render(
+        <App
+          router={createMemoryRouter(routes, { initialEntries: [searchPath(ADJI_ID)] })}
+          queryClient={createQueryClient()}
+          userManager={fakeUserManager(fakeOidcUser())}
+        />,
+      );
+      await screen.findByRole('list', { name: 'Personnes trouvées' });
+      expect(screen.queryByRole('link', { name: 'Personnes archivées' })).toBeNull();
+      unmount();
+    }
+  });
+
+  it('lists only archived Persons, searches them, and opens the archived profile', async () => {
+    const api = fakeApi({ search: archivedSearch });
+    const { router } = renderApp(archivedPeoplePath(ADJI_ID));
+
+    expect(
+      await screen.findByRole('heading', { level: 1, name: 'Personnes archivées' }),
+    ).toBeVisible();
+    const results = await screen.findByRole('list', { name: 'Personnes trouvées' });
+    expect(within(results).getAllByRole('button')).toHaveLength(1);
+    expect(api.searches()[0]?.get('status')).toBe('ARCHIVED');
+
+    await type('Nom', 'Paul');
+    await vi.waitFor(() => {
+      expect(api.searches().at(-1)?.get('search')).toBe('Paul');
+    });
+    expect(api.searches().at(-1)?.get('status')).toBe('ARCHIVED');
+
+    fireEvent.click(within(results).getByRole('button', { name: /^Paul Adji/ }));
+    expect(router.state.location.pathname).toBe(`/families/${ADJI_ID}/persons/${PAUL_ID}`);
+  });
+
+  it('says when there is no archived Person, in English', async () => {
+    fakeApi({ search: () => jsonResponse(page([])) });
+    renderApp(archivedPeoplePath(ADJI_ID));
+    await screen.findByRole('heading', { level: 1, name: 'Personnes archivées' });
+    await act(() => i18n.changeLanguage('en'));
+
+    expect(await screen.findByText('No archived profile.')).toBeInTheDocument();
+    expect(screen.getByRole('heading', { level: 1, name: 'Archived people' })).toBeVisible();
+  });
+
+  it('is reserved to the ADMIN when reached directly', async () => {
+    const api = fakeApi({ search: archivedSearch, role: 'VIEWER' });
+    renderApp(archivedPeoplePath(ADJI_ID));
+
+    expect(
+      await screen.findByText('Seul un administrateur peut voir les fiches archivées.'),
+    ).toBeInTheDocument();
+    expect(api.searches()).toHaveLength(0);
   });
 });
 

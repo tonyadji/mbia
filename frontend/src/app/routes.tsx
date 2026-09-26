@@ -3,6 +3,7 @@ import { CREATE_FAMILY_PATH } from '../auth/AuthProvider';
 import { ProtectedRoute } from '../auth/ProtectedRoute';
 import { AccountSettingsPage, SETTINGS_PATH } from '../pages/AccountSettingsPage';
 import { AddPersonPage } from '../pages/AddPersonPage';
+import { ArchivedPeoplePage } from '../pages/ArchivedPeoplePage';
 import { CreateFamilyPage } from '../pages/CreateFamilyPage';
 import { EditPersonPage } from '../pages/EditPersonPage';
 import { FamilyGatePage } from '../pages/FamilyGatePage';
@@ -28,6 +29,7 @@ export const routes: RouteObject[] = [
           { path: 'families/:familyId', element: <FamilyHomePage /> },
           { path: 'families/:familyId/tree', element: <FamilyTreePage /> },
           { path: 'families/:familyId/search', element: <SearchPage /> },
+          { path: 'families/:familyId/archived', element: <ArchivedPeoplePage /> },
           { path: 'families/:familyId/persons/new', element: <AddPersonPage /> },
           { path: 'families/:familyId/persons/:personId', element: <PersonProfilePage /> },
           { path: 'families/:familyId/persons/:personId/edit', element: <EditPersonPage /> },
