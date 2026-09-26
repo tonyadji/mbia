@@ -1,0 +1,20 @@
+{
+  "title": "Arbre familial",
+  "loading": "Chargement de l'arbre familial",
+  "siblings_one": "Frères et sœurs ({{count}})",
+  "siblings_other": "Frères et sœurs ({{count}})",
+  "zoomIn": "Zoomer",
+  "zoomOut": "Dézoomer",
+  "card": {
+    "moreParents": "A des parents au-delà de cette vue",
+    "moreChildren": "A des enfants au-delà de cette vue"
+  },
+  "quickView": {
+    "children_one": "{{count}} enfant",
+    "children_other": "{{count}} enfants",
+    "seeHow": "Voir le lien",
+    "viewProfile": "Voir le profil",
+    "center": "Centrer l'arbre sur {{name}}",
+    "add": "Ajouter…"
+  }
+}

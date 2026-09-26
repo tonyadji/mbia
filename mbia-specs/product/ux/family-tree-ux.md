@@ -109,7 +109,7 @@ The last focused Person is remembered per Family on the device (browser storage)
 
 "Another suitable Person" means: the ACTIVE Person with the most active relationships; ties broken by earliest creation, then by lowest UUID.
 
-The last focused Person is known only by the browser, which sends it as the requested focus. When no focus is requested, the server applies rules 1 and 3. When the requested focus is not ACTIVE (ARCHIVED or MERGED), or the linked Person is not ACTIVE, the server falls back the same way and returns the focus it actually used (OQ-014).
+The last focused Person is known only by the browser, which sends it as the requested focus only when the User has no linked Person, so that rule 1 keeps priority; while the User navigates, the current focus stays in the tree's URL (OQ-018). When no focus is requested, the server applies rules 1 and 3. When the requested focus is not ACTIVE (ARCHIVED or MERGED), or the linked Person is not ACTIVE, the server falls back the same way and returns the focus it actually used (OQ-014).
 
 ### 6.1 Layout
 
@@ -139,7 +139,7 @@ Row 2 — focus and partners:
 
 Row 3 — children:
 
-- children of the focus are grouped by their other parent: first one group per partner (same order as row 2), then one group for children whose other parent is unknown or is not a partner of the focus;
+- children of the focus are grouped by their other parent: first one group per partner (left to right, as the partners are drawn in row 2, OQ-019), then one group for children whose other parent is unknown or is not a partner of the focus;
 - each group is visually connected to the corresponding couple;
 - within a group, children are ordered by birth date (unknown dates last), then by creation date;
 - when authorized, a "+ Add a child" slot is shown.

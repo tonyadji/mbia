@@ -9,6 +9,7 @@ import { Skeleton } from '../components/Skeleton';
 import { useFamily } from '../families/useFamily';
 import { AddRelativeMenu } from '../persons/AddRelativeMenu';
 import { addRelativePath } from '../persons/relatives';
+import { familyTreePath } from '../tree/treePath';
 import { addPersonPath } from './AddPersonPage';
 import { FamilyNotFoundPage } from './FamilyNotFoundPage';
 import { personPath } from './PersonProfilePage';
@@ -27,8 +28,8 @@ export interface FamilyHomeState {
 }
 
 /**
- * SCREEN-002 — Family Home. `View family tree`, `Add a relative`, search and the tree card arrive
- * with their features; no Memory or activity in Phase 2.
+ * SCREEN-002 — Family Home: `View family tree` as primary action, then `Add a relative`. Search
+ * arrives with its feature; no Memory or activity in Phase 2.
  */
 export function FamilyHomePage() {
   const { familyId = '' } = useParams();
@@ -50,7 +51,7 @@ export function FamilyHomePage() {
   );
 }
 
-type Family = NonNullable<ReturnType<typeof useFamily>['data']>;
+export type Family = NonNullable<ReturnType<typeof useFamily>['data']>;
 
 function FamilyContent({ family }: { family: Family }) {
   const { t } = useTranslation(['family', 'person']);
@@ -101,27 +102,47 @@ function FamilyContent({ family }: { family: Family }) {
         </div>
       )}
       {isEmpty ? (
-        <section className="flex flex-1 flex-col items-center justify-center gap-2 text-center">
-          <h2 className="text-display text-text">{t('home.emptyTitle', { name: family.name })}</h2>
-          <p className="text-body text-text-muted">{t('home.emptyBody')}</p>
-          {canAddPersons && (
-            <div className="mt-6 flex w-full max-w-sm flex-col gap-3">
-              <Link
-                to={addPersonPath(family.id, { startWithMe: true })}
-                className={buttonClassName('primary')}
-              >
-                {t('home.startWithMe')}
-              </Link>
-              <Link to={addPersonPath(family.id)} className={buttonClassName('secondary')}>
-                {t('home.addSomeoneElse')}
-              </Link>
-            </div>
-          )}
-        </section>
+        <FamilyEmptyState family={family} />
       ) : (
-        canAddPersons && <AddAction family={family} />
+        <>
+          <Link
+            to={familyTreePath(family.id)}
+            className={buttonClassName('primary', 'sm:w-auto sm:self-start')}
+          >
+            {t('home.viewTree')}
+          </Link>
+          {canAddPersons && <AddAction family={family} />}
+        </>
       )}
     </>
+  );
+}
+
+/**
+ * The Family has no Person yet (SCREEN-002): ADMIN and CONTRIBUTOR may start with themselves or
+ * someone else, a VIEWER only reads the explanation. Also the empty tree (SCREEN-003).
+ */
+export function FamilyEmptyState({ family }: { family: Family }) {
+  const { t } = useTranslation('family');
+  const canAddPersons = family.myRole === 'ADMIN' || family.myRole === 'CONTRIBUTOR';
+  return (
+    <section className="flex flex-1 flex-col items-center justify-center gap-2 text-center">
+      <h2 className="text-display text-text">{t('home.emptyTitle', { name: family.name })}</h2>
+      <p className="text-body text-text-muted">{t('home.emptyBody')}</p>
+      {canAddPersons && (
+        <div className="mt-6 flex w-full max-w-sm flex-col gap-3">
+          <Link
+            to={addPersonPath(family.id, { startWithMe: true })}
+            className={buttonClassName('primary')}
+          >
+            {t('home.startWithMe')}
+          </Link>
+          <Link to={addPersonPath(family.id)} className={buttonClassName('secondary')}>
+            {t('home.addSomeoneElse')}
+          </Link>
+        </div>
+      )}
+    </section>
   );
 }
 

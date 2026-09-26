@@ -7,6 +7,7 @@ export function initialOf(displayName: string | null | undefined, email: string)
 
 const sizes = {
   md: 'size-10 text-body',
+  card: 'size-14 text-section',
   lg: 'size-20 text-display',
 } as const;
 

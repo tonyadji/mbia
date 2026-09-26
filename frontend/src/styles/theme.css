@@ -38,3 +38,15 @@
   --text-caption--line-height: 1.25rem;
   --text-caption--font-weight: 400;
 }
+
+/* Tree recentering: short and never blocking (family-tree-ux.md §6.1 ≤ 300 ms, design-guidelines.md §8). */
+@theme {
+  --animate-recenter: recenter 200ms ease-out;
+
+  @keyframes recenter {
+    from {
+      opacity: 0.4;
+      transform: scale(0.97);
+    }
+  }
+}
