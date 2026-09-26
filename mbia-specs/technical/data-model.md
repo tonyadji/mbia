@@ -819,6 +819,8 @@ Example response concept:
 Birth year: 1954 → 1956
 ```
 
+What the history shows is listed in `genealogy.md` §13 (OQ-031): the Person's own entries, one per changed field, old → new except the biography, and no internal value for other actions. The actor is shown by display name, or "Former member" when the account was deleted.
+
 The UI must not expose raw internal audit JSON.
 
 ## 19. Merge Persons transaction

@@ -58,7 +58,7 @@ export function CreateFamilyPage() {
         {hasFamilies && (
           <Link
             to={HOME_PATH}
-            className="self-start text-body font-semibold text-primary underline-offset-4 hover:underline"
+            className="inline-flex min-h-12 items-center self-start text-body font-semibold text-primary underline-offset-4 hover:underline"
           >
             {t('settings:back')}
           </Link>

@@ -35,7 +35,7 @@ export function KinshipPath({
         onClick={() => {
           setOpen((value) => !value);
         }}
-        className="self-start text-body font-semibold text-primary underline underline-offset-4"
+        className="inline-flex min-h-12 items-center self-start text-body font-semibold text-primary underline underline-offset-4"
       >
         {t('quickView.seeHow')}
       </button>

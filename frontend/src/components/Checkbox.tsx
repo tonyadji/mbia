@@ -1,4 +1,4 @@
-import { useId, type InputHTMLAttributes, type Ref } from 'react';
+import type { InputHTMLAttributes, Ref } from 'react';
 
 interface CheckboxProps extends Omit<InputHTMLAttributes<HTMLInputElement>, 'type'> {
   label: string;
@@ -7,19 +7,17 @@ interface CheckboxProps extends Omit<InputHTMLAttributes<HTMLInputElement>, 'typ
 
 /** Labelled checkbox with a touch-friendly target (design-guidelines.md §9). */
 export function Checkbox({ label, className = '', ...props }: CheckboxProps) {
-  const id = useId();
-
+  // The whole row, box and text, is the label: one 48 px target.
   return (
-    <div className={`flex min-h-12 items-center gap-3 ${className}`}>
+    <label
+      className={`flex min-h-12 cursor-pointer items-center gap-3 text-body text-text ${className}`}
+    >
       <input
-        id={id}
         type="checkbox"
-        className="size-5 accent-primary focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary"
+        className="size-5 shrink-0 accent-primary focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary"
         {...props}
       />
-      <label htmlFor={id} className="text-body text-text">
-        {label}
-      </label>
-    </div>
+      {label}
+    </label>
   );
 }

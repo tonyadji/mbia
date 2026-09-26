@@ -264,5 +264,38 @@
   "merged": {
     "notice": "Cette fiche a été fusionnée dans une autre fiche, qui décrit la même personne.",
     "open": "Ouvrir la fiche conservée"
+  },
+  "history": {
+    "title": "Historique",
+    "empty": "Aucune modification enregistrée pour l'instant.",
+    "more": "Voir plus",
+    "byOn": "{{date}} · {{actor}}",
+    "formerMember": "Ancien membre",
+    "member": "Un membre",
+    "noValue": "(vide)",
+    "yes": "Oui",
+    "no": "Non",
+    "biographyChanged": "Biographie modifiée",
+    "fieldChanged": "{{field}} : {{from}} → {{to}}",
+    "fields": {
+      "firstName": "Prénom",
+      "middleNames": "Autres prénoms",
+      "lastName": "Nom",
+      "preferredName": "Nom d'usage ou surnom",
+      "gender": "Genre",
+      "birth": "Naissance",
+      "isDeceased": "Décès déclaré",
+      "death": "Décès",
+      "biography": "Biographie"
+    },
+    "actions": {
+      "PERSON_CREATED": "Fiche créée",
+      "PERSON_UPDATED": "Fiche modifiée",
+      "PERSON_CLAIMED": "Fiche reliée au compte d'un membre",
+      "PERSON_UNCLAIMED": "Fiche plus reliée au compte d'un membre",
+      "PERSON_ARCHIVED": "Fiche archivée",
+      "PERSON_RESTORED": "Fiche restaurée",
+      "PERSONS_MERGED": "Fusionnée avec une fiche en double"
+    }
   }
 }

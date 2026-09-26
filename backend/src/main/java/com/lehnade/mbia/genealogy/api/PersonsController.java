@@ -6,7 +6,9 @@ import com.lehnade.mbia.api.generated.model.Gender;
 import com.lehnade.mbia.api.generated.model.KinshipCode;
 import com.lehnade.mbia.api.generated.model.MergePersonRequest;
 import com.lehnade.mbia.api.generated.model.PartialDate;
+import com.lehnade.mbia.api.generated.model.ActivityActor;
 import com.lehnade.mbia.api.generated.model.PageMeta;
+import com.lehnade.mbia.api.generated.model.PersonHistoryEntry;
 import com.lehnade.mbia.api.generated.model.PersonHistoryPage;
 import com.lehnade.mbia.api.generated.model.PersonPage;
 import com.lehnade.mbia.api.generated.model.PersonResponse;
@@ -21,6 +23,10 @@ import com.lehnade.mbia.genealogy.application.claimperson.ClaimPersonUseCase;
 import com.lehnade.mbia.genealogy.application.createperson.CreatePersonCommand;
 import com.lehnade.mbia.genealogy.application.createperson.CreatePersonUseCase;
 import com.lehnade.mbia.genealogy.application.getperson.GetPersonUseCase;
+import com.lehnade.mbia.genealogy.application.getpersonhistory.GetPersonHistoryCommand;
+import com.lehnade.mbia.genealogy.application.getpersonhistory.GetPersonHistoryUseCase;
+import com.lehnade.mbia.genealogy.application.getpersonhistory.PersonHistoryEntryView;
+import com.lehnade.mbia.genealogy.application.getpersonhistory.PersonHistoryView;
 import com.lehnade.mbia.genealogy.application.mergepersons.MergePersonsCommand;
 import com.lehnade.mbia.genealogy.application.mergepersons.MergePersonsUseCase;
 import com.lehnade.mbia.genealogy.application.restoreperson.RestorePersonCommand;
@@ -63,11 +69,13 @@ class PersonsController implements PersonsApi {
     private final ArchivePersonUseCase archivePerson;
     private final RestorePersonUseCase restorePerson;
     private final MergePersonsUseCase mergePersons;
+    private final GetPersonHistoryUseCase getPersonHistory;
 
     PersonsController(CreatePersonUseCase createPerson, GetPersonUseCase getPerson,
             UpdatePersonUseCase updatePerson, ClaimPersonUseCase claimPerson, UnclaimPersonUseCase unclaimPerson,
             SearchPersonsUseCase searchPersons, ArchivePersonUseCase archivePerson,
-            RestorePersonUseCase restorePerson, MergePersonsUseCase mergePersons) {
+            RestorePersonUseCase restorePerson, MergePersonsUseCase mergePersons,
+            GetPersonHistoryUseCase getPersonHistory) {
         this.createPerson = createPerson;
         this.getPerson = getPerson;
         this.updatePerson = updatePerson;
@@ -77,6 +85,7 @@ class PersonsController implements PersonsApi {
         this.archivePerson = archivePerson;
         this.restorePerson = restorePerson;
         this.mergePersons = mergePersons;
+        this.getPersonHistory = getPersonHistory;
     }
 
     /** {@code profileMediaAssetId} is ignored: Persons have no photo in Phase 2 (OQ-005). */
@@ -163,12 +172,21 @@ class PersonsController implements PersonsApi {
     @Override
     public ResponseEntity<PersonHistoryPage> getPersonHistory(UUID familyId, UUID personId, Integer page,
             Integer size) {
-        throw notAvailableYet();
+        PersonHistoryView history = getPersonHistory.get(new GetPersonHistoryCommand(familyId, personId, page, size));
+        return ResponseEntity.ok(new PersonHistoryPage(
+                history.items().stream().map(PersonsController::toHistoryEntry).toList(),
+                new PageMeta(history.page(), history.size(), history.totalElements(), history.totalPages())));
     }
 
-    private static DomainException notAvailableYet() {
-        return new DomainException(ErrorCode.RESOURCE_NOT_FOUND, "Resource not found.");
+    private static PersonHistoryEntry toHistoryEntry(PersonHistoryEntryView entry) {
+        return new PersonHistoryEntry(entry.id(), entry.action(),
+                new ActivityActor(entry.actor().userId(), entry.actor().displayName(), entry.actor().deleted()),
+                toDateTime(entry.occurredAt()))
+                .field(entry.field())
+                .oldValue(entry.oldValue())
+                .newValue(entry.newValue());
     }
+
 
     /** The {@code status} parameter is a string in the generated interface: only its enum values pass. */
     private static com.lehnade.mbia.genealogy.domain.PersonStatus toSearchStatus(String status) {
