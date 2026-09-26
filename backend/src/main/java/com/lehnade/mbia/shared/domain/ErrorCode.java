@@ -11,6 +11,7 @@ public enum ErrorCode {
 
     VALIDATION_FAILED(400, "Validation failed"),
     SELF_RELATIONSHIP_NOT_ALLOWED(400, "Self relationship not allowed"),
+    MEDIA_TOO_LARGE(400, "Media too large"),
     AUTHENTICATION_REQUIRED(401, "Authentication required"),
     EMAIL_NOT_VERIFIED(403, "Email not verified"),
     PERMISSION_DENIED(403, "Permission denied"),

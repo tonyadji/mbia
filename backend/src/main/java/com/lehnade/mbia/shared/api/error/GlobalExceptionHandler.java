@@ -49,8 +49,9 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
         this.problemsBaseUri = problemsBaseUri.replaceAll("/+$", "");
     }
 
+    /** Public so that a module's advice can answer a framework exception with a business code. */
     @ExceptionHandler(DomainException.class)
-    ResponseEntity<Object> handleDomainException(DomainException ex, WebRequest request) {
+    public ResponseEntity<Object> handleDomainException(DomainException ex, WebRequest request) {
         if (ex instanceof FieldValidationException invalid) {
             List<FieldErrorResponse> fieldErrors =
                     List.of(new FieldErrorResponse(invalid.field(), invalid.fieldCode(), invalid.detail()));

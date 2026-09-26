@@ -43,8 +43,9 @@ services:
       timeout: 5s
       retries: 10
 
-  # One-shot: creates the private media bucket, then exits 0. Buckets are private by default
-  # and no bucket policy is set, so anonymous requests are denied.
+  # One-shot: creates the private media bucket and sets its CORS, then exits 0. Buckets are private
+  # by default and no bucket policy is set, so anonymous requests are denied. The CORS only lets the
+  # frontend origin PUT an object through a pre-signed URL (Phase 3 plan §3.5).
   rustfs-init:
     image: amazon/aws-cli:2.37.3
     depends_on:
@@ -56,9 +57,13 @@ services:
       AWS_DEFAULT_REGION: ${S3_REGION:-us-east-1}
       AWS_ENDPOINT_URL: http://rustfs:9000
       S3_BUCKET: ${S3_BUCKET:-mbia-media}
+      S3_CORS_ALLOWED_ORIGIN: ${S3_CORS_ALLOWED_ORIGIN:-http://localhost:5173}
     entrypoint: ["/bin/sh", "-c"]
     command:
-      - aws s3api head-bucket --bucket "$$S3_BUCKET" 2>/dev/null || aws s3api create-bucket --bucket "$$S3_BUCKET"
+      - >-
+        (aws s3api head-bucket --bucket "$$S3_BUCKET" 2>/dev/null || aws s3api create-bucket --bucket "$$S3_BUCKET")
+        && aws s3api put-bucket-cors --bucket "$$S3_BUCKET" --cors-configuration
+        "{\"CORSRules\":[{\"AllowedOrigins\":[\"$$S3_CORS_ALLOWED_ORIGIN\"],\"AllowedMethods\":[\"PUT\"],\"AllowedHeaders\":[\"content-type\"],\"MaxAgeSeconds\":3600}]}"
     restart: "no"
 
   mailpit:

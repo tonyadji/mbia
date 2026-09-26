@@ -206,7 +206,7 @@ class CreatePersonApiTest extends ApiTestSupport {
                 "{\"firstName\": \"Marie\", \"middleNames\": \"" + "x".repeat(251) + "\"}"));
     }
 
-    // --- No photo in Phase 2 (OQ-005) ---
+    // --- No photo until PR-37 (OQ-005): the column exists since V008 (PR-35) but stays empty ---
 
     @Test
     void profileMediaAssetIdIsIgnored() {
@@ -215,10 +215,9 @@ class CreatePersonApiTest extends ApiTestSupport {
 
         assertThat(result).hasStatus(HttpStatus.CREATED);
         assertThat(result).bodyJson().extractingPath("$.profilePictureUrl").isNull();
-        assertThat(jdbc.sql("""
-                SELECT count(*) FROM information_schema.columns
-                WHERE table_name = 'persons' AND column_name = 'profile_media_asset_id'
-                """).query(Long.class).single()).isZero();
+        assertThat(jdbc.sql("SELECT profile_media_asset_id FROM persons WHERE id = ?")
+                .param(UUID.fromString(JsonPath.read(FamilyFixtures.body(result), "$.id")))
+                .query().singleRow()).containsEntry("profile_media_asset_id", null);
     }
 
     // --- Access: ADMIN and CONTRIBUTOR only; not an ACTIVE member → 404 ---

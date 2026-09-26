@@ -324,7 +324,7 @@ Prefer direct browser upload to S3-compatible storage via pre-signed URLs.
 
 ```text
 Browser -> request upload authorization from Mbia
-Mbia -> returns upload URL + storage key
+Mbia -> returns the media asset id + a short-lived pre-signed upload URL (the storage key stays internal)
 Browser -> uploads binary directly to object storage
 Mbia -> persists/activates media metadata
 ```
