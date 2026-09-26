@@ -4,8 +4,10 @@ import { useTranslation } from 'react-i18next';
 import { Link, useNavigate, useParams, useSearchParams } from 'react-router';
 import { ApiError } from '../api/client';
 import { errorMessage } from '../api/errorMessage';
+import { Avatar } from '../components/Avatar';
 import { Button } from '../components/Button';
 import { ErrorState } from '../components/ErrorState';
+import { lifeYears } from '../components/PersonCard';
 import { Skeleton } from '../components/Skeleton';
 import { i18n } from '../i18n';
 import {
@@ -18,6 +20,7 @@ import {
   toPersonFields,
   type PersonFormValues,
 } from '../persons/PersonFormFields';
+import { PersonSearch } from '../persons/PersonSearch';
 import {
   isParentRelation,
   isRelation,
@@ -31,6 +34,7 @@ import {
 import { useCreatePerson, type CreatePersonRequest } from '../persons/useCreatePerson';
 import { useCreateRelationship } from '../persons/useCreateRelationship';
 import { usePerson, type Person } from '../persons/usePerson';
+import type { PersonSummary } from '../persons/usePersonSearch';
 import { useUpdatePerson } from '../persons/useUpdatePerson';
 import { familyTreePath, type FamilyTreeState } from '../tree/treePath';
 import { familyHomePath, type FamilyHomeState } from './FamilyHomePage';
@@ -53,8 +57,9 @@ interface Relative {
 
 /**
  * SCREEN-004 — Add a Person, in "Start with me", standalone or "Relative of a Person" mode
- * (`relativeOf`, `relation`, `from`). Only first and last names are shown first; other details are
- * behind "More information" (family-tree-ux.md §5). No photo in Phase 2.
+ * (`relativeOf`, `relation`, `from`). In relative mode, the first option is a Person already in the
+ * Family (SCREEN-007), the second a new Person (family-tree-ux.md §9). Only first and last names
+ * are shown first; other details are behind "More information" (§5). No photo in Phase 2.
  */
 export function AddPersonPage() {
   const { familyId = '' } = useParams();
@@ -130,6 +135,8 @@ function AddPersonForm({
   const [notLinked, setNotLinked] = useState(false);
   const [pending, setPending] = useState(false);
   const [showMore, setShowMore] = useState(false);
+  // The Person already in the Family chosen instead of a new one.
+  const [chosen, setChosen] = useState<PersonSummary | null>(null);
   const form = useForm<PersonFormValues>({
     defaultValues: {
       ...EMPTY_PERSON_FORM,
@@ -145,15 +152,16 @@ function AddPersonForm({
         ? familyTreePath(familyId, relative.anchor.id)
         : familyHomePath(familyId);
 
-  function done(person: Person) {
+  /** @param existing whether `person` was already in the Family, rather than just created */
+  function done(person: Pick<Person, 'id' | 'displayName' | 'firstName'>, existing = false) {
     const name = displayNameOf(person);
     if (relative?.from === 'profile') {
-      const state: PersonProfileState = { relativeAdded: { name } };
+      const state: PersonProfileState = { relativeAdded: { name, existing } };
       void navigate(backPath, { replace: true, state });
       return;
     }
     if (relative?.from === 'tree') {
-      const state: FamilyTreeState = { relativeAdded: { name, anchor: anchorName } };
+      const state: FamilyTreeState = { relativeAdded: { name, anchor: anchorName, existing } };
       void navigate(backPath, { replace: true, state });
       return;
     }
@@ -163,6 +171,7 @@ function AddPersonForm({
         name,
         self: startWithMe,
         linkedTo: relative ? anchorName : undefined,
+        existing,
       },
     };
     void navigate(familyHomePath(familyId), { replace: true, state });
@@ -258,7 +267,26 @@ function AddPersonForm({
         <h1 className="text-display text-text">{title}</h1>
         <p className="text-body text-text-muted">{intro}</p>
       </header>
-      <form noValidate onSubmit={(event) => void submit(event)} className="flex flex-col gap-4">
+      {relative && created === null && (
+        <ExistingPersonChoice
+          familyId={familyId}
+          relative={relative}
+          chosen={chosen}
+          onChoose={setChosen}
+          onLinked={(person) => {
+            done(person, true);
+          }}
+        />
+      )}
+      {relative && created === null && chosen === null && (
+        <h2 className="text-section text-text">{t('person:relative.existing.orNew')}</h2>
+      )}
+      <form
+        noValidate
+        hidden={chosen !== null}
+        onSubmit={(event) => void submit(event)}
+        className="flex flex-col gap-4"
+      >
         <NameFields form={form} autoComplete={startWithMe} />
 
         <button
@@ -314,6 +342,123 @@ function AddPersonForm({
         )}
       </form>
     </div>
+  );
+}
+
+/**
+ * The first option of SCREEN-004 in relative mode: search the Family (SCREEN-007) and link the
+ * chosen Person. Date warnings wait for the User's choice, as for a new Person; "Correct
+ * information" goes back to the choice, since the chosen Person is changed from their profile.
+ */
+function ExistingPersonChoice({
+  familyId,
+  relative,
+  chosen,
+  onChoose,
+  onLinked,
+}: {
+  familyId: string;
+  relative: Relative;
+  chosen: PersonSummary | null;
+  onChoose: (person: PersonSummary | null) => void;
+  onLinked: (person: PersonSummary) => void;
+}) {
+  const { t } = useTranslation('person');
+  const createRelationship = useCreateRelationship(familyId);
+  const [warnings, setWarnings] = useState<RelationshipWarning[] | null>(null);
+  const [error, setError] = useState<unknown>(null);
+  const anchorName = displayNameOf(relative.anchor);
+
+  function choose(person: PersonSummary | null) {
+    setWarnings(null);
+    setError(null);
+    onChoose(person);
+  }
+
+  async function link(person: PersonSummary, confirmWarnings: boolean) {
+    setError(null);
+    setWarnings(null);
+    try {
+      await createRelationship.mutateAsync(
+        relationshipBetween(relative.relation, relative.anchor.id, person.id, confirmWarnings),
+      );
+      onLinked(person);
+    } catch (failure) {
+      if (
+        failure instanceof ApiError &&
+        failure.code === 'RELATIONSHIP_WARNING_CONFIRMATION_REQUIRED'
+      ) {
+        setWarnings((failure.details?.warnings as RelationshipWarning[] | undefined) ?? []);
+      } else {
+        setError(failure);
+      }
+    }
+  }
+
+  if (chosen === null) {
+    return (
+      <section aria-labelledby="existing-person" className="flex flex-col gap-2">
+        <h2 id="existing-person" className="text-section text-text">
+          {t('relative.existing.title')}
+        </h2>
+        <PersonSearch
+          familyId={familyId}
+          label={t('relative.existing.search')}
+          excludeIds={[relative.anchor.id]}
+          listWhenEmpty={false}
+          onSelect={(person) => {
+            choose(person);
+          }}
+        />
+      </section>
+    );
+  }
+
+  const name = displayNameOf(chosen);
+  const years = lifeYears(chosen);
+  const pending = createRelationship.isPending;
+  return (
+    <section aria-labelledby="existing-person" className="flex flex-col gap-4">
+      <h2 id="existing-person" className="text-section text-text">
+        {t('relative.existing.chosen')}
+      </h2>
+      <div className="flex items-center gap-3 rounded-xl border border-border bg-surface px-4 py-3">
+        <Avatar displayName={name} />
+        <div className="flex min-w-0 flex-col">
+          <p className="text-body font-semibold break-words text-text">{name}</p>
+          {years && <p className="text-caption text-text-muted">{years}</p>}
+        </div>
+      </div>
+      {warnings && (
+        <DateWarnings
+          warnings={warnings}
+          relative={relative}
+          newName={name}
+          disabled={pending}
+          onCorrect={() => {
+            choose(null);
+          }}
+          onConfirm={() => void link(chosen, true)}
+        />
+      )}
+      {error !== null && <p role="alert">{errorMessage(i18n, error)}</p>}
+      {!warnings && (
+        <div className="flex flex-col gap-3 sm:flex-row">
+          <Button
+            variant="secondary"
+            disabled={pending}
+            onClick={() => {
+              choose(null);
+            }}
+          >
+            {t('relative.existing.change')}
+          </Button>
+          <Button disabled={pending} onClick={() => void link(chosen, false)}>
+            {t('relative.existing.link', { name, anchor: anchorName })}
+          </Button>
+        </div>
+      )}
+    </section>
   );
 }
 

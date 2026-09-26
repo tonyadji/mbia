@@ -116,7 +116,16 @@
     },
     "notLinked": "{{name}} was added to the family, but is not linked to {{anchor}}. You can create this link later from their profile.",
     "added": "{{name}} was added to the family and linked to {{anchor}}.",
-    "viewProfile": "View their profile"
+    "viewProfile": "View their profile",
+    "existing": {
+      "title": "Already in the family?",
+      "search": "Search the family",
+      "chosen": "Person chosen",
+      "change": "Choose someone else",
+      "link": "Link {{name}} to {{anchor}}",
+      "orNew": "Or add someone new"
+    },
+    "linked": "{{name}} is now linked to {{anchor}}."
   },
   "removeLink": {
     "action": "Remove link",
@@ -192,5 +201,14 @@
         "neutral": "{{to}} is {{from}}'s partner"
       }
     }
+  },
+  "search": {
+    "title": "Search",
+    "label": "Name",
+    "placeholder": "First name, last name or usual name",
+    "results": "People found",
+    "more": "Show more",
+    "emptyFamily": "No one in this family yet.",
+    "noResult": "No one in this family matches “{{text}}”."
   }
 }

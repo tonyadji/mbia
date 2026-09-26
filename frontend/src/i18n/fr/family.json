@@ -28,7 +28,8 @@
       "PARTNER": "Mon ou ma partenaire",
       "CHILD": "Mon enfant",
       "someoneElse": "Quelqu'un d'autre"
-    }
+    },
+    "search": "Rechercher dans la famille…"
   },
   "chooser": {
     "title": "Vos familles"

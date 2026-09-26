@@ -13,6 +13,7 @@ import { familyTreePath } from '../tree/treePath';
 import { addPersonPath } from './AddPersonPage';
 import { FamilyNotFoundPage } from './FamilyNotFoundPage';
 import { personPath } from './PersonProfilePage';
+import { searchPath } from './SearchPage';
 
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
@@ -23,13 +24,16 @@ export function familyHomePath(familyId: string) {
 /** Navigation state set by Family or Person creation, for the success message. */
 export interface FamilyHomeState {
   created?: boolean;
-  /** The Person just added; `self` after "Start with me", `linkedTo` after "Add a relative". */
-  personAdded?: { id: string; name: string; self: boolean; linkedTo?: string };
+  /**
+   * The Person just added; `self` after "Start with me", `linkedTo` after "Add a relative",
+   * `existing` when a Person already in the Family was linked rather than added.
+   */
+  personAdded?: { id: string; name: string; self: boolean; linkedTo?: string; existing?: boolean };
 }
 
 /**
- * SCREEN-002 — Family Home: `View family tree` as primary action, then `Add a relative`. Search
- * arrives with its feature; no Memory or activity in Phase 2.
+ * SCREEN-002 — Family Home: the search entry (SCREEN-007), `View family tree` as primary action,
+ * then `Add a relative`. No Memory or activity in Phase 2.
  */
 export function FamilyHomePage() {
   const { familyId = '' } = useParams();
@@ -88,7 +92,7 @@ function FamilyContent({ family }: { family: Family }) {
             {!personAdded.self &&
               (personAdded.linkedTo === undefined
                 ? t('home.personAdded', { name: personAdded.name })
-                : t('person:relative.added', {
+                : t(personAdded.existing ? 'person:relative.linked' : 'person:relative.added', {
                     name: personAdded.name,
                     anchor: personAdded.linkedTo,
                   }))}
@@ -105,6 +109,13 @@ function FamilyContent({ family }: { family: Family }) {
         <FamilyEmptyState family={family} />
       ) : (
         <>
+          <Link
+            to={searchPath(family.id)}
+            className="flex min-h-12 items-center gap-3 rounded-xl border border-border bg-surface px-4 text-body text-text-muted transition-colors hover:border-primary focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary"
+          >
+            <SearchIcon />
+            {t('home.search')}
+          </Link>
           <Link
             to={familyTreePath(family.id)}
             className={buttonClassName('primary', 'sm:w-auto sm:self-start')}
@@ -206,6 +217,23 @@ function FamilyIcon() {
       <circle cx="5" cy="9" r="2.3" />
       <circle cx="19" cy="9" r="2.3" />
       <path d="M12 10.5c-3 0-5 2-5 4.5V19h10v-4c0-2.5-2-4.5-5-4.5ZM5 12.5c-2 0-3.5 1.4-3.5 3.3V19H5.5v-4c0-1 .2-1.8.6-2.5H5ZM19 12.5h-1.1c.4.7.6 1.5.6 2.5v4h4v-3.2c0-1.9-1.5-3.3-3.5-3.3Z" />
+    </svg>
+  );
+}
+
+export function SearchIcon() {
+  return (
+    <svg
+      aria-hidden="true"
+      viewBox="0 0 24 24"
+      className="size-5 shrink-0"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+    >
+      <circle cx="11" cy="11" r="7" />
+      <path d="m20 20-3.5-3.5" />
     </svg>
   );
 }

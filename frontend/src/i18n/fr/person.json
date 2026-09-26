@@ -116,7 +116,16 @@
     },
     "notLinked": "{{name}} a été ajouté à la famille, mais n'est pas relié à {{anchor}}. Vous pourrez créer ce lien plus tard depuis son profil.",
     "added": "{{name}} a été ajouté à la famille et relié à {{anchor}}.",
-    "viewProfile": "Voir son profil"
+    "viewProfile": "Voir son profil",
+    "existing": {
+      "title": "Déjà dans la famille ?",
+      "search": "Rechercher dans la famille",
+      "chosen": "Personne choisie",
+      "change": "Choisir quelqu'un d'autre",
+      "link": "Relier {{name}} à {{anchor}}",
+      "orNew": "Ou ajouter une nouvelle personne"
+    },
+    "linked": "{{name}} est maintenant relié à {{anchor}}."
   },
   "removeLink": {
     "action": "Retirer le lien",
@@ -192,5 +201,14 @@
         "neutral": "{{to}} est partenaire de {{from}}"
       }
     }
+  },
+  "search": {
+    "title": "Rechercher",
+    "label": "Nom",
+    "placeholder": "Prénom, nom ou nom d'usage",
+    "results": "Personnes trouvées",
+    "more": "Afficher plus",
+    "emptyFamily": "Personne dans cette famille pour le moment.",
+    "noResult": "Personne dans cette famille ne correspond à « {{text}} »."
   }
 }

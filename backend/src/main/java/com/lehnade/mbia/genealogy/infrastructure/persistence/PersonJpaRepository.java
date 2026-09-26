@@ -118,4 +118,42 @@ interface PersonJpaRepository extends JpaRepository<PersonJpaEntity, UUID> {
                      p.created_at, p.id
             """)
     List<PersonJpaEntity> findTreeNeighbourhood(UUID familyId, UUID focus, int depth);
+
+    /**
+     * One page of the Family people search (data-model.md §23.1): {@code pattern} is a
+     * {@code LIKE} pattern whose backslashes, {@code %} and {@code _} are escaped by a
+     * backslash; it matches the first name, last name, preferred name or "first name last name",
+     * all lowered and unaccented. Ordered by the display name of mvp.md §6 lowered and unaccented,
+     * compared byte by byte (locale-independent), then creation, then id (mvp.md §19, OQ-022).
+     */
+    @Query(nativeQuery = true, value = """
+            SELECT p.*
+            FROM persons p
+            WHERE p.family_id = :familyId AND p.status = :status
+              AND (""" + MATCHES + """
+                  )
+            ORDER BY lower(unaccent(coalesce(p.preferred_name,
+                                             p.first_name || coalesce(' ' || p.last_name, '')))) COLLATE "C",
+                     p.created_at, p.id
+            LIMIT :limit OFFSET :offset
+            """)
+    List<PersonJpaEntity> search(UUID familyId, String status, String pattern, int limit, long offset);
+
+    /** The number of Persons matching {@link #search} over all pages. */
+    @Query(nativeQuery = true, value = """
+            SELECT count(*)
+            FROM persons p
+            WHERE p.family_id = :familyId AND p.status = :status
+              AND (""" + MATCHES + """
+                  )
+            """)
+    long countSearch(UUID familyId, String status, String pattern);
+
+    String MATCHES = """
+            lower(unaccent(p.first_name)) LIKE lower(unaccent(CAST(:pattern AS text))) ESCAPE '\\'
+                   OR lower(unaccent(p.last_name)) LIKE lower(unaccent(CAST(:pattern AS text))) ESCAPE '\\'
+                   OR lower(unaccent(p.preferred_name)) LIKE lower(unaccent(CAST(:pattern AS text))) ESCAPE '\\'
+                   OR lower(unaccent(p.first_name || ' ' || p.last_name))
+                      LIKE lower(unaccent(CAST(:pattern AS text))) ESCAPE '\\'
+            """;
 }

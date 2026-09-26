@@ -453,8 +453,8 @@ preferredName
 Rules:
 
 - only ACTIVE Persons are returned;
-- matching is a substring match after trimming, case-insensitive and accent-insensitive;
-- results are paginated and ordered by display name (locale-independent, case-folded), then creation date, then UUID.
+- matching is a substring match after trimming, case-insensitive and accent-insensitive, in each of these fields and in "firstName lastName" (so "Marie Dup" finds Marie Dupont) (OQ-022);
+- results are paginated and ordered by display name (locale-independent, case- and accent-folded: "Éloïse" sorts with "Eloise"), then creation date, then UUID (OQ-022).
 
 ## 20. Family home
 

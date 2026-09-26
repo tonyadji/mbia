@@ -40,10 +40,11 @@ export function personPath(familyId: string, personId: string) {
 
 /** Navigation state set by Add Relative, for the success message. */
 export interface PersonProfileState {
-  relativeAdded?: { name: string };
+  /** `existing` when a Person already in the Family was linked, rather than a new one added. */
+  relativeAdded?: { name: string; existing?: boolean };
 }
 
-export function displayNameOf(person: Person) {
+export function displayNameOf(person: Pick<Person, 'displayName' | 'firstName'>) {
   return person.displayName ?? person.firstName;
 }
 
@@ -237,7 +238,7 @@ function PersonProfile({
             role="status"
             className="rounded-xl border border-border bg-surface px-4 py-3 text-body"
           >
-            {t('person:relative.added', {
+            {t(relativeAdded.existing ? 'person:relative.linked' : 'person:relative.added', {
               name: relativeAdded.name,
               anchor: displayNameOf(person),
             })}

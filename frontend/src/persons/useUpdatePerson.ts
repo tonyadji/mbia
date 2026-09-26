@@ -2,6 +2,7 @@ import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { apiClient } from '../api/client';
 import type { components } from '../api/generated/schema';
 import { personQueryKey } from './usePerson';
+import { personSearchQueryKey } from './usePersonSearch';
 
 export type UpdatePersonRequest = components['schemas']['UpdatePersonRequest'];
 
@@ -24,6 +25,8 @@ export function useUpdatePerson(familyId: string, personId: string) {
     },
     onSuccess: (person) => {
       queryClient.setQueryData(personQueryKey(familyId, personId), person);
+      // Names and dates shown in search results may have changed.
+      void queryClient.invalidateQueries({ queryKey: personSearchQueryKey(familyId) });
     },
   });
 }

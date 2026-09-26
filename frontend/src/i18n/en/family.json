@@ -28,7 +28,8 @@
       "PARTNER": "My partner",
       "CHILD": "My child",
       "someoneElse": "Someone else"
-    }
+    },
+    "search": "Search the family…"
   },
   "chooser": {
     "title": "Your families"
