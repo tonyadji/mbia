@@ -5,6 +5,7 @@ import { BottomSheet } from '../components/BottomSheet';
 import { Button, buttonClassName } from '../components/Button';
 import { lifeYears } from '../components/PersonCard';
 import { Skeleton } from '../components/Skeleton';
+import { usePersonMemoryCount } from '../memories/usePersonMemoryCount';
 import { AddRelativeMenu } from '../persons/AddRelativeMenu';
 import { familySections } from '../persons/familySections';
 import { kinshipLabel, type PathPerson } from '../persons/kinship';
@@ -16,7 +17,8 @@ import { KinshipPath } from './KinshipPath';
 /**
  * SCREEN-COMPONENT-001 — Person Quick View (family-tree-ux.md §8): photo (initials in Phase 2),
  * name, years, what the Person is to the current User with "See how", child count, then view
- * profile, center the tree and add relatives when allowed. No Memory count in Phase 2 (§3.2).
+ * profile, center the tree and add relatives when allowed. The Memory count is read only when the
+ * Quick View opens (OQ-038).
  */
 export function PersonQuickView({
   familyId,
@@ -58,6 +60,7 @@ export function PersonQuickView({
             </p>
           )}
           <ChildCount familyId={familyId} personId={person.id} />
+          <MemoryCount familyId={familyId} personId={person.id} />
         </div>
       </div>
       {explainable && (
@@ -94,4 +97,13 @@ function ChildCount({ familyId, personId }: { familyId: string; personId: string
   if (tree.isError) return null;
   const count = familySections(tree.data, personId).children.length;
   return <p className="text-caption text-text-muted">{t('quickView.children', { count })}</p>;
+}
+
+/** The Person's ACTIVE Memories, counted from a one-item page (OQ-038). */
+function MemoryCount({ familyId, personId }: { familyId: string; personId: string }) {
+  const { t } = useTranslation('tree');
+  const count = usePersonMemoryCount(familyId, personId);
+  if (count.isPending) return <Skeleton className="h-4 w-20" />;
+  if (count.isError) return null;
+  return <p className="text-caption text-text-muted">{t('quickView.memories', { count: count.data })}</p>;
 }
