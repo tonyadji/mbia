@@ -42,7 +42,9 @@ export function PersonCard({
       className={`relative flex size-full flex-col items-center justify-center gap-1 rounded-2xl border bg-surface px-2 py-2 text-center transition-colors hover:border-primary focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary ${isFocus ? 'border-2 border-primary' : 'border-border'}`}
     >
       <Avatar displayName={name} size={isFocus ? 'lg' : 'card'} />
-      <span className="line-clamp-2 max-w-full text-caption font-semibold break-words text-text">{name}</span>
+      <span className="line-clamp-2 max-w-full text-caption font-semibold break-words text-text">
+        {name}
+      </span>
       {years && <span className="text-caption text-text-muted">{years}</span>}
       {indicator === 'up' && (
         <span className="absolute -top-3 inline-flex rounded-full border border-border bg-surface px-2 py-0.5 text-text-muted">

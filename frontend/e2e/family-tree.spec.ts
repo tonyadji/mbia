@@ -105,8 +105,9 @@ async function addRelative(
 
 /** The tree pans inside its canvas: the page itself never scrolls sideways. */
 async function expectNoPageScroll(page: Page) {
-  const overflow = await page.evaluate(
-    () => document.documentElement.scrollWidth - document.documentElement.clientWidth,
+  // The e2e tsconfig has no DOM types: the expression runs in the page.
+  const overflow = await page.evaluate<number>(
+    'document.documentElement.scrollWidth - document.documentElement.clientWidth',
   );
   expect(overflow).toBeLessThanOrEqual(0);
 }
