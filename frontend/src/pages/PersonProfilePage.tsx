@@ -12,6 +12,7 @@ import { Button } from '../components/Button';
 import { useFamily } from '../families/useFamily';
 import { isSupportedLanguage, DEFAULT_LANGUAGE } from '../i18n/language';
 import { AddRelativeMenu } from '../persons/AddRelativeMenu';
+import { ArchivePersonDialog } from '../persons/ArchivePersonDialog';
 import { formatDate } from '../i18n/formatDate';
 import { formatPartialDate, yearOf } from '../persons/formatPartialDate';
 import { familySections, sectionLink, type TreeEdge } from '../persons/familySections';
@@ -21,6 +22,7 @@ import {
   useArchivedRelationships,
   type ArchivedRelationship,
 } from '../persons/useArchivedRelationships';
+import { useArchivePerson } from '../persons/useArchivePerson';
 import { useArchiveRelationship } from '../persons/useArchiveRelationship';
 import { useRestoreRelationship } from '../persons/useRestoreRelationship';
 import { relativeChoiceGroups } from '../persons/relatives';
@@ -72,6 +74,14 @@ export function canRemoveLinks(person: Person, role: Role | undefined) {
 /** Whether the caller may add relatives to this Person (ADMIN or CONTRIBUTOR, ACTIVE Person). */
 export function canAddRelatives(person: Person, role: Role | undefined) {
   return person.status === 'ACTIVE' && (role === 'ADMIN' || role === 'CONTRIBUTOR');
+}
+
+/**
+ * Whether the caller may archive this Person: ADMIN, ACTIVE Person linked to no User (mvp.md §13,
+ * person-relationships-collaboration.md §5). The backend enforces the same rule.
+ */
+export function canArchivePerson(person: Person, role: Role | undefined) {
+  return role === 'ADMIN' && person.status === 'ACTIVE' && person.linkedUserId == null;
 }
 
 /**
@@ -130,7 +140,8 @@ export function PersonRoute({
 
 /**
  * SCREEN-005 — Person profile: header, Family (ACTIVE Persons only), the ADMIN's Removed links and
- * About; no Memory, History or photo in this phase (Phase 2 plan §3.1, §3.2).
+ * About; no Memory, History or photo in this phase (Phase 2 plan §3.1, §3.2). An ARCHIVED Person
+ * shows a notice and no mutation action except, for the ADMIN, `Restore`.
  */
 export function PersonProfilePage() {
   return (
@@ -220,6 +231,7 @@ function PersonProfile({
           </Link>
         )}
         <ClaimAction familyId={familyId} person={person} />
+        <ArchiveAction familyId={familyId} person={person} role={role} />
       </header>
 
       {notice ? (
@@ -625,6 +637,103 @@ function ClaimAction({ familyId, person }: { familyId: string; person: Person })
         <p role="status" className="text-caption text-text-muted">
           {t(isMine ? 'profile.claimed' : 'profile.unclaimed')}
         </p>
+      )}
+    </div>
+  );
+}
+
+/**
+ * SCREEN-005 archive / restore (mvp.md §13): on an ACTIVE Person linked to no one, the ADMIN's
+ * `Archive` after a confirmation; on an ARCHIVED Person, the "Archived" notice for every member and
+ * `Restore` for the ADMIN.
+ */
+function ArchiveAction({
+  familyId,
+  person,
+  role,
+}: {
+  familyId: string;
+  person: Person;
+  role: Role | undefined;
+}) {
+  const { t, i18n } = useTranslation('person');
+  const mutation = useArchivePerson(familyId, person.id);
+  const [confirming, setConfirming] = useState(false);
+  const name = displayNameOf(person);
+
+  if (person.status === 'ARCHIVED') {
+    return (
+      <div className="flex flex-col gap-3">
+        <p
+          role="note"
+          className="rounded-xl border border-border bg-surface px-4 py-3 text-body font-semibold text-text"
+        >
+          {t('archived.notice')}
+        </p>
+        {mutation.isSuccess && mutation.variables.archive && (
+          <p role="status" className="text-caption text-text-muted">
+            {t('archive.done', { name })}
+          </p>
+        )}
+        {role === 'ADMIN' && (
+          <Button
+            variant="secondary"
+            className="sm:w-auto sm:self-start"
+            disabled={mutation.isPending}
+            onClick={() => {
+              mutation.mutate({ archive: false, version: person.version });
+            }}
+          >
+            {t('archived.restore')}
+          </Button>
+        )}
+        {mutation.isError && !mutation.variables.archive && (
+          <p role="alert" className="text-body text-text">
+            {errorMessage(i18n, mutation.error)}
+          </p>
+        )}
+      </div>
+    );
+  }
+
+  const restored = mutation.isSuccess && !mutation.variables.archive && (
+    <p role="status" className="text-caption text-text-muted">
+      {t('archived.restored', { name })}
+    </p>
+  );
+  if (!canArchivePerson(person, role)) return restored || null;
+  return (
+    <div className="flex flex-col gap-2">
+      {restored}
+      <Button
+        variant="secondary"
+        className="sm:w-auto sm:self-start"
+        onClick={() => {
+          mutation.reset();
+          setConfirming(true);
+        }}
+      >
+        {t('archive.action')}
+      </Button>
+      {confirming && (
+        <ArchivePersonDialog
+          name={name}
+          pending={mutation.isPending}
+          error={mutation.error}
+          onCancel={() => {
+            setConfirming(false);
+          }}
+          onConfirm={() => {
+            mutation.mutate(
+              { archive: true, version: person.version },
+              {
+                onSuccess: () => {
+                  setConfirming(false);
+                },
+              },
+            );
+          }}
+        />
       )}
     </div>
   );

@@ -102,6 +102,8 @@ ADMIN may archive/restore a Person.
 
 A linked Person cannot be archived until its linked User association is resolved.
 
+Archiving a linked Person is refused with `PERSON_ALREADY_CLAIMED` (OQ-023). Archiving a Person that is already archived, or restoring one that is already active, changes nothing and is not an error (OQ-024). A MERGED Person can be neither archived nor restored: it is not found (OQ-025).
+
 An archived Person:
 
 - is hidden from normal tree/search views;

@@ -230,3 +230,30 @@ When a question is answered, update the relevant spec, then move the entry to **
 - **Options:** sort — A: lowered and unaccented display name, compared byte by byte / B: lowered display name only. Matching — C: also "first name last name" / D: each field separately.
 - **Recommendation:** A and C.
 - **Answer:** A and C (human, 2026-09-26). Documented in `mvp.md` §19, `genealogy.md` §11, `data-model.md` §23.1 and `openapi.yaml` (`searchPersons` descriptions, text only); implemented in PR-25.
+
+### OQ-023 — Error code when archiving a linked Person
+
+- **Raised by / date:** coding agent (PR-26), 2026-09-26
+- **Context:** `person-relationships-collaboration.md` §5 and `data-model.md` §10: a linked Person cannot be archived until its User link is released, but `archivePerson` (`openapi.yaml`) names no error code for this refusal.
+- **Question:** which status and code?
+- **Options:** A — 409 `PERSON_ALREADY_CLAIMED`, the existing code for "this Person is linked to a member" / B — new 409 `PERSON_LINKED`.
+- **Recommendation:** A; no new code, the frontend explains it for this action.
+- **Answer:** A (human, 2026-09-26). Documented in `openapi.yaml` (`archivePerson` description, text only) and `person-relationships-collaboration.md` §5; implemented in PR-26.
+
+### OQ-024 — Archiving an archived Person, restoring an active one
+
+- **Raised by / date:** coding agent (PR-26), 2026-09-26
+- **Context:** `archivePerson` and `restorePerson` describe the ACTIVE ↔ ARCHIVED transitions, not a request for the state the Person is already in, with the current version.
+- **Question:** what does the API answer?
+- **Options:** A — no-op: 200 with the unchanged Person and version, nothing written or audited (as OQ-020) / B — 409.
+- **Recommendation:** A.
+- **Answer:** A (human, 2026-09-26). Documented in `openapi.yaml` (`archivePerson`, `restorePerson` descriptions, text only) and `person-relationships-collaboration.md` §5; implemented in PR-26.
+
+### OQ-025 — Archiving or restoring a MERGED Person
+
+- **Raised by / date:** coding agent (PR-26), 2026-09-26
+- **Context:** a MERGED Person (PR-27) is neither ACTIVE nor ARCHIVED; `archivePerson` and `restorePerson` do not say what they answer for it.
+- **Question:** which status and code?
+- **Options:** A — 404 `PERSON_NOT_FOUND`, as `updatePerson` and `claimPerson` for a Person that can no longer change / B — 409 `PERSON_NOT_ACTIVE`.
+- **Recommendation:** A; a merged Person is never restored.
+- **Answer:** A (human, 2026-09-26). Documented in `openapi.yaml` (`archivePerson`, `restorePerson` descriptions, text only) and `person-relationships-collaboration.md` §5; implemented in PR-26.

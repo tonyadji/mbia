@@ -14,11 +14,15 @@ import com.lehnade.mbia.api.generated.model.PersonStatus;
 import com.lehnade.mbia.api.generated.model.PersonSummary;
 import com.lehnade.mbia.api.generated.model.UpdatePersonRequest;
 import com.lehnade.mbia.genealogy.application.PersonView;
+import com.lehnade.mbia.genealogy.application.archiveperson.ArchivePersonCommand;
+import com.lehnade.mbia.genealogy.application.archiveperson.ArchivePersonUseCase;
 import com.lehnade.mbia.genealogy.application.claimperson.ClaimPersonCommand;
 import com.lehnade.mbia.genealogy.application.claimperson.ClaimPersonUseCase;
 import com.lehnade.mbia.genealogy.application.createperson.CreatePersonCommand;
 import com.lehnade.mbia.genealogy.application.createperson.CreatePersonUseCase;
 import com.lehnade.mbia.genealogy.application.getperson.GetPersonUseCase;
+import com.lehnade.mbia.genealogy.application.restoreperson.RestorePersonCommand;
+import com.lehnade.mbia.genealogy.application.restoreperson.RestorePersonUseCase;
 import com.lehnade.mbia.genealogy.application.searchpersons.PersonSearchView;
 import com.lehnade.mbia.genealogy.application.searchpersons.SearchPersonsCommand;
 import com.lehnade.mbia.genealogy.application.searchpersons.SearchPersonsUseCase;
@@ -53,16 +57,21 @@ class PersonsController implements PersonsApi {
     private final ClaimPersonUseCase claimPerson;
     private final UnclaimPersonUseCase unclaimPerson;
     private final SearchPersonsUseCase searchPersons;
+    private final ArchivePersonUseCase archivePerson;
+    private final RestorePersonUseCase restorePerson;
 
     PersonsController(CreatePersonUseCase createPerson, GetPersonUseCase getPerson,
             UpdatePersonUseCase updatePerson, ClaimPersonUseCase claimPerson, UnclaimPersonUseCase unclaimPerson,
-            SearchPersonsUseCase searchPersons) {
+            SearchPersonsUseCase searchPersons, ArchivePersonUseCase archivePerson,
+            RestorePersonUseCase restorePerson) {
         this.createPerson = createPerson;
         this.getPerson = getPerson;
         this.updatePerson = updatePerson;
         this.claimPerson = claimPerson;
         this.unclaimPerson = unclaimPerson;
         this.searchPersons = searchPersons;
+        this.archivePerson = archivePerson;
+        this.restorePerson = restorePerson;
     }
 
     /** {@code profileMediaAssetId} is ignored: Persons have no photo in Phase 2 (OQ-005). */
@@ -127,12 +136,16 @@ class PersonsController implements PersonsApi {
 
     @Override
     public ResponseEntity<PersonResponse> archivePerson(String ifMatch, UUID familyId, UUID personId) {
-        throw notAvailableYet();
+        PersonView person = archivePerson.archive(
+                new ArchivePersonCommand(familyId, personId, ETags.parseIfMatch(ifMatch)));
+        return ResponseEntity.ok().eTag(ETags.of(person.person().version())).body(toResponse(person));
     }
 
     @Override
     public ResponseEntity<PersonResponse> restorePerson(String ifMatch, UUID familyId, UUID personId) {
-        throw notAvailableYet();
+        PersonView person = restorePerson.restore(
+                new RestorePersonCommand(familyId, personId, ETags.parseIfMatch(ifMatch)));
+        return ResponseEntity.ok().eTag(ETags.of(person.person().version())).body(toResponse(person));
     }
 
     @Override

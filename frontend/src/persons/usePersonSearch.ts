@@ -6,6 +6,9 @@ import { familyQueryKey } from '../families/useFamily';
 
 export type PersonSummary = components['schemas']['PersonSummary'];
 
+/** ACTIVE Persons for everyone; ARCHIVED ones for the ADMIN "Archived people" view (mvp.md §13). */
+export type SearchStatus = 'ACTIVE' | 'ARCHIVED';
+
 /** The search starts after 2 characters (SCREEN-007); a shorter text lists the first page. */
 export const MIN_SEARCH_LENGTH = 2;
 
@@ -23,18 +26,27 @@ export function searchTerm(text: string): string {
 }
 
 /**
- * The ACTIVE Persons of a Family matching `term`, page after page (`GET /families/{familyId}/persons`,
- * mvp.md §19): case- and accent-insensitive, ordered by display name. An empty `term` lists
- * every ACTIVE Person.
+ * The Persons of a Family with `status` matching `term`, page after page
+ * (`GET /families/{familyId}/persons`, mvp.md §19): case- and accent-insensitive, ordered by display
+ * name. An empty `term` lists every Person with that status.
  */
-export function usePersonSearch(familyId: string, term: string, { enabled = true } = {}) {
+export function usePersonSearch(
+  familyId: string,
+  term: string,
+  { enabled = true, status = 'ACTIVE' }: { enabled?: boolean; status?: SearchStatus } = {},
+) {
   return useInfiniteQuery({
-    queryKey: [...personSearchQueryKey(familyId), term] as const,
+    queryKey: [...personSearchQueryKey(familyId), status, term] as const,
     queryFn: async ({ pageParam }) => {
       const { data } = await apiClient.GET('/families/{familyId}/persons', {
         params: {
           path: { familyId },
-          query: { search: term === '' ? undefined : term, page: pageParam, size: PAGE_SIZE },
+          query: {
+            status: status === 'ACTIVE' ? undefined : status,
+            search: term === '' ? undefined : term,
+            page: pageParam,
+            size: PAGE_SIZE,
+          },
         },
       });
       if (data === undefined) {

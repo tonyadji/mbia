@@ -22,7 +22,8 @@ import org.springframework.test.web.servlet.assertj.MvcTestResult;
 
 /**
  * PR-25: {@code GET /families/{familyId}/persons} (openapi {@code searchPersons}; mvp.md §19;
- * genealogy.md §11; SCREEN-007; family isolation, AGENTS.md §5).
+ * genealogy.md §11; SCREEN-007; family isolation, AGENTS.md §5). PR-26: {@code status=ARCHIVED},
+ * ADMIN only.
  */
 class SearchPersonsApiTest extends ApiTestSupport {
 
@@ -96,12 +97,65 @@ class SearchPersonsApiTest extends ApiTestSupport {
         assertThat(JsonPath.<List<String>>read(body, "$.items[*].id")).containsExactly(eloise.toString());
     }
 
-    @Test
-    void archivedPersonsAreNotListedYet() {
-        MvcTestResult result = search(family.admin(), family.familyId(), "status", "ARCHIVED");
+    // --- PR-26: the ADMIN "Archived people" view (status=ARCHIVED, mvp.md §13) ---
 
-        assertThat(result).hasStatus(HttpStatus.NOT_FOUND).bodyJson().extractingPath("$.code")
-                .isEqualTo("RESOURCE_NOT_FOUND");
+    @Test
+    void adminListsOnlyArchivedPersonsWithTheSameMatchingAndOrder() {
+        UUID zoe = persons.createId(family.admin(), family.familyId(), "{\"firstName\": \"Zoé\"}");
+        UUID eloisa = persons.createId(family.admin(), family.familyId(), "{\"firstName\": \"Eloïsa\"}");
+        UUID later = persons.createId(family.admin(), family.familyId(), "{\"firstName\": \"Eloïsa\"}");
+        persons.archive(family.admin(), family.familyId(), zoe, "\"0\"");
+        persons.archive(family.admin(), family.familyId(), later, "\"0\"");
+        persons.archive(family.admin(), family.familyId(), eloisa, "\"0\"");
+
+        String all = FamilyFixtures.body(search(family.admin(), family.familyId(), "status", "ARCHIVED"));
+        assertThat(JsonPath.<List<String>>read(all, "$.items[*].id"))
+                .containsExactly(eloisa.toString(), later.toString(), zoe.toString());
+        assertThat(JsonPath.<List<String>>read(all, "$.items[*].status")).containsOnly("ARCHIVED");
+        assertThat(JsonPath.<Integer>read(all, "$.page.totalElements")).isEqualTo(3);
+
+        String matching = FamilyFixtures.body(
+                search(family.admin(), family.familyId(), "status", "ARCHIVED", "search", "eloi"));
+        assertThat(JsonPath.<List<String>>read(matching, "$.items[*].id"))
+                .containsExactly(eloisa.toString(), later.toString());
+
+        String active = FamilyFixtures.body(search(family.admin(), family.familyId(), "status", "ACTIVE"));
+        assertThat(JsonPath.<List<String>>read(active, "$.items[*].id"))
+                .containsExactly(eloise.toString(), marie.toString(), tony.toString());
+    }
+
+    @Test
+    void contributorAndViewerCannotListArchivedPersons() {
+        for (TestJwts.Token caller : new TestJwts.Token[] {family.contributor(), family.viewer()}) {
+            assertThat(search(caller, family.familyId(), "status", "ARCHIVED"))
+                    .hasStatus(HttpStatus.FORBIDDEN).hasContentType(MediaType.APPLICATION_PROBLEM_JSON)
+                    .bodyJson().extractingPath("$.code").isEqualTo("PERMISSION_DENIED");
+        }
+    }
+
+    @Test
+    void mergedPersonsNeverAppearAmongArchivedPersons() {
+        UUID archived = persons.createId(family.admin(), family.familyId(), "{\"firstName\": \"Eloise\"}");
+        persons.archive(family.admin(), family.familyId(), archived, "\"0\"");
+        UUID merged = persons.createId(family.admin(), family.familyId(), "{\"firstName\": \"Eloïse\"}");
+        persons.merge(merged, eloise);
+
+        String body = FamilyFixtures.body(search(family.admin(), family.familyId(), "status", "ARCHIVED"));
+
+        assertThat(JsonPath.<List<String>>read(body, "$.items[*].id")).containsExactly(archived.toString());
+    }
+
+    @Test
+    void archivedPersonsOfAnotherFamilyAreNeverListed() {
+        UUID otherFamily = families().createFamily(family.outsider(), "Famille Ndongo");
+        UUID foreign = persons.createId(family.outsider(), otherFamily, "{\"firstName\": \"Luc\"}");
+        persons.archive(family.outsider(), otherFamily, foreign, "\"0\"");
+
+        String body = FamilyFixtures.body(search(family.admin(), family.familyId(), "status", "ARCHIVED"));
+
+        assertThat(JsonPath.<List<String>>read(body, "$.items")).isEmpty();
+        assertThat(search(family.admin(), otherFamily, "status", "ARCHIVED"))
+                .hasStatus(HttpStatus.NOT_FOUND).bodyJson().extractingPath("$.code").isEqualTo("FAMILY_NOT_FOUND");
     }
 
     @Test

@@ -183,6 +183,17 @@ function renderApp(path: string) {
   return { router };
 }
 
+function renderAppWithUnmount(path: string) {
+  const router = createMemoryRouter(routes, { initialEntries: [path] });
+  return render(
+    <App
+      router={router}
+      queryClient={createQueryClient()}
+      userManager={fakeUserManager(fakeOidcUser())}
+    />,
+  );
+}
+
 function type(name: string, value: string) {
   fireEvent.change(screen.getByRole('textbox', { name }), { target: { value } });
 }
@@ -809,6 +820,137 @@ describe('Person screens', () => {
       expect(await screen.findByRole('alert')).toHaveTextContent(message);
       expect(screen.queryByText('raw server detail')).not.toBeInTheDocument();
       expect(screen.getByRole('list', { name: 'Liens retirés' })).toBeInTheDocument();
+    });
+  });
+
+  describe('Archive and restore a Person (SCREEN-005, PR-26)', () => {
+    const ARCHIVE = `POST /families/${ADJI_ID}/persons/${MARIE_ID}/archive`;
+    const RESTORE = `POST /families/${ADJI_ID}/persons/${MARIE_ID}/restore`;
+
+    function personStatusRequests() {
+      return fetchMock.mock.calls
+        .map(([input]) => input as Request)
+        .filter((request) =>
+          /\/persons\/[^/]+\/(archive|restore)$/.test(new URL(request.url).pathname),
+        );
+    }
+
+    it('offers Archive to the ADMIN only', async () => {
+      for (const role of ['CONTRIBUTOR', 'VIEWER']) {
+        personApi({ role });
+        const { unmount } = renderAppWithUnmount(PROFILE);
+        await screen.findByRole('heading', { level: 1, name: 'Marie Adji' });
+        expect(screen.queryByRole('button', { name: 'Archiver cette fiche' })).toBeNull();
+        unmount();
+      }
+
+      personApi({ role: 'ADMIN' });
+      renderApp(PROFILE);
+      expect(await screen.findByRole('button', { name: 'Archiver cette fiche' })).toBeVisible();
+    });
+
+    it('does not offer Archive on a Person linked to a member', async () => {
+      personApi({ get: () => jsonResponse(person({ linkedUserId: 'u2' })) });
+      renderApp(PROFILE);
+
+      await screen.findByRole('heading', { level: 1, name: 'Marie Adji' });
+      expect(screen.queryByRole('button', { name: 'Archiver cette fiche' })).toBeNull();
+    });
+
+    it('confirms, archives with the version, then shows the archived profile', async () => {
+      let archived = false;
+      personApi({
+        get: () => jsonResponse(person(archived ? { status: 'ARCHIVED', version: 3 } : {})),
+        other: {
+          [ARCHIVE]: () => {
+            archived = true;
+            return jsonResponse(person({ status: 'ARCHIVED', version: 3 }));
+          },
+        },
+      });
+      renderApp(PROFILE);
+
+      fireEvent.click(await screen.findByRole('button', { name: 'Archiver cette fiche' }));
+      const dialog = screen.getByRole('dialog', {
+        name: "Marie Adji n'apparaîtra plus dans l'arbre ni dans la recherche. Un administrateur pourra restaurer cette fiche à tout moment.",
+      });
+      fireEvent.click(within(dialog).getByRole('button', { name: 'Annuler' }));
+      expect(screen.queryByRole('dialog')).toBeNull();
+      expect(personStatusRequests()).toHaveLength(0);
+
+      fireEvent.click(screen.getByRole('button', { name: 'Archiver cette fiche' }));
+      fireEvent.click(within(screen.getByRole('dialog')).getByRole('button', { name: 'Archiver' }));
+
+      expect(await screen.findByText('La fiche de Marie Adji a été archivée.')).toBeInTheDocument();
+      expect(screen.queryByRole('dialog')).toBeNull();
+      expect(
+        screen.getByText(
+          "Cette fiche est archivée. Elle n'apparaît plus dans l'arbre ni dans la recherche.",
+        ),
+      ).toBeVisible();
+      expect(screen.getByRole('button', { name: 'Restaurer cette fiche' })).toBeVisible();
+      expect(screen.queryByRole('link', { name: 'Modifier' })).toBeNull();
+      const [request] = personStatusRequests();
+      expect(request?.method).toBe('POST');
+      expect(request?.headers.get('If-Match')).toBe('"2"');
+    });
+
+    it('explains a refused archive of a linked Person, without the raw server message', async () => {
+      personApi({ other: { [ARCHIVE]: () => problemResponse('PERSON_ALREADY_CLAIMED', 409) } });
+      renderApp(PROFILE);
+
+      fireEvent.click(await screen.findByRole('button', { name: 'Archiver cette fiche' }));
+      fireEvent.click(within(screen.getByRole('dialog')).getByRole('button', { name: 'Archiver' }));
+
+      expect(await within(screen.getByRole('dialog')).findByRole('alert')).toHaveTextContent(
+        "Cette fiche est reliée à un membre de la famille. Retirez ce lien avant de l'archiver.",
+      );
+      expect(screen.queryByText('raw server detail')).not.toBeInTheDocument();
+    });
+
+    it('shows an archived profile without any mutation action to a CONTRIBUTOR', async () => {
+      personApi({ role: 'CONTRIBUTOR', get: () => jsonResponse(person({ status: 'ARCHIVED' })) });
+      renderApp(PROFILE);
+
+      expect(
+        await screen.findByText(
+          "Cette fiche est archivée. Elle n'apparaît plus dans l'arbre ni dans la recherche.",
+        ),
+      ).toBeVisible();
+      expect(screen.queryByRole('button', { name: 'Restaurer cette fiche' })).toBeNull();
+      expect(screen.queryByRole('link', { name: 'Modifier' })).toBeNull();
+      expect(screen.queryByRole('button', { name: "C'est moi" })).toBeNull();
+      expect(screen.queryByRole('button', { name: 'Archiver cette fiche' })).toBeNull();
+    });
+
+    it('restores an archived Person with its version, in English', async () => {
+      let restored = false;
+      personApi({
+        get: () =>
+          jsonResponse(person(restored ? { version: 4 } : { status: 'ARCHIVED', version: 3 })),
+        other: {
+          [RESTORE]: () => {
+            restored = true;
+            return jsonResponse(person({ version: 4 }));
+          },
+        },
+      });
+      renderApp(PROFILE);
+      await screen.findByRole('heading', { level: 1, name: 'Marie Adji' });
+      await act(() => i18n.changeLanguage('en'));
+
+      expect(
+        await screen.findByText(
+          'This profile is archived. It no longer appears in the family tree or in search.',
+        ),
+      ).toBeVisible();
+      fireEvent.click(screen.getByRole('button', { name: 'Restore this profile' }));
+
+      expect(await screen.findByText("Marie Adji's profile was restored.")).toBeInTheDocument();
+      expect(screen.queryByText(/This profile is archived/)).toBeNull();
+      expect(screen.getByRole('button', { name: 'Archive this profile' })).toBeVisible();
+      const [request] = personStatusRequests();
+      expect(request?.headers.get('If-Match')).toBe('"3"');
     });
   });
 

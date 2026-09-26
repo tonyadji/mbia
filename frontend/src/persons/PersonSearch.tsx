@@ -8,7 +8,12 @@ import { Skeleton } from '../components/Skeleton';
 import { TextField } from '../components/TextField';
 import { kinshipLabel } from './kinship';
 import { useDebouncedValue } from './useDebouncedValue';
-import { searchTerm, usePersonSearch, type PersonSummary } from './usePersonSearch';
+import {
+  searchTerm,
+  usePersonSearch,
+  type PersonSummary,
+  type SearchStatus,
+} from './usePersonSearch';
 
 /** About 250 ms after the last keystroke (SCREEN-007). */
 const DEBOUNCE_MS = 250;
@@ -17,7 +22,7 @@ const DEBOUNCE_MS = 250;
  * SCREEN-007 — Search Person: a search field and the matching Persons, each with avatar, name,
  * birth/death years and what they are to the current User. The search starts after 2 characters;
  * below that, the first page of the Family is listed when `listWhenEmpty`. What a result does is
- * up to the entry point (`onSelect`).
+ * up to the entry point (`onSelect`). `status="ARCHIVED"` is the ADMIN "Archived people" view.
  */
 export function PersonSearch({
   familyId,
@@ -26,6 +31,7 @@ export function PersonSearch({
   excludeIds = [],
   listWhenEmpty = true,
   autoFocus = false,
+  status = 'ACTIVE',
 }: {
   familyId: string;
   label: string;
@@ -33,12 +39,13 @@ export function PersonSearch({
   excludeIds?: string[];
   listWhenEmpty?: boolean;
   autoFocus?: boolean;
+  status?: SearchStatus;
 }) {
   const { t } = useTranslation('person');
   const [text, setText] = useState('');
   const term = searchTerm(useDebouncedValue(text, DEBOUNCE_MS));
   const enabled = listWhenEmpty || term !== '';
-  const search = usePersonSearch(familyId, term, { enabled });
+  const search = usePersonSearch(familyId, term, { enabled, status });
   const persons = (search.data?.pages.flatMap((page) => page.items) ?? []).filter(
     (person) => !excludeIds.includes(person.id),
   );
@@ -59,7 +66,11 @@ export function PersonSearch({
   } else if (persons.length === 0) {
     results = (
       <p role="status" className="text-body text-text-muted">
-        {term === '' ? t('search.emptyFamily') : t('search.noResult', { text: term })}
+        {term !== ''
+          ? t('search.noResult', { text: term })
+          : status === 'ARCHIVED'
+            ? t('archivedPeople.empty')
+            : t('search.emptyFamily')}
       </p>
     );
   } else {

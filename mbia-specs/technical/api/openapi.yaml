@@ -553,7 +553,11 @@ paths:
       tags: [Persons]
       operationId: archivePerson
       summary: Archive a person
-      description: ADMIN only. A person linked to an active user must be unlinked first.
+      description: |
+        ADMIN only. A person linked to a user must be unlinked first: 409
+        `PERSON_ALREADY_CLAIMED` (OQ-023). Archiving an ARCHIVED person with its current
+        version changes nothing and returns 200 with the unchanged person and version
+        (OQ-024). A MERGED person returns 404 `PERSON_NOT_FOUND` (OQ-025).
       parameters:
         - $ref: '#/components/parameters/IfMatch'
       responses:
@@ -581,7 +585,10 @@ paths:
       tags: [Persons]
       operationId: restorePerson
       summary: Restore an archived person
-      description: ADMIN only.
+      description: |
+        ADMIN only. Restoring an ACTIVE person with its current version changes nothing and
+        returns 200 with the unchanged person and version (OQ-024). A MERGED person returns
+        404 `PERSON_NOT_FOUND` (OQ-025).
       parameters:
         - $ref: '#/components/parameters/IfMatch'
       responses:
