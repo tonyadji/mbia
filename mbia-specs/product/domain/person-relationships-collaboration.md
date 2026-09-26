@@ -96,6 +96,8 @@ Merge rules:
 - never create self-relations;
 - perform operation atomically.
 
+A refused merge answers `PERSON_MERGE_CONFLICT` with a reason: two different linked Users, an ACTIVE relationship between the two Persons, or a parental cycle; merging a MERGED Person is not found and an ARCHIVED one is not active (OQ-026). Every relationship of the duplicate moves to the target, removed ones included; an ACTIVE relationship identical to one of the target is removed instead, and a removed link between the two stays with the duplicate (OQ-027).
+
 ## 5. Archiving
 
 ADMIN may archive/restore a Person.

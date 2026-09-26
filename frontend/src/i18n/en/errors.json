@@ -11,5 +11,7 @@
   "RELATIONSHIP_ALREADY_EXISTS": "These two people are already linked this way.",
   "RELATIONSHIP_CREATES_CYCLE": "This link cannot be added because it would make someone one of their own ancestors.",
   "PERSON_NOT_ACTIVE": "This person was archived or merged: they cannot receive new links.",
-  "RELATIONSHIP_WARNING_CONFIRMATION_REQUIRED": "The birth dates look inconsistent. Check them or confirm the link."
+  "RELATIONSHIP_WARNING_CONFIRMATION_REQUIRED": "The birth dates look inconsistent. Check them or confirm the link.",
+  "POSSIBLE_DUPLICATE": "A similar person is already in the family.",
+  "PERSON_MERGE_CONFLICT": "These two profiles cannot be merged."
 }

@@ -231,5 +231,38 @@
     "intro": "Archived profiles no longer appear in the family tree or in search. Open one to restore it.",
     "empty": "No archived profile.",
     "adminOnly": "Only an administrator can see archived profiles."
+  },
+  "duplicate": {
+    "title_one": "A similar person is already in the family",
+    "title_other": "Similar people are already in the family",
+    "view": "View existing person",
+    "viewNamed": "View existing person: {{name}}",
+    "createAnyway": "Create anyway"
+  },
+  "merge": {
+    "action": "Merge with another profile",
+    "title": "Which profile describes the same person as {{name}}?",
+    "search": "Search for the profile to keep",
+    "kept": "Profile kept",
+    "merged": "Duplicate profile",
+    "explain": {
+      "kept": "{{name}}'s profile remains.",
+      "merged": "{{name}}'s profile is merged into {{kept}}'s and no longer appears in the family.",
+      "links": "Family links are moved to the kept profile, without doubles.",
+      "values": "When both profiles have a value, the kept profile's value stays."
+    },
+    "confirm": "Merge the profiles",
+    "change": "Choose another profile",
+    "cancel": "Cancel",
+    "done": "{{name}}'s duplicate profile was merged into {{kept}}'s profile.",
+    "refused": {
+      "DIFFERENT_LINKED_USERS": "These two profiles are linked to two different members of the family, so they cannot be merged.",
+      "SELF_RELATIONSHIP": "These two profiles are linked to each other. Remove this link first, then merge them.",
+      "PARENTAL_CYCLE": "Merging these profiles would make someone one of their own ancestors. Check their family links first."
+    }
+  },
+  "merged": {
+    "notice": "This profile was merged into another profile, which describes the same person.",
+    "open": "Open the kept profile"
   }
 }

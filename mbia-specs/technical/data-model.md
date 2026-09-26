@@ -842,20 +842,20 @@ Transaction steps:
 
 1. lock both Person rows;
 2. verify expected versions;
-3. retain target scalar values when both source and target are non-empty; fill only empty target fields from source;
+3. retain target scalar values when both source and target are non-empty; fill only empty target fields from source (empty: absent text, `gender = UNKNOWN`, date precision `UNKNOWN`; the target is deceased when either is, and an unknown target death date takes the source's, OQ-028);
 4. move `memory_persons` links from B to A, deduplicating existing links;
-5. move relationships from B to A;
+5. move relationships from B to A, ACTIVE and ARCHIVED (OQ-027); an ARCHIVED relation between A and B stays on B;
 6. canonicalize `PARTNER_OF` relations after replacement;
-7. deduplicate identical resulting relations;
-8. reject any resulting self relation;
+7. deduplicate identical resulting relations: an ACTIVE relation of B identical to an ACTIVE relation of A is archived and stays on B;
+8. reject any resulting self relation (an ACTIVE relation between A and B);
 9. reject any resulting parental cycle;
-10. transfer linked user only when unambiguous;
+10. transfer linked user only when unambiguous: B's user moves to A when A has none, and B keeps no linked user;
 11. mark B as `MERGED`;
 12. set `B.merged_into_person_id = A.id`;
 13. write audit entries;
 14. commit.
 
-No partial merge may remain persisted.
+No partial merge may remain persisted. Refusals answer `PERSON_MERGE_CONFLICT` with a `reason` (OQ-026).
 
 ## 20. Relationship archival transaction
 

@@ -1,5 +1,7 @@
 package com.lehnade.mbia.genealogy.domain;
 
+import java.util.Collection;
+import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 
@@ -13,6 +15,15 @@ public interface PersonRepository {
 
     /** @return the Person of this Family, whatever its status; empty for another Family's Person */
     Optional<Person> findInFamily(UUID familyId, PersonId id);
+
+    /**
+     * Locks the rows of these Persons of the Family until the end of the transaction, in the
+     * deterministic order of their UUIDs, so that two transactions locking the same Persons cannot
+     * deadlock (genealogy.md §12).
+     *
+     * @return the locked Persons, whatever their status, in UUID order; another Family's are absent
+     */
+    List<Person> lockInFamily(UUID familyId, Collection<PersonId> ids);
 
     /**
      * Persists a change of {@code person}, built from its persisted {@code version()}.

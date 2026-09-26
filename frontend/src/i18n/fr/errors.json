@@ -11,5 +11,7 @@
   "RELATIONSHIP_ALREADY_EXISTS": "Ces deux personnes sont déjà reliées de cette façon.",
   "RELATIONSHIP_CREATES_CYCLE": "Ce lien ne peut pas être ajouté : une personne deviendrait son propre ancêtre.",
   "PERSON_NOT_ACTIVE": "Cette personne a été archivée ou fusionnée : elle ne peut plus recevoir de nouveau lien.",
-  "RELATIONSHIP_WARNING_CONFIRMATION_REQUIRED": "Les dates de naissance semblent incohérentes. Vérifiez-les ou confirmez le lien."
+  "RELATIONSHIP_WARNING_CONFIRMATION_REQUIRED": "Les dates de naissance semblent incohérentes. Vérifiez-les ou confirmez le lien.",
+  "POSSIBLE_DUPLICATE": "Une personne semblable est déjà dans la famille.",
+  "PERSON_MERGE_CONFLICT": "Ces deux fiches ne peuvent pas être fusionnées."
 }

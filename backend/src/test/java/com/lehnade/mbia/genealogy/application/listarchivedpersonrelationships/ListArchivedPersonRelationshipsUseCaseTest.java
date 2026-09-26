@@ -84,7 +84,8 @@ class ListArchivedPersonRelationshipsUseCaseTest {
     private Person person(PersonStatus status) {
         Person person = Person.restore(PersonId.newId(), FAMILY, new PersonDetails("Someone", null, null, null, null,
                 PartialDate.UNKNOWN, false, null, null), null, status, USER, USER, NOW, NOW,
-                status == PersonStatus.ARCHIVED ? NOW : null, 0);
+                status == PersonStatus.ARCHIVED ? NOW : null,
+                status == PersonStatus.MERGED ? PersonId.newId() : null, 0);
         when(persons.findInFamily(FAMILY, person.id())).thenReturn(Optional.of(person));
         return person;
     }

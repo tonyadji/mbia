@@ -1,7 +1,7 @@
 package com.lehnade.mbia.genealogy.application;
 
+import com.lehnade.mbia.genealogy.domain.Person;
 import com.lehnade.mbia.genealogy.domain.PersonDetails;
-import com.lehnade.mbia.genealogy.domain.PersonId;
 import java.util.List;
 import java.util.UUID;
 
@@ -11,5 +11,9 @@ import java.util.UUID;
  */
 public interface PossibleDuplicates {
 
-    List<PersonId> candidatesFor(UUID familyId, PersonDetails details);
+    /** The limit on candidates returned: enough to recognise the Person, bounded like a search page. */
+    int MAX_CANDIDATES = 10;
+
+    /** @return at most {@link #MAX_CANDIDATES} candidates, in search order */
+    List<Person> candidatesFor(UUID familyId, PersonDetails details);
 }

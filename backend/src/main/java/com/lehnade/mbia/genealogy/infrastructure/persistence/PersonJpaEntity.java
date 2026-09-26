@@ -140,9 +140,14 @@ class PersonJpaEntity {
         this.linkedUserId = linkedUserId;
     }
 
-    void changeStatus(String status, Instant archivedAt) {
+    void changeStatus(String status, Instant archivedAt, UUID mergedIntoPersonId) {
         this.status = status;
         this.archivedAt = archivedAt;
+        this.mergedIntoPersonId = mergedIntoPersonId;
+    }
+
+    UUID mergedIntoPersonId() {
+        return mergedIntoPersonId;
     }
 
     UUID id() {

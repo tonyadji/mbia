@@ -29,6 +29,15 @@ interface FamilyRelationshipJpaRepository extends JpaRepository<FamilyRelationsh
             """)
     List<Object[]> findArchivedWithOtherPerson(UUID familyId, UUID personId);
 
+    /** Every relationship of {@code personId}, whatever its status, oldest first. */
+    @Query("""
+            SELECT r
+            FROM FamilyRelationshipJpaEntity r
+            WHERE r.familyId = :familyId AND (r.sourcePersonId = :personId OR r.targetPersonId = :personId)
+            ORDER BY r.createdAt, r.id
+            """)
+    List<FamilyRelationshipJpaEntity> findAllOf(UUID familyId, UUID personId);
+
     boolean existsByFamilyIdAndTypeAndSourcePersonIdAndTargetPersonIdAndStatus(UUID familyId, String type,
             UUID sourcePersonId, UUID targetPersonId, String status);
 

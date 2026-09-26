@@ -231,5 +231,38 @@
     "intro": "Les fiches archivées n'apparaissent plus dans l'arbre ni dans la recherche. Ouvrez-en une pour la restaurer.",
     "empty": "Aucune fiche archivée.",
     "adminOnly": "Seul un administrateur peut voir les fiches archivées."
+  },
+  "duplicate": {
+    "title_one": "Une personne semblable est déjà dans la famille",
+    "title_other": "Des personnes semblables sont déjà dans la famille",
+    "view": "Voir la personne existante",
+    "viewNamed": "Voir la personne existante : {{name}}",
+    "createAnyway": "Créer quand même"
+  },
+  "merge": {
+    "action": "Fusionner avec une autre fiche",
+    "title": "Quelle fiche décrit la même personne que {{name}} ?",
+    "search": "Rechercher la fiche à conserver",
+    "kept": "Fiche conservée",
+    "merged": "Fiche en double",
+    "explain": {
+      "kept": "La fiche de {{name}} est conservée.",
+      "merged": "La fiche de {{name}} est fusionnée dans celle de {{kept}} et n'apparaît plus dans la famille.",
+      "links": "Les liens familiaux passent sur la fiche conservée, sans doublon.",
+      "values": "Quand les deux fiches ont une valeur, celle de la fiche conservée est gardée."
+    },
+    "confirm": "Fusionner les fiches",
+    "change": "Choisir une autre fiche",
+    "cancel": "Annuler",
+    "done": "La fiche en double de {{name}} a été fusionnée dans la fiche de {{kept}}.",
+    "refused": {
+      "DIFFERENT_LINKED_USERS": "Ces deux fiches sont reliées à deux membres différents de la famille : elles ne peuvent pas être fusionnées.",
+      "SELF_RELATIONSHIP": "Ces deux fiches sont reliées l'une à l'autre. Retirez d'abord ce lien, puis fusionnez-les.",
+      "PARENTAL_CYCLE": "Fusionner ces fiches ferait de quelqu'un son propre ancêtre. Vérifiez d'abord leurs liens familiaux."
+    }
+  },
+  "merged": {
+    "notice": "Cette fiche a été fusionnée dans une autre fiche, qui décrit la même personne.",
+    "open": "Ouvrir la fiche conservée"
   }
 }

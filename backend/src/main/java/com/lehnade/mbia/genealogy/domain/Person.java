@@ -21,11 +21,12 @@ public final class Person {
     private final Instant createdAt;
     private final Instant updatedAt;
     private final Instant archivedAt;
+    private final PersonId mergedIntoPersonId;
     private final long version;
 
     private Person(PersonId id, UUID familyId, PersonDetails details, UUID linkedUserId, PersonStatus status,
             UUID createdBy, UUID updatedBy, Instant createdAt, Instant updatedAt, Instant archivedAt,
-            long version) {
+            PersonId mergedIntoPersonId, long version) {
         this.id = Objects.requireNonNull(id, "id");
         this.familyId = Objects.requireNonNull(familyId, "familyId");
         this.details = Objects.requireNonNull(details, "details");
@@ -39,6 +40,10 @@ public final class Person {
             throw new IllegalArgumentException("archivedAt is set exactly when the person is ARCHIVED");
         }
         this.archivedAt = archivedAt;
+        if ((status == PersonStatus.MERGED) != (mergedIntoPersonId != null) || id.equals(mergedIntoPersonId)) {
+            throw new IllegalArgumentException("mergedIntoPersonId is another Person, set exactly when MERGED");
+        }
+        this.mergedIntoPersonId = mergedIntoPersonId;
         this.version = version;
     }
 
@@ -50,15 +55,26 @@ public final class Person {
     public static Person create(PersonId id, UUID familyId, PersonDetails details, UUID linkedUserId,
             UUID createdBy, Instant now) {
         return new Person(id, familyId, details, linkedUserId, PersonStatus.ACTIVE, createdBy, createdBy, now, now,
-                null, 0);
+                null, null, 0);
     }
 
-    /** Rebuilds a stored Person; {@code archivedAt} is set exactly when it is ARCHIVED. */
+    /** Rebuilds a stored Person that is not MERGED; {@code archivedAt} is set exactly when it is ARCHIVED. */
     public static Person restore(PersonId id, UUID familyId, PersonDetails details, UUID linkedUserId,
             PersonStatus status, UUID createdBy, UUID updatedBy, Instant createdAt, Instant updatedAt,
             Instant archivedAt, long version) {
+        return restore(id, familyId, details, linkedUserId, status, createdBy, updatedBy, createdAt, updatedAt,
+                archivedAt, null, version);
+    }
+
+    /**
+     * Rebuilds a stored Person; {@code archivedAt} is set exactly when it is ARCHIVED,
+     * {@code mergedIntoPersonId} exactly when it is MERGED.
+     */
+    public static Person restore(PersonId id, UUID familyId, PersonDetails details, UUID linkedUserId,
+            PersonStatus status, UUID createdBy, UUID updatedBy, Instant createdAt, Instant updatedAt,
+            Instant archivedAt, PersonId mergedIntoPersonId, long version) {
         return new Person(id, familyId, details, linkedUserId, status, createdBy, updatedBy, createdAt, updatedAt,
-                archivedAt, version);
+                archivedAt, mergedIntoPersonId, version);
     }
 
     /**
@@ -67,7 +83,7 @@ public final class Person {
      */
     public Person update(PersonDetails newDetails, UUID updatedBy, Instant now) {
         return new Person(id, familyId, newDetails, linkedUserId, status, createdBy, updatedBy, createdAt, now,
-                archivedAt, version);
+                archivedAt, mergedIntoPersonId, version);
     }
 
     /**
@@ -76,7 +92,7 @@ public final class Person {
      */
     public Person claim(UUID userId, UUID updatedBy, Instant now) {
         return new Person(id, familyId, details, Objects.requireNonNull(userId, "userId"), status, createdBy,
-                updatedBy, createdAt, now, archivedAt, version);
+                updatedBy, createdAt, now, archivedAt, mergedIntoPersonId, version);
     }
 
     /**
@@ -85,7 +101,7 @@ public final class Person {
      */
     public Person unclaim(UUID updatedBy, Instant now) {
         return new Person(id, familyId, details, null, status, createdBy, updatedBy, createdAt, now, archivedAt,
-                version);
+                mergedIntoPersonId, version);
     }
 
     /**
@@ -99,7 +115,7 @@ public final class Person {
             throw new IllegalStateException("Only an active person can be archived.");
         }
         return new Person(id, familyId, details, linkedUserId, PersonStatus.ARCHIVED, createdBy, by, createdAt, now,
-                now, version);
+                now, mergedIntoPersonId, version);
     }
 
     /**
@@ -112,7 +128,49 @@ public final class Person {
             throw new IllegalStateException("Only an archived person can be restored.");
         }
         return new Person(id, familyId, details, linkedUserId, PersonStatus.ACTIVE, createdBy, by, createdAt, now,
-                null, version);
+                null, mergedIntoPersonId, version);
+    }
+
+    /**
+     * This Person, a duplicate, merged into {@code target} (person-relationships-collaboration.md
+     * §4.2): MERGED for good, and no longer linked to its User, who moves to the target.
+     *
+     * @throws IllegalStateException when the Person is not ACTIVE
+     */
+    public Person mergeInto(PersonId target, UUID by, Instant now) {
+        if (!isActive()) {
+            throw new IllegalStateException("Only an active person can be merged.");
+        }
+        return new Person(id, familyId, details, null, PersonStatus.MERGED, createdBy, by, createdAt, now, null,
+                Objects.requireNonNull(target, "target"), version);
+    }
+
+    /**
+     * This Person, the target of a merge, completed with its duplicate {@code source}
+     * (data-model.md §19, OQ-028): each value of this Person is kept when it is known; only an
+     * unknown one is taken from the source. The Person is deceased when either is. It takes the
+     * source's User when it has none; two different Users are the caller's conflict.
+     */
+    public Person absorb(Person source, UUID by, Instant now) {
+        PersonDetails mine = details;
+        PersonDetails theirs = source.details;
+        boolean deceased = mine.deceased() || theirs.deceased();
+        PersonDetails merged = new PersonDetails(mine.firstName(),
+                either(mine.middleNames(), theirs.middleNames()),
+                either(mine.lastName(), theirs.lastName()),
+                either(mine.preferredName(), theirs.preferredName()),
+                mine.gender() != Gender.UNKNOWN ? mine.gender() : theirs.gender(),
+                mine.birth().isKnown() ? mine.birth() : theirs.birth(),
+                deceased,
+                mine.death().isKnown() || !deceased ? mine.death() : theirs.death(),
+                either(mine.biography(), theirs.biography()));
+        UUID user = linkedUserId != null ? linkedUserId : source.linkedUserId;
+        return new Person(id, familyId, merged, user, status, createdBy, by, createdAt, now, archivedAt,
+                mergedIntoPersonId, version);
+    }
+
+    private static String either(String kept, String fallback) {
+        return kept != null ? kept : fallback;
     }
 
     public boolean isLinkedTo(UUID userId) {
@@ -166,6 +224,10 @@ public final class Person {
 
     public Optional<Instant> archivedAt() {
         return Optional.ofNullable(archivedAt);
+    }
+
+    public Optional<PersonId> mergedIntoPersonId() {
+        return Optional.ofNullable(mergedIntoPersonId);
     }
 
     public long version() {

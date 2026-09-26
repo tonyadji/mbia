@@ -92,6 +92,7 @@ function fakeApi({
   anchor = person(),
   createdPerson = paul,
   relationships = [],
+  personAnswers = [],
   patch,
   locale = 'fr',
 }: {
@@ -100,10 +101,13 @@ function fakeApi({
   anchor?: Record<string, unknown>;
   createdPerson?: Record<string, unknown>;
   relationships?: ((body: Record<string, unknown>) => Response)[];
+  /** Answers to the Person creations, in order; then `createdPerson`. */
+  personAnswers?: (() => Response)[];
   patch?: Handler;
 } = {}) {
   const requests: { method: string; path: string; headers: Headers; body: unknown }[] = [];
   let relationshipCalls = 0;
+  let personCalls = 0;
   fetchMock.mockImplementation(async (input) => {
     const request = input as Request;
     const path = new URL(request.url).pathname.replace(/^\/api\/v1/, '');
@@ -116,7 +120,11 @@ function fakeApi({
     }
     if (key === `GET /families/${ADJI_ID}`) return jsonResponse(familyBody);
     if (key === `GET /families/${ADJI_ID}/persons/${MARIE_ID}`) return jsonResponse(anchor);
-    if (key === `POST /families/${ADJI_ID}/persons`) return jsonResponse(createdPerson, 201);
+    if (key === `POST /families/${ADJI_ID}/persons`) {
+      const answer = personAnswers[personCalls];
+      personCalls += 1;
+      return answer ? answer() : jsonResponse(createdPerson, 201);
+    }
     if (key === `PATCH /families/${ADJI_ID}/persons/${PAUL_ID}` && patch) return patch(request);
     if (key === `POST /families/${ADJI_ID}/relationships`) {
       const answer = relationships[relationshipCalls] ?? relationship;
@@ -410,6 +418,97 @@ describe('Add Relative (SCREEN-004, family-tree-ux.md §9)', () => {
         await screen.findByText('Paul Adji a été ajouté à la famille et relié à Marie Adji.'),
       ).toBeInTheDocument();
       expect(router.state.location.pathname).toBe(`/families/${ADJI_ID}`);
+    });
+  });
+
+  describe('possible duplicate (person-relationships-collaboration.md §4.1)', () => {
+    const PAULO_ID = 'b0000000-0000-4000-8000-000000000001';
+    const existingPaul = person({
+      id: PAULO_ID,
+      firstName: 'Paul',
+      displayName: 'Paul Adji',
+      gender: 'MALE',
+      birth: { precision: 'YEAR_ONLY', year: 1960 },
+    });
+    const duplicate = () =>
+      problemResponse('POSSIBLE_DUPLICATE', 409, { candidates: [existingPaul] });
+
+    it('shows the similar Person, then creates anyway on request', async () => {
+      const api = fakeApi({ personAnswers: [duplicate] });
+      renderApp(addRelativePath(ADJI_ID, MARIE_ID, 'FATHER', 'profile'));
+      await fillAndSubmit('Paul');
+
+      const alert = await screen.findByRole('alert', {
+        name: 'Une personne semblable est déjà dans la famille',
+      });
+      expect(within(alert).getByText('Paul Adji')).toBeInTheDocument();
+      expect(within(alert).getByText('1960 –')).toBeInTheDocument();
+      expect(screen.queryByText('raw server detail')).not.toBeInTheDocument();
+      expect(api.sent('POST', '/relationships')).toHaveLength(0);
+
+      fireEvent.click(within(alert).getByRole('button', { name: 'Créer quand même' }));
+
+      expect(
+        await screen.findByText('Paul Adji a été ajouté à la famille et relié à Marie Adji.'),
+      ).toBeInTheDocument();
+      expect(api.sent('POST', '/persons').map((request) => request.body)).toEqual([
+        expect.objectContaining({ firstName: 'Paul', confirmPossibleDuplicate: false }),
+        expect.objectContaining({ firstName: 'Paul', confirmPossibleDuplicate: true }),
+      ]);
+      expect(api.sent('POST', '/relationships')[0]?.body).toMatchObject({
+        sourcePersonId: PAUL_ID,
+        targetPersonId: MARIE_ID,
+      });
+    });
+
+    it('links the existing Person instead when the User views them', async () => {
+      const api = fakeApi({ personAnswers: [duplicate] });
+      renderApp(addRelativePath(ADJI_ID, MARIE_ID, 'FATHER', 'profile'));
+      await fillAndSubmit('Paul');
+
+      fireEvent.click(
+        await screen.findByRole('button', { name: 'Voir la personne existante : Paul Adji' }),
+      );
+      expect(screen.getByRole('heading', { name: 'Personne choisie' })).toBeInTheDocument();
+      fireEvent.click(screen.getByRole('button', { name: 'Relier Paul Adji à Marie Adji' }));
+
+      expect(
+        await screen.findByText('Paul Adji est maintenant relié à Marie Adji.'),
+      ).toBeInTheDocument();
+      expect(api.sent('POST', '/persons')).toHaveLength(1);
+      expect(api.sent('POST', '/relationships')[0]?.body).toMatchObject({
+        type: 'PARENT_OF',
+        sourcePersonId: PAULO_ID,
+        targetPersonId: MARIE_ID,
+      });
+    });
+
+    it('opens the existing profile outside relative mode', async () => {
+      const api = fakeApi({ personAnswers: [duplicate] });
+      const { router } = renderApp(`/families/${ADJI_ID}/persons/new`);
+      await fillAndSubmit('Paul');
+
+      fireEvent.click(
+        await screen.findByRole('button', { name: 'Voir la personne existante : Paul Adji' }),
+      );
+
+      expect(router.state.location.pathname).toBe(`/families/${ADJI_ID}/persons/${PAULO_ID}`);
+      expect(api.sent('POST', '/persons')).toHaveLength(1);
+    });
+
+    it('speaks English too', async () => {
+      fakeApi({ locale: 'en', personAnswers: [duplicate] });
+      await act(() => i18n.changeLanguage('en'));
+      renderApp(`/families/${ADJI_ID}/persons/new`);
+      fireEvent.change(await screen.findByRole('textbox', { name: 'First name' }), {
+        target: { value: 'Paul' },
+      });
+      fireEvent.click(screen.getByRole('button', { name: 'Add to the family' }));
+
+      expect(
+        await screen.findByRole('alert', { name: 'A similar person is already in the family' }),
+      ).toBeInTheDocument();
+      expect(screen.getByRole('button', { name: 'Create anyway' })).toBeInTheDocument();
     });
   });
 });

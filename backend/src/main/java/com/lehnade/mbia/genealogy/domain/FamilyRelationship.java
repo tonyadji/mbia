@@ -100,6 +100,30 @@ public final class FamilyRelationship {
                 createdAt, now, null, version);
     }
 
+    /**
+     * This relationship with {@code merged} replaced by {@code kept}, as a Person merge moves it
+     * (data-model.md §19): {@code PARTNER_OF} endpoints are put back in canonical order.
+     *
+     * @throws DomainException {@code SELF_RELATIONSHIP_NOT_ALLOWED} when it would relate
+     *     {@code kept} to itself
+     */
+    public FamilyRelationship replacePerson(PersonId merged, PersonId kept, UUID by, Instant now) {
+        PersonId newSource = source.equals(merged) ? kept : source;
+        PersonId newTarget = target.equals(merged) ? kept : target;
+        if (newSource.equals(newTarget)) {
+            throw new DomainException(ErrorCode.SELF_RELATIONSHIP_NOT_ALLOWED,
+                    "A person cannot be related to themselves.");
+        }
+        boolean swap = type == RelationshipType.PARTNER_OF && !precedes(newSource, newTarget);
+        return new FamilyRelationship(id, familyId, type, swap ? newTarget : newSource,
+                swap ? newSource : newTarget, status, createdBy, by, createdAt, now, archivedAt, version);
+    }
+
+    /** Whether the relationship links {@code first} and {@code second}, in either direction. */
+    public boolean links(PersonId first, PersonId second) {
+        return (source.equals(first) && target.equals(second)) || (source.equals(second) && target.equals(first));
+    }
+
     public boolean isActive() {
         return status == RelationshipStatus.ACTIVE;
     }

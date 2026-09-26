@@ -1,5 +1,6 @@
 package com.lehnade.mbia.genealogy.domain;
 
+import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 
@@ -14,8 +15,11 @@ public interface RelationshipRepository {
     /** @return the relationship of this Family, whatever its status; empty for another Family's */
     Optional<FamilyRelationship> findInFamily(UUID familyId, RelationshipId id);
 
+    /** @return every relationship of this Family where the Person is source or target, whatever its status */
+    List<FamilyRelationship> findAllOf(UUID familyId, PersonId person);
+
     /**
-     * Persists a status change of {@code relationship}, built from its persisted {@code version()}.
+     * Persists a status or endpoint change of {@code relationship}, built from its persisted {@code version()}.
      *
      * @return the relationship as persisted, with its version incremented
      * @throws org.springframework.dao.OptimisticLockingFailureException when the relationship

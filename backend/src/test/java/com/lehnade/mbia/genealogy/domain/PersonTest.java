@@ -10,7 +10,9 @@ import org.junit.jupiter.api.Test;
 /**
  * PR-18: an update changes identity data and authorship, never identity of the record. PR-19: a
  * claim or a release changes only the link and authorship (person-relationships-collaboration.md §2).
- * PR-26: an archive or a restore changes only the status, its date and authorship (§5).
+ * PR-26: an archive or a restore changes only the status, its date and authorship (§5). PR-27: a
+ * merge marks the duplicate MERGED into the kept Person, which keeps its known values and takes the
+ * missing ones (§4.2, data-model.md §19, OQ-028).
  */
 class PersonTest {
 
@@ -137,6 +139,85 @@ class PersonTest {
 
         assertThat(person(PersonStatus.ACTIVE).isLinked()).isFalse();
         assertThat(person(PersonStatus.ACTIVE).claim(user, user, UPDATED).isLinked()).isTrue();
+    }
+
+    @Test
+    void theDuplicateIsMergedIntoTheKeptPersonAndReleasesItsUser() {
+        UUID admin = UUID.randomUUID();
+        UUID user = UUID.randomUUID();
+        Person duplicate = person(PersonStatus.ACTIVE).claim(user, user, CREATED);
+        PersonId kept = PersonId.newId();
+
+        Person merged = duplicate.mergeInto(kept, admin, UPDATED);
+
+        assertThat(merged.status()).isEqualTo(PersonStatus.MERGED);
+        assertThat(merged.mergedIntoPersonId()).contains(kept);
+        assertThat(merged.linkedUserId()).isEmpty();
+        assertThat(merged.details()).isEqualTo(duplicate.details());
+        assertThat(merged.updatedBy()).isEqualTo(admin);
+        assertThat(merged.version()).isEqualTo(duplicate.version());
+        assertThatThrownBy(() -> merged.mergeInto(kept, admin, UPDATED)).isInstanceOf(IllegalStateException.class);
+        assertThatThrownBy(() -> person(PersonStatus.ARCHIVED).mergeInto(kept, admin, UPDATED))
+                .isInstanceOf(IllegalStateException.class);
+    }
+
+    @Test
+    void mergedIntoIsAnotherPersonSetExactlyWhenMerged() {
+        UUID creator = UUID.randomUUID();
+        PersonId id = PersonId.newId();
+
+        assertThatThrownBy(() -> Person.restore(id, UUID.randomUUID(), details("Marie"), null, PersonStatus.MERGED,
+                creator, creator, CREATED, CREATED, null, null, 0)).isInstanceOf(IllegalArgumentException.class);
+        assertThatThrownBy(() -> Person.restore(id, UUID.randomUUID(), details("Marie"), null, PersonStatus.ACTIVE,
+                creator, creator, CREATED, CREATED, null, PersonId.newId(), 0))
+                .isInstanceOf(IllegalArgumentException.class);
+        assertThatThrownBy(() -> Person.restore(id, UUID.randomUUID(), details("Marie"), null, PersonStatus.MERGED,
+                creator, creator, CREATED, CREATED, null, id, 0)).isInstanceOf(IllegalArgumentException.class);
+    }
+
+    @Test
+    void theKeptPersonKeepsItsKnownValuesAndTakesTheMissingOnes() {
+        Person kept = withDetails(new PersonDetails("Marie", null, "Dupont", null, Gender.UNKNOWN,
+                PartialDate.yearOnly(1954), false, null, null));
+        Person duplicate = withDetails(new PersonDetails("Maria", "Claire", "Durand", "Mamie", Gender.FEMALE,
+                PartialDate.exact(java.time.LocalDate.of(1955, 2, 1)), true, PartialDate.yearOnly(2019), "Née à Douala."));
+
+        PersonDetails merged = kept.absorb(duplicate, UUID.randomUUID(), UPDATED).details();
+
+        assertThat(merged).isEqualTo(new PersonDetails("Marie", "Claire", "Dupont", "Mamie", Gender.FEMALE,
+                PartialDate.yearOnly(1954), true, PartialDate.yearOnly(2019), "Née à Douala."));
+    }
+
+    @Test
+    void theKeptPersonIsDeceasedWhenEitherIsAndKeepsItsKnownDeathDate() {
+        Person keptDeceased = withDetails(new PersonDetails("Marie", null, null, null, null, null, true,
+                PartialDate.yearOnly(2020), null));
+        Person duplicateDeceased = withDetails(new PersonDetails("Marie", null, null, null, null, null, true,
+                PartialDate.yearOnly(2019), null));
+        Person alive = withDetails(details("Marie"));
+
+        assertThat(keptDeceased.absorb(duplicateDeceased, UUID.randomUUID(), UPDATED).details().death())
+                .isEqualTo(PartialDate.yearOnly(2020));
+        assertThat(keptDeceased.absorb(alive, UUID.randomUUID(), UPDATED).details().deceased()).isTrue();
+        assertThat(alive.absorb(alive, UUID.randomUUID(), UPDATED).details().deceased()).isFalse();
+    }
+
+    @Test
+    void theKeptPersonTakesTheUserOfTheDuplicateOnlyWhenItHasNone() {
+        UUID keptUser = UUID.randomUUID();
+        UUID duplicateUser = UUID.randomUUID();
+        Person duplicate = person(PersonStatus.ACTIVE).claim(duplicateUser, duplicateUser, CREATED);
+
+        assertThat(person(PersonStatus.ACTIVE).absorb(duplicate, keptUser, UPDATED).linkedUserId())
+                .contains(duplicateUser);
+        assertThat(person(PersonStatus.ACTIVE).claim(keptUser, keptUser, CREATED)
+                .absorb(person(PersonStatus.ACTIVE), keptUser, UPDATED).linkedUserId()).contains(keptUser);
+    }
+
+    private static Person withDetails(PersonDetails details) {
+        UUID creator = UUID.randomUUID();
+        return Person.restore(PersonId.newId(), UUID.randomUUID(), details, null, PersonStatus.ACTIVE, creator,
+                creator, CREATED, CREATED, null, 3);
     }
 
     private static Person person(PersonStatus status) {

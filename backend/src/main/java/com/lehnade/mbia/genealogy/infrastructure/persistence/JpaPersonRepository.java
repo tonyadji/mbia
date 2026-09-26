@@ -11,6 +11,8 @@ import com.lehnade.mbia.genealogy.domain.PersonStatus;
 import com.lehnade.mbia.shared.domain.DomainException;
 import com.lehnade.mbia.shared.domain.ErrorCode;
 import java.time.LocalDate;
+import java.util.Collection;
+import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 import org.hibernate.exception.ConstraintViolationException;
@@ -51,6 +53,13 @@ class JpaPersonRepository implements PersonRepository {
         return jpa.findByIdAndFamilyId(id.value(), familyId).map(JpaPersonRepository::toDomain);
     }
 
+    @Override
+    public List<Person> lockInFamily(UUID familyId, Collection<PersonId> ids) {
+        return jpa.lockInFamily(familyId, ids.stream().map(PersonId::value).toList()).stream()
+                .map(JpaPersonRepository::toDomain)
+                .toList();
+    }
+
     /**
      * Hibernate writes {@code UPDATE … WHERE version = ?} (JPA {@code @Version}): a commit by
      * another transaction since the Person was read fails the flush instead of being overwritten.
@@ -67,7 +76,8 @@ class JpaPersonRepository implements PersonRepository {
                 year(details.death()), details.death().precision().name(), details.biography(),
                 person.updatedBy(), person.updatedAt());
         entity.changeLinkedUser(person.linkedUserId().orElse(null));
-        entity.changeStatus(person.status().name(), person.archivedAt().orElse(null));
+        entity.changeStatus(person.status().name(), person.archivedAt().orElse(null),
+                person.mergedIntoPersonId().map(PersonId::value).orElse(null));
         try {
             return toDomain(jpa.saveAndFlush(entity));
         } catch (DataIntegrityViolationException e) {
@@ -94,7 +104,9 @@ class JpaPersonRepository implements PersonRepository {
                 entity.biography());
         return Person.restore(new PersonId(entity.id()), entity.familyId(), details, entity.linkedUserId(),
                 PersonStatus.valueOf(entity.status()), entity.createdBy(), entity.updatedBy(), entity.createdAt(),
-                entity.updatedAt(), entity.archivedAt(), entity.version());
+                entity.updatedAt(), entity.archivedAt(),
+                entity.mergedIntoPersonId() == null ? null : new PersonId(entity.mergedIntoPersonId()),
+                entity.version());
     }
 
     private static PartialDate partialDate(String precision, LocalDate date, Short year) {

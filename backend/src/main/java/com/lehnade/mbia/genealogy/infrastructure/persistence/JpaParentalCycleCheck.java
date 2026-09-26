@@ -20,4 +20,10 @@ class JpaParentalCycleCheck implements ParentalCycleCheck {
     public boolean wouldCreateCycle(UUID familyId, PersonId parent, PersonId child) {
         return jpa.isDescendant(familyId, child.value(), parent.value());
     }
+
+    /** A Person is on a cycle when they descend from themselves. */
+    @Override
+    public boolean isOnCycle(UUID familyId, PersonId person) {
+        return jpa.isDescendant(familyId, person.value(), person.value());
+    }
 }

@@ -2,6 +2,7 @@ package com.lehnade.mbia.genealogy.application.createperson;
 
 import com.lehnade.mbia.family.application.FamilyAccess;
 import com.lehnade.mbia.family.application.FamilyRole;
+import com.lehnade.mbia.genealogy.application.PersonSummaries;
 import com.lehnade.mbia.genealogy.application.PersonView;
 import com.lehnade.mbia.genealogy.application.PossibleDuplicates;
 import com.lehnade.mbia.genealogy.application.RelationshipToCurrentUser;
@@ -16,6 +17,7 @@ import com.lehnade.mbia.shared.domain.DomainException;
 import com.lehnade.mbia.shared.domain.ErrorCode;
 import java.time.Clock;
 import java.time.Instant;
+import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 import org.springframework.stereotype.Service;
@@ -58,10 +60,13 @@ public class CreatePersonUseCase {
             throw new DomainException(ErrorCode.USER_ALREADY_LINKED,
                     "You are already linked to a person of this family.");
         }
-        if (!command.confirmPossibleDuplicate()
-                && !possibleDuplicates.candidatesFor(command.familyId(), command.details()).isEmpty()) {
-            throw new DomainException(ErrorCode.POSSIBLE_DUPLICATE,
-                    "A similar person already exists in this family.");
+        if (!command.confirmPossibleDuplicate()) {
+            List<Person> candidates = possibleDuplicates.candidatesFor(command.familyId(), command.details());
+            if (!candidates.isEmpty()) {
+                throw new DomainException(ErrorCode.POSSIBLE_DUPLICATE,
+                        "A similar person already exists in this family.",
+                        Map.of("candidates", candidates.stream().map(PersonSummaries::of).toList()));
+            }
         }
 
         Instant now = clock.instant();

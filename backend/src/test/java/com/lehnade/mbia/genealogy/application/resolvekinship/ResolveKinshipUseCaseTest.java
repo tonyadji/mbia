@@ -109,7 +109,8 @@ class ResolveKinshipUseCaseTest {
     private void given(PersonId id, Gender gender, PersonStatus status) {
         Person person = Person.restore(id, FAMILY, new PersonDetails("Someone", null, null, null, gender, null, false,
                 null, null), null, status, CALLER, CALLER, NOW, NOW,
-                status == PersonStatus.ARCHIVED ? NOW : null, 0);
+                status == PersonStatus.ARCHIVED ? NOW : null,
+                status == PersonStatus.MERGED ? PersonId.newId() : null, 0);
         when(persons.findInFamily(FAMILY, id)).thenReturn(Optional.of(person));
     }
 
