@@ -1,0 +1,30 @@
+import { useMutation, useQueryClient } from '@tanstack/react-query';
+import { apiClient } from '../api/client';
+import type { components } from '../api/generated/schema';
+import { familyQueryKey } from '../families/useFamily';
+import { familiesQueryKey } from '../families/useMyFamilies';
+
+export type CreateStoryMemoryRequest = components['schemas']['CreateStoryMemoryRequest'];
+export type Memory = components['schemas']['MemoryResponse'];
+
+/** Creates a written story linked to Persons (`POST /families/{familyId}/memories/stories`). */
+export function useCreateStoryMemory(familyId: string) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (body: CreateStoryMemoryRequest) => {
+      const { data } = await apiClient.POST('/families/{familyId}/memories/stories', {
+        params: { path: { familyId } },
+        body,
+      });
+      if (data === undefined) {
+        throw new Error('POST /families/{familyId}/memories/stories returned no body');
+      }
+      return data;
+    },
+    onSuccess: () => {
+      // The Memory count of the Family changed.
+      void queryClient.invalidateQueries({ queryKey: familyQueryKey(familyId), exact: true });
+      void queryClient.invalidateQueries({ queryKey: familiesQueryKey, exact: true });
+    },
+  });
+}

@@ -23,6 +23,7 @@ const DEBOUNCE_MS = 250;
  * birth/death years and what they are to the current User. The search starts after 2 characters;
  * below that, the first page of the Family is listed when `listWhenEmpty`. What a result does is
  * up to the entry point (`onSelect`). `status="ARCHIVED"` is the ADMIN "Archived people" view.
+ * `excludedMessage` replaces the "no result" message when every Person found is excluded.
  */
 export function PersonSearch({
   familyId,
@@ -32,6 +33,7 @@ export function PersonSearch({
   listWhenEmpty = true,
   autoFocus = false,
   status = 'ACTIVE',
+  excludedMessage,
 }: {
   familyId: string;
   label: string;
@@ -40,15 +42,15 @@ export function PersonSearch({
   listWhenEmpty?: boolean;
   autoFocus?: boolean;
   status?: SearchStatus;
+  excludedMessage?: string;
 }) {
   const { t } = useTranslation('person');
   const [text, setText] = useState('');
   const term = searchTerm(useDebouncedValue(text, DEBOUNCE_MS));
   const enabled = listWhenEmpty || term !== '';
   const search = usePersonSearch(familyId, term, { enabled, status });
-  const persons = (search.data?.pages.flatMap((page) => page.items) ?? []).filter(
-    (person) => !excludeIds.includes(person.id),
-  );
+  const found = search.data?.pages.flatMap((page) => page.items) ?? [];
+  const persons = found.filter((person) => !excludeIds.includes(person.id));
 
   let results;
   if (!enabled) {
@@ -66,11 +68,13 @@ export function PersonSearch({
   } else if (persons.length === 0) {
     results = (
       <p role="status" className="text-body text-text-muted">
-        {term !== ''
-          ? t('search.noResult', { text: term })
-          : status === 'ARCHIVED'
-            ? t('archivedPeople.empty')
-            : t('search.emptyFamily')}
+        {excludedMessage !== undefined && found.length > 0
+          ? excludedMessage
+          : term !== ''
+            ? t('search.noResult', { text: term })
+            : status === 'ARCHIVED'
+              ? t('archivedPeople.empty')
+              : t('search.emptyFamily')}
       </p>
     );
   } else {

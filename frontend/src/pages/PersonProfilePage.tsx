@@ -49,6 +49,8 @@ export interface PersonProfileState {
   relativeAdded?: { name: string; existing?: boolean };
   /** The duplicate just merged into this Person (SCREEN-COMPONENT-004). */
   merged?: { name: string };
+  /** The story just published about this Person (SCREEN-006). */
+  memoryPublished?: { title: string };
 }
 
 export function displayNameOf(person: Pick<Person, 'displayName' | 'firstName'>) {
@@ -173,11 +175,12 @@ function PersonProfile({
   person: Person;
   role: Role | undefined;
 }) {
-  const { t, i18n } = useTranslation(['person', 'settings']);
+  const { t, i18n } = useTranslation(['person', 'settings', 'memory']);
   const { t: tPerson } = useTranslation('person');
   const profileState = useLocation().state as PersonProfileState | null;
   const relativeAdded = profileState?.relativeAdded;
   const merged = profileState?.merged;
+  const memoryPublished = profileState?.memoryPublished;
   const [notice, setNotice] = useState<LinkNotice | null>(null);
   const language = isSupportedLanguage(i18n.resolvedLanguage)
     ? i18n.resolvedLanguage
@@ -248,6 +251,11 @@ function PersonProfile({
         <MergeAction familyId={familyId} person={person} role={role} />
       </header>
 
+      {memoryPublished && (
+        <p role="status" className="rounded-xl border border-border bg-surface px-4 py-3 text-body">
+          {t('memory:published', { title: memoryPublished.title })}
+        </p>
+      )}
       {merged && (
         <p role="status" className="rounded-xl border border-border bg-surface px-4 py-3 text-body">
           {t('person:merge.done', { name: merged.name, kept: displayNameOf(person) })}

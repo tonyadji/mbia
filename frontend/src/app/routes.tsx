@@ -2,6 +2,7 @@ import type { RouteObject } from 'react-router';
 import { CREATE_FAMILY_PATH } from '../auth/AuthProvider';
 import { ProtectedRoute } from '../auth/ProtectedRoute';
 import { AccountSettingsPage, SETTINGS_PATH } from '../pages/AccountSettingsPage';
+import { AddMemoryPage } from '../pages/AddMemoryPage';
 import { AddPersonPage } from '../pages/AddPersonPage';
 import { ArchivedPeoplePage } from '../pages/ArchivedPeoplePage';
 import { CreateFamilyPage } from '../pages/CreateFamilyPage';
@@ -33,6 +34,7 @@ export const routes: RouteObject[] = [
           { path: 'families/:familyId/persons/new', element: <AddPersonPage /> },
           { path: 'families/:familyId/persons/:personId', element: <PersonProfilePage /> },
           { path: 'families/:familyId/persons/:personId/edit', element: <EditPersonPage /> },
+          { path: 'families/:familyId/memories/new', element: <AddMemoryPage /> },
           { path: SETTINGS_PATH.slice(1), element: <AccountSettingsPage /> },
         ],
       },

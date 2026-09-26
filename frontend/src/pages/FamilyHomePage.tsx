@@ -10,6 +10,7 @@ import { useFamily } from '../families/useFamily';
 import { AddRelativeMenu } from '../persons/AddRelativeMenu';
 import { addRelativePath } from '../persons/relatives';
 import { familyTreePath } from '../tree/treePath';
+import { addMemoryPath } from './AddMemoryPage';
 import { addPersonPath } from './AddPersonPage';
 import { FamilyNotFoundPage } from './FamilyNotFoundPage';
 import { personPath } from './PersonProfilePage';
@@ -33,7 +34,7 @@ export interface FamilyHomeState {
 
 /**
  * SCREEN-002 — Family Home: the search entry (SCREEN-007), `View family tree` as primary action,
- * then `Add a relative`. No Memory or activity in Phase 2.
+ * then `Add a relative` and `Add a memory`. No activity in Phase 3 (phase-3-family-memories.md §3.2).
  */
 export function FamilyHomePage() {
   const { familyId = '' } = useParams();
@@ -123,6 +124,14 @@ function FamilyContent({ family }: { family: Family }) {
             {t('home.viewTree')}
           </Link>
           {canAddPersons && <AddAction family={family} />}
+          {canAddPersons && (
+            <Link
+              to={addMemoryPath(family.id)}
+              className={buttonClassName('secondary', 'sm:w-auto sm:self-start')}
+            >
+              {t('home.addMemory')}
+            </Link>
+          )}
         </>
       )}
     </>
