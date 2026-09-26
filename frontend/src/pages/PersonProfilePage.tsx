@@ -1,4 +1,4 @@
-import type { ReactNode } from 'react';
+import { useState, type ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link, useLocation, useParams } from 'react-router';
 import { ApiError } from '../api/client';
@@ -12,9 +12,17 @@ import { Button } from '../components/Button';
 import { useFamily } from '../families/useFamily';
 import { isSupportedLanguage, DEFAULT_LANGUAGE } from '../i18n/language';
 import { AddRelativeMenu } from '../persons/AddRelativeMenu';
+import { formatDate } from '../i18n/formatDate';
 import { formatPartialDate, yearOf } from '../persons/formatPartialDate';
-import { familySections } from '../persons/familySections';
-import { kinshipLabel } from '../persons/kinship';
+import { familySections, sectionLink, type TreeEdge } from '../persons/familySections';
+import { genderForm, kinshipLabel } from '../persons/kinship';
+import { RemoveRelationshipDialog } from '../persons/RemoveRelationshipDialog';
+import {
+  useArchivedRelationships,
+  type ArchivedRelationship,
+} from '../persons/useArchivedRelationships';
+import { useArchiveRelationship } from '../persons/useArchiveRelationship';
+import { useRestoreRelationship } from '../persons/useRestoreRelationship';
 import { relativeChoiceGroups } from '../persons/relatives';
 import { useClaimPerson } from '../persons/useClaimPerson';
 import { useFamilyTree, type TreeNode } from '../persons/useFamilyTree';
@@ -50,6 +58,14 @@ export function canEditPerson(person: Person, role: Role | undefined) {
     role === 'CONTRIBUTOR' &&
     (person.linkedUserId == null || person.relationshipToCurrentUser === 'SELF')
   );
+}
+
+/**
+ * Whether the caller may remove a link of this Person: ADMIN or CONTRIBUTOR, ACTIVE Person
+ * (mvp.md §13). Restoring a removed link is for the ADMIN only.
+ */
+export function canRemoveLinks(person: Person, role: Role | undefined) {
+  return person.status === 'ACTIVE' && (role === 'ADMIN' || role === 'CONTRIBUTOR');
 }
 
 /** Whether the caller may add relatives to this Person (ADMIN or CONTRIBUTOR, ACTIVE Person). */
@@ -112,8 +128,8 @@ export function PersonRoute({
 }
 
 /**
- * SCREEN-005 — Person profile: header, Family (ACTIVE Persons only) and About; no Memory, History
- * or photo in this phase (Phase 2 plan §3.1, §3.2).
+ * SCREEN-005 — Person profile: header, Family (ACTIVE Persons only), the ADMIN's Removed links and
+ * About; no Memory, History or photo in this phase (Phase 2 plan §3.1, §3.2).
  */
 export function PersonProfilePage() {
   return (
@@ -137,6 +153,7 @@ function PersonProfile({
   const { t, i18n } = useTranslation(['person', 'settings']);
   const { t: tPerson } = useTranslation('person');
   const relativeAdded = (useLocation().state as PersonProfileState | null)?.relativeAdded;
+  const [notice, setNotice] = useState<LinkNotice | null>(null);
   const language = isSupportedLanguage(i18n.resolvedLanguage)
     ? i18n.resolvedLanguage
     : DEFAULT_LANGUAGE;
@@ -204,10 +221,28 @@ function PersonProfile({
         <ClaimAction familyId={familyId} person={person} />
       </header>
 
-      {relativeAdded && (
+      {notice ? (
         <p role="status" className="rounded-xl border border-border bg-surface px-4 py-3 text-body">
-          {t('person:relative.added', { name: relativeAdded.name, anchor: displayNameOf(person) })}
+          {notice.kind === 'removed'
+            ? t('person:removeLink.done', { name: notice.name })
+            : t(
+                notice.withWarnings
+                  ? 'person:removedLinks.restoredWithWarnings'
+                  : 'person:removedLinks.restored',
+              )}
         </p>
+      ) : (
+        relativeAdded && (
+          <p
+            role="status"
+            className="rounded-xl border border-border bg-surface px-4 py-3 text-body"
+          >
+            {t('person:relative.added', {
+              name: relativeAdded.name,
+              anchor: displayNameOf(person),
+            })}
+          </p>
+        )
       )}
 
       {person.status === 'ACTIVE' && (
@@ -215,7 +250,12 @@ function PersonProfile({
           <h2 id="profile-family" className="text-section text-text">
             {t('person:profile.family')}
           </h2>
-          <Relatives familyId={familyId} person={person} />
+          <Relatives
+            familyId={familyId}
+            person={person}
+            canRemove={canRemoveLinks(person, role)}
+            onNotice={setNotice}
+          />
           {canAddRelatives(person, role) && (
             <AddRelativeMenu
               label={t('person:relative.menu')}
@@ -223,6 +263,10 @@ function PersonProfile({
             />
           )}
         </section>
+      )}
+
+      {person.status === 'ACTIVE' && role === 'ADMIN' && (
+        <RemovedLinks familyId={familyId} person={person} onNotice={setNotice} />
       )}
 
       <section aria-labelledby="profile-about" className="flex flex-col gap-4">
@@ -252,14 +296,35 @@ function PersonProfile({
 
 const SECTIONS = ['parents', 'partners', 'children', 'siblings'] as const;
 
+/** The feedback of the last removal or restoration of a link (screens.md, Global UI rules). */
+type LinkNotice = { kind: 'removed'; name: string } | { kind: 'restored'; withWarnings: boolean };
+
+/** A link the User asked to remove, waiting for the confirmation (SCREEN-COMPONENT-003). */
+interface PendingRemoval {
+  link: TreeEdge;
+  name: string;
+}
+
 /**
  * SCREEN-005 Family section: the Person's parents, partners, children and siblings from the tree
  * centred on them, each with what they are to the current User (localization-and-kinship-labels.md
- * §3, §3bis).
+ * §3, §3bis). With `canRemove`, parents, partners and children offer `Remove link`; siblings do not.
  */
-function Relatives({ familyId, person }: { familyId: string; person: Person }) {
+function Relatives({
+  familyId,
+  person,
+  canRemove,
+  onNotice,
+}: {
+  familyId: string;
+  person: Person;
+  canRemove: boolean;
+  onNotice: (notice: LinkNotice | null) => void;
+}) {
   const { t } = useTranslation('person');
   const tree = useFamilyTree(familyId, person.id);
+  const archive = useArchiveRelationship(familyId);
+  const [pending, setPending] = useState<PendingRemoval | null>(null);
 
   if (tree.isPending) {
     return (
@@ -287,14 +352,53 @@ function Relatives({ familyId, person }: { familyId: string; person: Person }) {
             {t(`profile.relatives.${section}`)}
           </h3>
           <ul aria-labelledby={`profile-family-${section}`} className="flex flex-col gap-2">
-            {sections[section].map((relative) => (
-              <li key={relative.id}>
-                <RelativeRow familyId={familyId} relative={relative} />
-              </li>
-            ))}
+            {sections[section].map((relative) => {
+              const link = canRemove
+                ? sectionLink(tree.data, section, person.id, relative.id)
+                : undefined;
+              const name = relative.displayName ?? relative.firstName;
+              return (
+                <li key={relative.id} className="flex flex-col">
+                  <RelativeRow familyId={familyId} relative={relative} />
+                  {link && (
+                    <button
+                      type="button"
+                      aria-label={t('removeLink.actionFor', { name })}
+                      onClick={() => {
+                        archive.reset();
+                        setPending({ link, name });
+                      }}
+                      className="inline-flex min-h-12 items-center self-end rounded-full px-4 text-caption font-semibold text-primary underline-offset-4 hover:underline focus-visible:outline-2 focus-visible:outline-primary"
+                    >
+                      {t('removeLink.action')}
+                    </button>
+                  )}
+                </li>
+              );
+            })}
           </ul>
         </div>
       ))}
+      {pending && (
+        <RemoveRelationshipDialog
+          pending={archive.isPending}
+          error={archive.error}
+          onCancel={() => {
+            setPending(null);
+          }}
+          onConfirm={() => {
+            archive.mutate(
+              { relationshipId: pending.link.relationshipId, version: pending.link.version },
+              {
+                onSuccess: () => {
+                  onNotice({ kind: 'removed', name: pending.name });
+                  setPending(null);
+                },
+              },
+            );
+          }}
+        />
+      )}
     </div>
   );
 }
@@ -330,6 +434,162 @@ function RelativeRow({ familyId, relative }: { familyId: string; relative: TreeN
         )}
       </span>
     </Link>
+  );
+}
+
+/** Restore refusals explained for this action; other errors use their general message. */
+const RESTORE_REFUSALS = [
+  'PERSON_NOT_ACTIVE',
+  'RELATIONSHIP_ALREADY_EXISTS',
+  'RELATIONSHIP_CREATES_CYCLE',
+] as const;
+
+type RestoreRefusal = (typeof RESTORE_REFUSALS)[number];
+
+function isRestoreRefusal(code: string | null): code is RestoreRefusal {
+  return RESTORE_REFUSALS.some((refusal) => refusal === code);
+}
+
+/**
+ * SCREEN-005 Removed links (ADMIN only): the removed relationships of the Person, most recent first,
+ * collapsed, hidden when there is nothing to restore (mvp.md §13, genealogy.md §11bis). Each shows
+ * the other Person, the relationship as a path sentence (localization-and-kinship-labels.md §4), the
+ * removal date and `Restore`; a refused restore is explained.
+ */
+function RemovedLinks({
+  familyId,
+  person,
+  onNotice,
+}: {
+  familyId: string;
+  person: Person;
+  onNotice: (notice: LinkNotice | null) => void;
+}) {
+  const { t } = useTranslation('person');
+  const archived = useArchivedRelationships(familyId, person.id);
+  const restore = useRestoreRelationship(familyId);
+
+  // A secondary, collapsed area: nothing is shown while loading or when it cannot be loaded.
+  if (!archived.isSuccess || archived.data.length === 0) {
+    return null;
+  }
+  return (
+    <section aria-labelledby="profile-removed-links" className="flex flex-col gap-4">
+      <details className="flex flex-col gap-4 rounded-xl border border-border bg-surface px-4 py-3">
+        <summary className="min-h-12 cursor-pointer content-center">
+          <h2 id="profile-removed-links" className="inline text-section text-text">
+            {t('removedLinks.title')}
+          </h2>
+        </summary>
+        <ul aria-labelledby="profile-removed-links" className="mt-2 flex flex-col gap-4">
+          {archived.data.map((relationship) => (
+            <li key={relationship.id}>
+              <RemovedLinkRow
+                familyId={familyId}
+                person={person}
+                relationship={relationship}
+                restoring={
+                  restore.isPending && restore.variables.relationshipId === relationship.id
+                }
+                error={restore.variables?.relationshipId === relationship.id ? restore.error : null}
+                onRestore={() => {
+                  onNotice(null);
+                  restore.mutate(
+                    { relationshipId: relationship.id, version: relationship.version },
+                    {
+                      onSuccess: (restored) => {
+                        onNotice({ kind: 'restored', withWarnings: restored.warnings.length > 0 });
+                      },
+                    },
+                  );
+                }}
+              />
+            </li>
+          ))}
+        </ul>
+      </details>
+    </section>
+  );
+}
+
+function RemovedLinkRow({
+  familyId,
+  person,
+  relationship,
+  restoring,
+  error,
+  onRestore,
+}: {
+  familyId: string;
+  person: Person;
+  relationship: ArchivedRelationship;
+  restoring: boolean;
+  error: unknown;
+  onRestore: () => void;
+}) {
+  const { t, i18n } = useTranslation('person');
+  const language = isSupportedLanguage(i18n.resolvedLanguage)
+    ? i18n.resolvedLanguage
+    : DEFAULT_LANGUAGE;
+  const related = relationship.relatedPerson;
+  const name = related.displayName ?? related.firstName;
+  // What the other Person is to this one: the `to` of a path step from this Person (§4).
+  const relation =
+    relationship.type === 'PARTNER_OF'
+      ? 'PARTNER'
+      : relationship.sourcePersonId === related.id
+        ? 'PARENT'
+        : 'CHILD';
+  const sentence = t(`kinship.step.${relation}.${genderForm(related.gender)}`, {
+    to: name,
+    from: displayNameOf(person),
+  });
+  const refusal =
+    error instanceof ApiError && isRestoreRefusal(error.code)
+      ? t(`removedLinks.refused.${error.code}`, { name })
+      : error != null
+        ? errorMessage(i18n, error)
+        : null;
+
+  return (
+    <div className="flex flex-col gap-2">
+      <div className="flex items-center gap-3">
+        <Avatar displayName={name} />
+        <div className="flex min-w-0 flex-col">
+          <Link
+            to={personPath(familyId, related.id)}
+            className="text-body font-semibold break-words text-text underline-offset-4 hover:underline"
+          >
+            {name}
+          </Link>
+          {related.status !== 'ACTIVE' && (
+            <span className="text-caption text-text-muted">
+              {t(`removedLinks.status.${related.status}`)}
+            </span>
+          )}
+          <span className="text-caption text-text">{sentence}</span>
+          <span className="text-caption text-text-muted">
+            {t('removedLinks.removedOn', {
+              date: formatDate(new Date(relationship.archivedAt), language),
+            })}
+          </span>
+        </div>
+      </div>
+      <Button
+        variant="secondary"
+        className="sm:w-auto sm:self-start"
+        disabled={restoring}
+        aria-label={t('removedLinks.restoreFor', { name })}
+        onClick={onRestore}
+      >
+        {t('removedLinks.restore')}
+      </Button>
+      {refusal && (
+        <p role="alert" className="text-body text-text">
+          {refusal}
+        </p>
+      )}
+    </div>
   );
 }
 

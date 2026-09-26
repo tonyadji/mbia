@@ -13,6 +13,8 @@ import org.junit.jupiter.params.provider.EnumSource;
 /**
  * PR-20: a relationship never links a Person to themselves; {@code PARENT_OF} keeps its direction,
  * {@code PARTNER_OF} is stored once in canonical UUID order (mvp.md §10, data-model.md §11.1–11.2).
+ * PR-24: removal archives the relationship and restoration makes it ACTIVE again
+ * (person-relationships-collaboration.md §8, data-model.md §20).
  */
 class FamilyRelationshipTest {
 
@@ -64,6 +66,48 @@ class FamilyRelationshipTest {
         assertThat(relationship.updatedBy()).isEqualTo(USER);
         assertThat(relationship.createdAt()).isEqualTo(NOW);
         assertThat(relationship.updatedAt()).isEqualTo(NOW);
+    }
+
+    @Test
+    void removalArchivesTheRelationshipAndRecordsWhoAndWhen() {
+        UUID remover = UUID.randomUUID();
+        Instant later = NOW.plusSeconds(60);
+
+        FamilyRelationship archived = create(RelationshipType.PARENT_OF, LOW, HIGH).archive(remover, later);
+
+        assertThat(archived.status()).isEqualTo(RelationshipStatus.ARCHIVED);
+        assertThat(archived.isActive()).isFalse();
+        assertThat(archived.archivedAt()).isEqualTo(later);
+        assertThat(archived.updatedBy()).isEqualTo(remover);
+        assertThat(archived.updatedAt()).isEqualTo(later);
+        assertThat(archived.createdBy()).isEqualTo(USER);
+        assertThat(archived.source()).isEqualTo(LOW);
+        assertThat(archived.target()).isEqualTo(HIGH);
+        assertThat(archived.version()).as("incremented when stored").isZero();
+    }
+
+    @Test
+    void restorationMakesTheRelationshipActiveAgain() {
+        UUID admin = UUID.randomUUID();
+        Instant later = NOW.plusSeconds(120);
+
+        FamilyRelationship restored = create(RelationshipType.PARTNER_OF, LOW, HIGH)
+                .archive(USER, NOW.plusSeconds(60))
+                .unarchive(admin, later);
+
+        assertThat(restored.status()).isEqualTo(RelationshipStatus.ACTIVE);
+        assertThat(restored.archivedAt()).isNull();
+        assertThat(restored.updatedBy()).isEqualTo(admin);
+        assertThat(restored.updatedAt()).isEqualTo(later);
+    }
+
+    @Test
+    void aRelationshipIsArchivedOnlyOnceAndRestoredOnlyWhenArchived() {
+        FamilyRelationship active = create(RelationshipType.PARENT_OF, LOW, HIGH);
+
+        assertThatThrownBy(() -> active.unarchive(USER, NOW)).isInstanceOf(IllegalStateException.class);
+        assertThatThrownBy(() -> active.archive(USER, NOW).archive(USER, NOW))
+                .isInstanceOf(IllegalStateException.class);
     }
 
     private static FamilyRelationship create(RelationshipType type, PersonId source, PersonId target) {

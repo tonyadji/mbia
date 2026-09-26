@@ -118,6 +118,31 @@
     "added": "{{name}} a été ajouté à la famille et relié à {{anchor}}.",
     "viewProfile": "Voir son profil"
   },
+  "removeLink": {
+    "action": "Retirer le lien",
+    "actionFor": "Retirer le lien avec {{name}}",
+    "warning": "Retirer ce lien peut modifier les liens de parenté calculés par Mbia.",
+    "confirm": "Retirer le lien",
+    "cancel": "Annuler",
+    "done": "Le lien avec {{name}} a été retiré."
+  },
+  "removedLinks": {
+    "title": "Liens retirés",
+    "removedOn": "Retiré le {{date}}",
+    "restore": "Restaurer",
+    "restoreFor": "Restaurer le lien avec {{name}}",
+    "restored": "Le lien a été restauré.",
+    "restoredWithWarnings": "Le lien a été restauré. Les dates de naissance de ces deux personnes semblent inhabituelles : vérifiez-les sur leur profil.",
+    "status": {
+      "ARCHIVED": "Fiche archivée",
+      "MERGED": "Fiche fusionnée"
+    },
+    "refused": {
+      "PERSON_NOT_ACTIVE": "Ce lien ne peut pas être restauré : la fiche de {{name}} a été archivée ou fusionnée.",
+      "RELATIONSHIP_ALREADY_EXISTS": "Ce lien ne peut pas être restauré : ces deux personnes sont déjà reliées de cette façon.",
+      "RELATIONSHIP_CREATES_CYCLE": "Ce lien ne peut pas être restauré : avec les liens actuels, une personne deviendrait son propre ancêtre."
+    }
+  },
   "kinship": {
     "label": {
       "SELF": "Vous",

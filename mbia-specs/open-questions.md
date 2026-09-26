@@ -203,3 +203,21 @@ When a question is answered, update the relevant spec, then move the entry to **
 - **Options:** A — left to right, as the partners are drawn (no crossing lines), then the group of the other children / B — creation order.
 - **Recommendation:** A.
 - **Answer:** A (human, 2026-09-25). Documented in `family-tree-ux.md` §6.1; changed in PR-23.
+
+### OQ-020 — Removing a removed relationship, restoring an active one
+
+- **Raised by / date:** coding agent (PR-24), 2026-09-26
+- **Context:** `archiveRelationship` and `restoreRelationship` (`openapi.yaml`, `data-model.md` §20) describe the ACTIVE → ARCHIVED transition and its reverse, but not what happens when the relationship is already in the requested state with the current version (a stale version is already 409 `CONCURRENT_MODIFICATION`).
+- **Question:** what does archiving an ARCHIVED relationship, or restoring an ACTIVE one, answer?
+- **Options:** A — no-op: 204 for the archive, 200 with the unchanged relationship and version for the restore, nothing written or audited / B — 404 `RESOURCE_NOT_FOUND` / C — new 409 codes.
+- **Recommendation:** A, as for `updatePerson` (OQ-008) and `unclaimPerson` (OQ-009); no new code.
+- **Answer:** A (human, 2026-09-26). Documented in `openapi.yaml` (`archiveRelationship`, `restoreRelationship` descriptions, text only) and `person-relationships-collaboration.md` §8; changed in PR-24.
+
+### OQ-021 — Date warnings when restoring a relationship
+
+- **Raised by / date:** coding agent (PR-24), 2026-09-26
+- **Context:** restoring re-runs every current validity rule (`mvp.md` §13, `person-relationships-collaboration.md` §8), but the date warnings of §7.1 are not validity rules, and `restoreRelationship` has no `confirmWarnings`.
+- **Question:** are the date warnings re-evaluated at restore, and do they block it?
+- **Options:** A — not blocking; recomputed from the current birth data and returned in `warnings` for information / B — not blocking, `warnings` always empty / C — blocking, with a new `confirmWarnings` parameter.
+- **Recommendation:** A.
+- **Answer:** A (human, 2026-09-26). Documented in `openapi.yaml` (`restoreRelationship` description, text only) and `person-relationships-collaboration.md` §7.1 and §8; changed in PR-24.

@@ -130,6 +130,13 @@ function fakeApi(handlers: Record<string, Handler>) {
     patches: () => requests.filter((request) => request.method === 'PATCH'),
     claims: () => requests.filter((request) => new URL(request.url).pathname.endsWith('/claim')),
     trees: () => requests.filter((request) => new URL(request.url).pathname.endsWith('/tree')),
+    removals: () => requests.filter((request) => request.method === 'DELETE'),
+    restores: () =>
+      requests.filter((request) => new URL(request.url).pathname.endsWith('/restore')),
+    archivedLists: () =>
+      requests.filter((request) =>
+        new URL(request.url).pathname.endsWith('/archived-relationships'),
+      ),
   };
 }
 
@@ -140,6 +147,8 @@ function personApi({
   claim,
   unclaim,
   tree = () => jsonResponse(lonelyTree()),
+  archived = () => jsonResponse([]),
+  other = {},
 }: {
   role?: string;
   get?: Handler;
@@ -147,11 +156,15 @@ function personApi({
   claim?: Handler;
   unclaim?: Handler;
   tree?: Handler;
+  archived?: Handler;
+  other?: Record<string, Handler>;
 } = {}) {
   return fakeApi({
     [`GET /families/${ADJI_ID}`]: () => jsonResponse(family(role)),
     [`GET /families/${ADJI_ID}/persons/${MARIE_ID}`]: get,
     [`GET /families/${ADJI_ID}/tree`]: tree,
+    [`GET /families/${ADJI_ID}/persons/${MARIE_ID}/archived-relationships`]: archived,
+    ...other,
     ...(patch ? { [`PATCH /families/${ADJI_ID}/persons/${MARIE_ID}`]: patch } : {}),
     ...(claim ? { [`POST /families/${ADJI_ID}/persons/${MARIE_ID}/claim`]: claim } : {}),
     ...(unclaim ? { [`DELETE /families/${ADJI_ID}/persons/${MARIE_ID}/claim`]: unclaim } : {}),
@@ -500,6 +513,302 @@ describe('Person screens', () => {
         `/families/${ADJI_ID}`,
       );
       expect(screen.queryByText('raw server detail')).not.toBeInTheDocument();
+    });
+  });
+
+  describe('Remove and restore links (SCREEN-005, SCREEN-COMPONENT-003)', () => {
+    const PAUL = 'b0000000-0000-4000-8000-000000000001';
+    const CHLOE = 'b0000000-0000-4000-8000-000000000002';
+    const TONY = 'b0000000-0000-4000-8000-000000000003';
+    const AWA = 'b0000000-0000-4000-8000-000000000004';
+    const JEANNE = 'b0000000-0000-4000-8000-000000000005';
+
+    /** Paul father of Marie, Chloé her partner, Tony her son, Awa her sister (through Paul). */
+    function marieTree() {
+      return {
+        focusPersonId: MARIE_ID,
+        nodes: [
+          treeNode(MARIE_ID, 'Marie'),
+          treeNode(PAUL, 'Paul', { gender: 'MALE' }),
+          treeNode(CHLOE, 'Chloé'),
+          treeNode(TONY, 'Tony'),
+          treeNode(AWA, 'Awa'),
+        ],
+        edges: [
+          { ...parentOf(PAUL, MARIE_ID), relationshipId: 'rel-paul', version: 4 },
+          partners(CHLOE, MARIE_ID),
+          parentOf(MARIE_ID, TONY),
+          parentOf(PAUL, AWA),
+        ],
+      };
+    }
+
+    function removedLink(overrides: Record<string, unknown> = {}) {
+      return {
+        id: 'rel-jeanne',
+        type: 'PARENT_OF',
+        sourcePersonId: JEANNE,
+        targetPersonId: MARIE_ID,
+        version: 1,
+        archivedAt: '2026-09-20T10:00:00Z',
+        relatedPerson: treeNode(JEANNE, 'Jeanne', { gender: 'FEMALE' }),
+        ...overrides,
+      };
+    }
+
+    function restored(warnings: unknown[] = []) {
+      return jsonResponse({
+        id: 'rel-jeanne',
+        familyId: ADJI_ID,
+        type: 'PARENT_OF',
+        sourcePersonId: JEANNE,
+        targetPersonId: MARIE_ID,
+        status: 'ACTIVE',
+        warnings,
+        version: 2,
+        createdAt: '2026-09-01T10:00:00Z',
+      });
+    }
+
+    it.each(['ADMIN', 'CONTRIBUTOR'])(
+      'offers Remove link on parents, partners and children to %s, not on siblings',
+      async (role) => {
+        personApi({ role, tree: () => jsonResponse(marieTree()) });
+        renderApp(PROFILE);
+
+        for (const name of ['Paul', 'Chloé', 'Tony']) {
+          expect(
+            await screen.findByRole('button', { name: `Retirer le lien avec ${name}` }),
+          ).toBeInTheDocument();
+        }
+        expect(screen.queryByRole('button', { name: 'Retirer le lien avec Awa' })).toBeNull();
+      },
+    );
+
+    it('offers no Remove link to a VIEWER', async () => {
+      personApi({ role: 'VIEWER', tree: () => jsonResponse(marieTree()) });
+      renderApp(PROFILE);
+
+      await screen.findByRole('list', { name: 'Parents' });
+      expect(screen.queryByRole('button', { name: /Retirer le lien/ })).toBeNull();
+    });
+
+    it('confirms, removes the link with its version, then refreshes the relatives', async () => {
+      let removed = false;
+      const api = personApi({
+        tree: () =>
+          jsonResponse(
+            removed
+              ? { ...marieTree(), nodes: marieTree().nodes.filter((n) => n.id !== PAUL), edges: [] }
+              : marieTree(),
+          ),
+        other: {
+          [`DELETE /families/${ADJI_ID}/relationships/rel-paul`]: () => {
+            removed = true;
+            return new Response(null, { status: 204 });
+          },
+        },
+      });
+      renderApp(PROFILE);
+
+      fireEvent.click(await screen.findByRole('button', { name: 'Retirer le lien avec Paul' }));
+      const dialog = screen.getByRole('dialog', {
+        name: 'Retirer ce lien peut modifier les liens de parenté calculés par Mbia.',
+      });
+      fireEvent.click(within(dialog).getByRole('button', { name: 'Annuler' }));
+      expect(screen.queryByRole('dialog')).toBeNull();
+      expect(api.removals()).toHaveLength(0);
+
+      fireEvent.click(screen.getByRole('button', { name: 'Retirer le lien avec Paul' }));
+      fireEvent.click(
+        within(screen.getByRole('dialog')).getByRole('button', { name: 'Retirer le lien' }),
+      );
+
+      expect(await screen.findByText('Le lien avec Paul a été retiré.')).toBeInTheDocument();
+      expect(screen.queryByRole('dialog')).toBeNull();
+      expect(api.removals()[0]?.headers.get('If-Match')).toBe('"4"');
+      expect(
+        await screen.findByText("Aucun proche n'est encore relié à cette personne."),
+      ).toBeVisible();
+      expect(api.trees().length).toBeGreaterThan(1);
+    });
+
+    it('translates a refused removal in the confirmation', async () => {
+      personApi({
+        tree: () => jsonResponse(marieTree()),
+        other: {
+          [`DELETE /families/${ADJI_ID}/relationships/rel-paul`]: () =>
+            problemResponse('CONCURRENT_MODIFICATION', 409),
+        },
+      });
+      renderApp(PROFILE);
+
+      fireEvent.click(await screen.findByRole('button', { name: 'Retirer le lien avec Paul' }));
+      fireEvent.click(
+        within(screen.getByRole('dialog')).getByRole('button', { name: 'Retirer le lien' }),
+      );
+
+      expect(await within(screen.getByRole('dialog')).findByRole('alert')).toHaveTextContent(
+        "Quelqu'un a modifié ces informations entre-temps.",
+      );
+      expect(screen.queryByText('raw server detail')).not.toBeInTheDocument();
+    });
+
+    it('shows the removed links to an ADMIN, collapsed, in French then English', async () => {
+      personApi({
+        archived: () =>
+          jsonResponse([
+            removedLink(),
+            removedLink({
+              id: 'rel-tony',
+              sourcePersonId: MARIE_ID,
+              targetPersonId: TONY,
+              relatedPerson: treeNode(TONY, 'Tony', { gender: 'MALE', status: 'ARCHIVED' }),
+            }),
+          ]),
+      });
+      renderApp(PROFILE);
+
+      const list = await screen.findByRole('list', { name: 'Liens retirés' });
+      expect(list.closest('details')).not.toHaveAttribute('open');
+      const [jeanne, tony] = within(list).getAllByRole('listitem');
+      if (jeanne === undefined) throw new Error('Jeanne is not listed');
+      expect(jeanne).toHaveTextContent('Jeanne est la mère de Marie Adji');
+      expect(jeanne).toHaveTextContent('Retiré le 20 septembre 2026');
+      expect(within(jeanne).getByRole('link', { name: 'Jeanne' })).toHaveAttribute(
+        'href',
+        `/families/${ADJI_ID}/persons/${JEANNE}`,
+      );
+      expect(tony).toHaveTextContent('Fiche archivée');
+      expect(tony).toHaveTextContent('Tony est le fils de Marie Adji');
+
+      await act(() => i18n.changeLanguage('en'));
+      expect(await screen.findByRole('list', { name: 'Removed links' })).toHaveTextContent(
+        "Jeanne is Marie Adji's mother",
+      );
+      expect(screen.getByText('Archived profile')).toBeInTheDocument();
+      expect(screen.getAllByText('Removed on September 20, 2026')).toHaveLength(2);
+    });
+
+    it('hides the removed links when there is nothing to restore', async () => {
+      personApi();
+      renderApp(PROFILE);
+
+      await screen.findByText("Aucun proche n'est encore relié à cette personne.");
+      expect(screen.queryByText('Liens retirés')).toBeNull();
+    });
+
+    it.each(['CONTRIBUTOR', 'VIEWER'])('shows no removed links to a %s', async (role) => {
+      const api = personApi({ role, archived: () => jsonResponse([removedLink()]) });
+      renderApp(PROFILE);
+
+      await screen.findByText("Aucun proche n'est encore relié à cette personne.");
+      expect(screen.queryByText('Liens retirés')).toBeNull();
+      expect(api.archivedLists()).toHaveLength(0);
+    });
+
+    it('restores a removed link with its version', async () => {
+      let isRestored = false;
+      const api = personApi({
+        archived: () => jsonResponse(isRestored ? [] : [removedLink()]),
+        other: {
+          [`POST /families/${ADJI_ID}/relationships/rel-jeanne/restore`]: () => {
+            isRestored = true;
+            return restored();
+          },
+        },
+      });
+      renderApp(PROFILE);
+
+      fireEvent.click(await screen.findByRole('button', { name: 'Restaurer le lien avec Jeanne' }));
+
+      expect(await screen.findByText('Le lien a été restauré.')).toBeInTheDocument();
+      expect(api.restores()[0]?.headers.get('If-Match')).toBe('"1"');
+      await vi.waitFor(() => {
+        expect(screen.queryByRole('list', { name: 'Liens retirés' })).toBeNull();
+      });
+      expect(api.trees().length).toBeGreaterThan(1);
+    });
+
+    it('shows only the feedback of the last action after a removal then a restore', async () => {
+      personApi({
+        tree: () => jsonResponse(marieTree()),
+        archived: () => jsonResponse([removedLink()]),
+        other: {
+          [`DELETE /families/${ADJI_ID}/relationships/rel-paul`]: () =>
+            new Response(null, { status: 204 }),
+          [`POST /families/${ADJI_ID}/relationships/rel-jeanne/restore`]: () => restored(),
+        },
+      });
+      renderApp(PROFILE);
+
+      fireEvent.click(await screen.findByRole('button', { name: 'Retirer le lien avec Paul' }));
+      fireEvent.click(
+        within(screen.getByRole('dialog')).getByRole('button', { name: 'Retirer le lien' }),
+      );
+      expect(await screen.findByRole('status')).toHaveTextContent(
+        'Le lien avec Paul a été retiré.',
+      );
+      fireEvent.click(screen.getByRole('button', { name: 'Restaurer le lien avec Jeanne' }));
+
+      expect(await screen.findByText('Le lien a été restauré.')).toBeInTheDocument();
+      expect(screen.getAllByRole('status')).toHaveLength(1);
+    });
+
+    it('says when the restored link has unusual birth dates', async () => {
+      personApi({
+        archived: () => jsonResponse([removedLink()]),
+        other: {
+          [`POST /families/${ADJI_ID}/relationships/rel-jeanne/restore`]: () =>
+            restored([
+              {
+                code: 'PARENT_BORN_AFTER_CHILD',
+                context: { parentBirthYear: 1995, childBirthYear: 1990 },
+              },
+            ]),
+        },
+      });
+      renderApp(PROFILE);
+
+      fireEvent.click(await screen.findByRole('button', { name: 'Restaurer le lien avec Jeanne' }));
+
+      expect(
+        await screen.findByText(/Le lien a été restauré\. Les dates de naissance/),
+      ).toBeInTheDocument();
+    });
+
+    it.each([
+      [
+        'PERSON_NOT_ACTIVE',
+        'Ce lien ne peut pas être restauré : la fiche de Jeanne a été archivée ou fusionnée.',
+      ],
+      [
+        'RELATIONSHIP_CREATES_CYCLE',
+        'Ce lien ne peut pas être restauré : avec les liens actuels, une personne deviendrait son propre ancêtre.',
+      ],
+      [
+        'RELATIONSHIP_ALREADY_EXISTS',
+        'Ce lien ne peut pas être restauré : ces deux personnes sont déjà reliées de cette façon.',
+      ],
+      [
+        'CONCURRENT_MODIFICATION',
+        "Quelqu'un a modifié ces informations entre-temps. Rechargez la page et réessayez.",
+      ],
+    ])('explains a refused restore (%s)', async (code, message) => {
+      personApi({
+        archived: () => jsonResponse([removedLink()]),
+        other: {
+          [`POST /families/${ADJI_ID}/relationships/rel-jeanne/restore`]: () =>
+            problemResponse(code, 409),
+        },
+      });
+      renderApp(PROFILE);
+
+      fireEvent.click(await screen.findByRole('button', { name: 'Restaurer le lien avec Jeanne' }));
+
+      expect(await screen.findByRole('alert')).toHaveTextContent(message);
+      expect(screen.queryByText('raw server detail')).not.toBeInTheDocument();
+      expect(screen.getByRole('list', { name: 'Liens retirés' })).toBeInTheDocument();
     });
   });
 

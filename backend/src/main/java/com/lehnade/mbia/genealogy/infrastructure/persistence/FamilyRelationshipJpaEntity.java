@@ -65,4 +65,59 @@ class FamilyRelationshipJpaEntity {
         this.createdAt = createdAt;
         this.updatedAt = updatedAt;
     }
+
+    void changeStatus(String status, Instant archivedAt, UUID updatedBy, Instant updatedAt) {
+        this.status = status;
+        this.archivedAt = archivedAt;
+        this.updatedBy = updatedBy;
+        this.updatedAt = updatedAt;
+    }
+
+    UUID id() {
+        return id;
+    }
+
+    UUID familyId() {
+        return familyId;
+    }
+
+    String type() {
+        return type;
+    }
+
+    UUID sourcePersonId() {
+        return sourcePersonId;
+    }
+
+    UUID targetPersonId() {
+        return targetPersonId;
+    }
+
+    String status() {
+        return status;
+    }
+
+    UUID createdBy() {
+        return createdBy;
+    }
+
+    UUID updatedBy() {
+        return updatedBy;
+    }
+
+    Instant createdAt() {
+        return createdAt;
+    }
+
+    Instant updatedAt() {
+        return updatedAt;
+    }
+
+    Instant archivedAt() {
+        return archivedAt;
+    }
+
+    long version() {
+        return version;
+    }
 }
