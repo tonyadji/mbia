@@ -11,6 +11,8 @@
   "home": {
     "personCount_one": "{{count}} person",
     "personCount_other": "{{count}} people",
+    "memoryCount_one": "{{count}} memory",
+    "memoryCount_other": "{{count}} memories",
     "created": "The {{name}} family has been created.",
     "emptyTitle": "Welcome to the {{name}} family",
     "emptyBody": "Let's add the first person.",
@@ -43,6 +45,7 @@
   "navigation": {
     "label": "Family navigation",
     "home": "Home",
-    "tree": "Tree"
+    "tree": "Tree",
+    "memories": "Memories"
   }
 }

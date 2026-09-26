@@ -28,6 +28,12 @@
     "add": "Add a memory",
     "more": "Show more"
   },
+  "family": {
+    "title": "Memories",
+    "empty": "The family has no memory yet. Stories told about your relatives will appear here.",
+    "add": "Add a memory",
+    "more": "Show more"
+  },
   "screen": {
     "persons": "People in this memory",
     "status": {

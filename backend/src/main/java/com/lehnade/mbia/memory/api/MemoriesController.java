@@ -12,13 +12,15 @@ import com.lehnade.mbia.api.generated.model.PageMeta;
 import com.lehnade.mbia.api.generated.model.PersonStatus;
 import com.lehnade.mbia.api.generated.model.RelatedPersonReference;
 import com.lehnade.mbia.api.generated.model.UpdateMemoryRequest;
+import com.lehnade.mbia.memory.application.MemoryPageView;
 import com.lehnade.mbia.memory.application.MemoryView;
 import com.lehnade.mbia.memory.application.createstorymemory.CreateStoryMemoryCommand;
 import com.lehnade.mbia.memory.application.createstorymemory.CreateStoryMemoryUseCase;
 import com.lehnade.mbia.memory.application.getmemory.GetMemoryUseCase;
+import com.lehnade.mbia.memory.application.listfamilymemories.ListFamilyMemoriesCommand;
+import com.lehnade.mbia.memory.application.listfamilymemories.ListFamilyMemoriesUseCase;
 import com.lehnade.mbia.memory.application.listpersonmemories.ListPersonMemoriesCommand;
 import com.lehnade.mbia.memory.application.listpersonmemories.ListPersonMemoriesUseCase;
-import com.lehnade.mbia.memory.application.listpersonmemories.PersonMemoriesView;
 import com.lehnade.mbia.memory.domain.Memory;
 import com.lehnade.mbia.shared.api.web.ETags;
 import com.lehnade.mbia.shared.domain.DomainException;
@@ -26,6 +28,7 @@ import com.lehnade.mbia.shared.domain.ErrorCode;
 import java.time.Instant;
 import java.time.OffsetDateTime;
 import java.time.ZoneOffset;
+import java.util.Optional;
 import java.util.UUID;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -41,12 +44,14 @@ class MemoriesController implements MemoriesApi {
 
     private final CreateStoryMemoryUseCase createStoryMemory;
     private final GetMemoryUseCase getMemory;
+    private final ListFamilyMemoriesUseCase listFamilyMemories;
     private final ListPersonMemoriesUseCase listPersonMemories;
 
     MemoriesController(CreateStoryMemoryUseCase createStoryMemory, GetMemoryUseCase getMemory,
-            ListPersonMemoriesUseCase listPersonMemories) {
+            ListFamilyMemoriesUseCase listFamilyMemories, ListPersonMemoriesUseCase listPersonMemories) {
         this.createStoryMemory = createStoryMemory;
         this.getMemory = getMemory;
+        this.listFamilyMemories = listFamilyMemories;
         this.listPersonMemories = listPersonMemories;
     }
 
@@ -73,17 +78,15 @@ class MemoriesController implements MemoriesApi {
     @Override
     public ResponseEntity<MemoryPage> listFamilyMemories(UUID familyId, MemoryType type, Integer page,
             Integer size) {
-        throw notAvailableYet();
+        return ResponseEntity.ok(toPage(listFamilyMemories.list(new ListFamilyMemoriesCommand(familyId,
+                Optional.ofNullable(type).map(MemoryType::name), page, size))));
     }
 
     @Override
     public ResponseEntity<MemoryPage> listPersonMemories(UUID familyId, UUID personId, Integer page,
             Integer size) {
-        PersonMemoriesView memories = listPersonMemories.list(new ListPersonMemoriesCommand(familyId, personId,
-                page, size));
-        return ResponseEntity.ok(new MemoryPage(
-                memories.items().stream().map(MemoriesController::toResponse).toList(),
-                new PageMeta(memories.page(), memories.size(), memories.totalElements(), memories.totalPages())));
+        return ResponseEntity.ok(toPage(listPersonMemories.list(new ListPersonMemoriesCommand(familyId, personId,
+                page, size))));
     }
 
     @Override
@@ -95,6 +98,11 @@ class MemoriesController implements MemoriesApi {
     @Override
     public ResponseEntity<Void> archiveMemory(String ifMatch, UUID familyId, UUID memoryId) {
         throw notAvailableYet();
+    }
+
+    private static MemoryPage toPage(MemoryPageView memories) {
+        return new MemoryPage(memories.items().stream().map(MemoriesController::toResponse).toList(),
+                new PageMeta(memories.page(), memories.size(), memories.totalElements(), memories.totalPages()));
     }
 
     private static MemoryResponse toResponse(MemoryView view) {

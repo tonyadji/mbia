@@ -44,10 +44,8 @@ class MemoryOperationsNotAvailableApiTest extends ApiTestSupport {
     }
 
     @Test
-    void listUpdateAndArchiveAnswer404() {
+    void updateAndArchiveAnswer404() {
         String bearer = family.admin().bearer();
-        assertNotAvailable(mvc.get().uri("/api/v1/families/{familyId}/memories", family.familyId())
-                .header(HttpHeaders.AUTHORIZATION, bearer).exchange());
         assertNotAvailable(mvc.patch().uri("/api/v1/families/{familyId}/memories/{memoryId}", family.familyId(),
                         memory)
                 .header(HttpHeaders.AUTHORIZATION, bearer).header(HttpHeaders.IF_MATCH, "\"0\"")

@@ -19,4 +19,13 @@ public interface MemoryRepository {
     List<Memory> findActiveForPerson(UUID familyId, UUID personId, int page, int size);
 
     long countActiveForPerson(UUID familyId, UUID personId);
+
+    /**
+     * @param type only the Memories of this type when present
+     * @return one page of the Family's ACTIVE Memories, most recently added first, then by id
+     *     (data-model.md §23.4, OQ-034)
+     */
+    List<Memory> findActiveInFamily(UUID familyId, Optional<MemoryType> type, int page, int size);
+
+    long countActiveInFamily(UUID familyId, Optional<MemoryType> type);
 }

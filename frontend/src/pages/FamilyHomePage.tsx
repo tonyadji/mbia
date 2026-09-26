@@ -33,8 +33,9 @@ export interface FamilyHomeState {
 }
 
 /**
- * SCREEN-002 — Family Home: the search entry (SCREEN-007), `View family tree` as primary action,
- * then `Add a relative` and `Add a memory`. No activity in Phase 3 (phase-3-family-memories.md §3.2).
+ * SCREEN-002 — Family Home: the Person and Memory counts, the search entry (SCREEN-007),
+ * `View family tree` as primary action, then `Add a relative` and `Add a memory`. No activity in
+ * Phase 3 (phase-3-family-memories.md §3.2).
  */
 export function FamilyHomePage() {
   const { familyId = '' } = useParams();
@@ -73,7 +74,10 @@ function FamilyContent({ family }: { family: Family }) {
         <div className="flex min-w-0 flex-1 flex-col">
           <h1 className="text-section break-words text-text">{family.name}</h1>
           <p className="text-caption text-text-muted">
-            {t('home.personCount', { count: family.stats.personCount })}
+            <span>{t('home.personCount', { count: family.stats.personCount })}</span>
+            <span className="before:mx-1.5 before:content-['·']">
+              {t('home.memoryCount', { count: family.stats.memoryCount })}
+            </span>
           </p>
         </div>
         <AccountLink />

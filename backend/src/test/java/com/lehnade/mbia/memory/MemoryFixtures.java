@@ -62,6 +62,13 @@ public final class MemoryFixtures {
                 .exchange();
     }
 
+    /** {@code GET …/families/{familyId}/memories}, with a query string such as {@code ?page=1}, or "". */
+    public MvcTestResult listForFamily(TestJwts.Token token, UUID familyId, String query) {
+        return mvc.get().uri("/api/v1/families/{familyId}/memories" + query, familyId)
+                .header(HttpHeaders.AUTHORIZATION, token.bearer())
+                .exchange();
+    }
+
     /**
      * Inserts an ACTIVE story and its Persons directly, without the API, for large fixtures.
      *

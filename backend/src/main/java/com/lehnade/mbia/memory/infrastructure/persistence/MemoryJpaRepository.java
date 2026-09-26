@@ -28,6 +28,20 @@ interface MemoryJpaRepository extends JpaRepository<MemoryJpaEntity, UUID> {
             """)
     long countActiveForPerson(UUID familyId, UUID personId);
 
+    /** The Family's ACTIVE Memories, most recently added first, then by id (data-model.md §23.4, OQ-034). */
+    @Query("""
+            SELECT m FROM MemoryJpaEntity m
+            WHERE m.familyId = :familyId AND m.status = 'ACTIVE' AND (:type IS NULL OR m.type = :type)
+            ORDER BY m.createdAt DESC, m.id ASC
+            """)
+    List<MemoryJpaEntity> findActiveInFamily(UUID familyId, String type, Pageable pageable);
+
+    @Query("""
+            SELECT COUNT(m) FROM MemoryJpaEntity m
+            WHERE m.familyId = :familyId AND m.status = 'ACTIVE' AND (:type IS NULL OR m.type = :type)
+            """)
+    long countActiveInFamily(UUID familyId, String type);
+
     @Query("""
             SELECT new com.lehnade.mbia.memory.infrastructure.persistence.MemoryCountRow(m.familyId, COUNT(m))
             FROM MemoryJpaEntity m
