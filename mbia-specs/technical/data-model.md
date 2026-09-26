@@ -641,6 +641,8 @@ Rules (processing details: ADR-007):
 - on validation failure the asset becomes `FAILED` with a `failure_reason`;
 - `PENDING_UPLOAD` assets older than 24 hours become `FAILED` and their objects are deleted by a scheduled task;
 - only the User who uploaded an asset may complete it and attach it; another member gets `PERMISSION_DENIED` (OQ-036);
+- completing a `READY` asset again returns it unchanged; completing a `FAILED` asset answers `MEDIA_INVALID` again without processing anything, and an `ARCHIVED` one `MEDIA_NOT_READY` (OQ-044);
+- the API describes an asset by the MIME type and size declared at upload (`upload_mime_type`, `upload_size_bytes`), and by the dimensions of its `display` derivative (OQ-045);
 - an asset is attached once, to a single use of its purpose (for example one Person's photo); attaching it again is refused with `MEDIA_ALREADY_USED` (OQ-036);
 - a `READY` asset still unattached 24 hours after `ready_at` becomes `FAILED` and its objects are deleted by the same scheduled task (OQ-036);
 - a replaced or removed Person photo becomes `ARCHIVED` and no URL is served for it (OQ-040);

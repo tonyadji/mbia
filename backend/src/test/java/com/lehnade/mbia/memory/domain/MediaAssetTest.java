@@ -106,6 +106,67 @@ class MediaAssetTest {
         assertThat(asset.toString()).doesNotContain(asset.uploadStorageKey()).doesNotContain("families/");
     }
 
+    // PR-36: completion and cleanup (ADR-007 §3, §4; OQ-036).
+
+    @Test
+    void aProcessedUploadIsReadyWithBothDerivativesAndTheDisplaySize() {
+        MediaAsset pending = upload(MediaPurpose.PROFILE_PICTURE, "image/png", 1_000);
+        Instant later = NOW.plusSeconds(5);
+
+        MediaAsset ready = pending.markReady(2048, 1365, later);
+
+        String prefix = "families/" + FAMILY + "/media/" + ready.id().value() + "/";
+        assertThat(ready.status()).isEqualTo(MediaStatus.READY);
+        assertThat(ready.readyAt()).isEqualTo(later);
+        assertThat(ready.widthPx()).isEqualTo(2048);
+        assertThat(ready.heightPx()).isEqualTo(1365);
+        assertThat(ready.displayStorageKey()).isEqualTo(prefix + "display");
+        assertThat(ready.thumbnailStorageKey()).isEqualTo(prefix + "thumbnail");
+        assertThat(ready.failureReason()).isNull();
+        assertThat(pending.displayStorageKey()).isNull();
+        assertThat(pending.thumbnailStorageKey()).isNull();
+    }
+
+    @Test
+    void everyObjectOfAnAssetCanBeDeleted() {
+        MediaAsset asset = upload(MediaPurpose.PROFILE_PICTURE, "image/png", 1_000);
+        String prefix = "families/" + FAMILY + "/media/" + asset.id().value() + "/";
+
+        assertThat(asset.allStorageKeys())
+                .containsExactly(prefix + "upload", prefix + "display", prefix + "thumbnail");
+    }
+
+    @Test
+    void anInvalidUploadFailsWithItsReason() {
+        MediaAsset failed = upload(MediaPurpose.PROFILE_PICTURE, "image/png", 1_000)
+                .markFailed(MediaFailureReason.TYPE_MISMATCH);
+
+        assertThat(failed.status()).isEqualTo(MediaStatus.FAILED);
+        assertThat(failed.failureReason()).isEqualTo(MediaFailureReason.TYPE_MISMATCH);
+        assertThat(failed.readyAt()).isNull();
+    }
+
+    @Test
+    void aReadyAssetNeverAttachedFails() {
+        MediaAsset failed = upload(MediaPurpose.PROFILE_PICTURE, "image/png", 1_000).markReady(10, 10, NOW)
+                .markFailed(MediaFailureReason.NEVER_ATTACHED);
+
+        assertThat(failed.status()).isEqualTo(MediaStatus.FAILED);
+        assertThat(failed.failureReason()).isEqualTo(MediaFailureReason.NEVER_ATTACHED);
+    }
+
+    @Test
+    void onlyAPendingUploadBecomesReady() {
+        MediaAsset ready = upload(MediaPurpose.PROFILE_PICTURE, "image/png", 1_000).markReady(10, 10, NOW);
+        MediaAsset failed = upload(MediaPurpose.PROFILE_PICTURE, "image/png", 1_000)
+                .markFailed(MediaFailureReason.UNREADABLE);
+
+        assertThatThrownBy(() -> ready.markReady(10, 10, NOW)).isInstanceOf(IllegalStateException.class);
+        assertThatThrownBy(() -> failed.markReady(10, 10, NOW)).isInstanceOf(IllegalStateException.class);
+        assertThatThrownBy(() -> failed.markFailed(MediaFailureReason.UPLOAD_EXPIRED))
+                .isInstanceOf(IllegalStateException.class);
+    }
+
     private static MediaAsset upload(MediaPurpose purpose, String mimeType, long sizeBytes) {
         return MediaAsset.requestUpload(MediaAssetId.newId(), FAMILY, purpose, "photo.jpg", mimeType, sizeBytes,
                 USER, NOW);

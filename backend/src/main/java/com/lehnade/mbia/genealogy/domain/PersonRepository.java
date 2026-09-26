@@ -3,6 +3,7 @@ package com.lehnade.mbia.genealogy.domain;
 import java.util.Collection;
 import java.util.List;
 import java.util.Optional;
+import java.util.Set;
 import java.util.UUID;
 
 public interface PersonRepository {
@@ -44,4 +45,10 @@ public interface PersonRepository {
 
     /** @return the non-MERGED Person of the Family that represents the User, if any */
     Optional<Person> findLinkedTo(UUID familyId, UUID userId);
+
+    /**
+     * @return among these media assets, those that are the photo of a Person, whatever its status
+     *     or Family (data-model.md §10, OQ-036)
+     */
+    Set<UUID> findProfilePicturesAmong(Collection<UUID> mediaAssetIds);
 }

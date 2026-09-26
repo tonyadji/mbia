@@ -477,3 +477,23 @@ When a question is answered, update the relevant spec, then move the entry to **
 - **Recommendation:** A. Correcting a typo must not require relinking the story, and archiving a Person never changes its Memories (OQ-035).
 - **Blocking:** the related-Person rule of PR-33.
 - **Answer:** A (human, 2026-09-26). Documented in `mvp.md` §17, `data-model.md` §15, `openapi.yaml` (`updateMemory`) and `screens.md` SCREEN-014.
+
+### OQ-044 — Completing an upload that is FAILED or ARCHIVED
+
+- **Raised by / date:** coding agent (PR-36), 2026-09-26
+- **Context:** `openapi.yaml` (`completeMediaUpload`) and OQ-036 say that completing a READY asset again returns it unchanged, but not what happens to an asset that already failed (invalid content, or expired by the cleanup of ADR-007 §4) or that was ARCHIVED (a replaced or removed Person photo, OQ-040). A client may retry a completion after losing its first answer.
+- **Question:** what does `completeMediaUpload` answer for a FAILED or ARCHIVED asset?
+- **Options:** A — FAILED: 400 `MEDIA_INVALID` again, without processing anything; ARCHIVED: 409 `MEDIA_NOT_READY` / B — both 409 `MEDIA_NOT_READY` / C — FAILED: 400 `MEDIA_INVALID`; ARCHIVED: 404 `MEDIA_NOT_FOUND`.
+- **Recommendation:** A. A repeated completion gives the same outcome as the first one, as for READY; an uploaded file is processed once, so a new file sent to an old URL is never used; the client starts a new upload.
+- **Blocking:** the completion rules of PR-36.
+- **Answer:** A (human, 2026-09-26). Documented in `data-model.md` §13 and `openapi.yaml` (`completeMediaUpload`).
+
+### OQ-045 — `mimeType` and `sizeBytes` of a processed media asset
+
+- **Raised by / date:** coding agent (PR-36), 2026-09-26
+- **Context:** `MediaAssetResponse` has `mimeType` and `sizeBytes`, and `data-model.md` §13 says that `width_px` / `height_px` describe the display derivative. Once processed, the original is deleted and the served files are JPEG derivatives, but `media_assets` only stores the type and size declared at upload.
+- **Question:** what do `mimeType` and `sizeBytes` describe?
+- **Options:** A — the upload as declared (`upload_mime_type`, `upload_size_bytes`), with no new column / B — the display derivative (`image/jpeg` and its size, stored by a new migration).
+- **Recommendation:** A. They are the only stored values, and the served images are always JPEG (ADR-007).
+- **Blocking:** the response of `completeMediaUpload` (PR-36).
+- **Answer:** A (human, 2026-09-26). Documented in `data-model.md` §13 and `openapi.yaml` (`MediaAssetResponse`).

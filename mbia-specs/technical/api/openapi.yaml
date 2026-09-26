@@ -1206,7 +1206,9 @@ paths:
         (ADR-007). On invalid content the asset becomes FAILED and 400
         `MEDIA_INVALID` is returned. Only the User who created the upload may
         complete it (403 `PERMISSION_DENIED`); completing a READY asset again
-        returns it unchanged (OQ-036).
+        returns it unchanged (OQ-036). Completing a FAILED asset returns 400
+        `MEDIA_INVALID` again without processing anything; an ARCHIVED asset
+        returns 409 `MEDIA_NOT_READY` (OQ-044).
       responses:
         '200':
           description: Ready media asset
@@ -2325,13 +2327,17 @@ components:
           $ref: '#/components/schemas/MediaStatus'
         mimeType:
           type: string
+          description: MIME type declared at upload. The served derivatives are always JPEG (OQ-045).
         sizeBytes:
           type: [integer, 'null']
           format: int64
+          description: Size declared at upload, in bytes (OQ-045).
         widthPx:
           type: [integer, 'null']
+          description: Width of the display derivative. Present when READY.
         heightPx:
           type: [integer, 'null']
+          description: Height of the display derivative. Present when READY.
         url:
           type: [string, 'null']
           format: uri

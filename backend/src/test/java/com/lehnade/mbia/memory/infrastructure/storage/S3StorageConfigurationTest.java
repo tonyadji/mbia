@@ -58,7 +58,8 @@ class S3StorageConfigurationTest {
 
     private static PresignedUpload presign(StorageProperties properties) {
         try (S3Presigner presigner = S3StorageConfiguration.presigner(properties)) {
-            return new S3ObjectStorage(presigner, properties).presignUpload(KEY, "image/jpeg", Duration.ofMinutes(15));
+            return new S3ObjectStorage(null, presigner, properties)
+                    .presignUpload(KEY, "image/jpeg", Duration.ofMinutes(15));
         }
     }
 }
