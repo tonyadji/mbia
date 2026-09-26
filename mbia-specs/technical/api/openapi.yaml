@@ -2114,13 +2114,18 @@ components:
 
     RelatedPersonReference:
       type: object
-      required: [id, displayName]
+      required: [id, displayName, status]
       properties:
         id:
           type: string
           format: uuid
         displayName:
           type: string
+        status:
+          description: |
+            An archived Person stays on the Memory and is shown as archived (OQ-035).
+          allOf:
+            - $ref: '#/components/schemas/PersonStatus'
         profilePictureUrl:
           type: [string, 'null']
           format: uri

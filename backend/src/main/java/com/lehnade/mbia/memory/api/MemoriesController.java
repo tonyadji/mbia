@@ -8,12 +8,17 @@ import com.lehnade.mbia.api.generated.model.MemoryPage;
 import com.lehnade.mbia.api.generated.model.MemoryResponse;
 import com.lehnade.mbia.api.generated.model.MemoryStatus;
 import com.lehnade.mbia.api.generated.model.MemoryType;
+import com.lehnade.mbia.api.generated.model.PageMeta;
+import com.lehnade.mbia.api.generated.model.PersonStatus;
 import com.lehnade.mbia.api.generated.model.RelatedPersonReference;
 import com.lehnade.mbia.api.generated.model.UpdateMemoryRequest;
 import com.lehnade.mbia.memory.application.MemoryView;
 import com.lehnade.mbia.memory.application.createstorymemory.CreateStoryMemoryCommand;
 import com.lehnade.mbia.memory.application.createstorymemory.CreateStoryMemoryUseCase;
 import com.lehnade.mbia.memory.application.getmemory.GetMemoryUseCase;
+import com.lehnade.mbia.memory.application.listpersonmemories.ListPersonMemoriesCommand;
+import com.lehnade.mbia.memory.application.listpersonmemories.ListPersonMemoriesUseCase;
+import com.lehnade.mbia.memory.application.listpersonmemories.PersonMemoriesView;
 import com.lehnade.mbia.memory.domain.Memory;
 import com.lehnade.mbia.shared.api.web.ETags;
 import com.lehnade.mbia.shared.domain.DomainException;
@@ -36,10 +41,13 @@ class MemoriesController implements MemoriesApi {
 
     private final CreateStoryMemoryUseCase createStoryMemory;
     private final GetMemoryUseCase getMemory;
+    private final ListPersonMemoriesUseCase listPersonMemories;
 
-    MemoriesController(CreateStoryMemoryUseCase createStoryMemory, GetMemoryUseCase getMemory) {
+    MemoriesController(CreateStoryMemoryUseCase createStoryMemory, GetMemoryUseCase getMemory,
+            ListPersonMemoriesUseCase listPersonMemories) {
         this.createStoryMemory = createStoryMemory;
         this.getMemory = getMemory;
+        this.listPersonMemories = listPersonMemories;
     }
 
     @Override
@@ -71,7 +79,11 @@ class MemoriesController implements MemoriesApi {
     @Override
     public ResponseEntity<MemoryPage> listPersonMemories(UUID familyId, UUID personId, Integer page,
             Integer size) {
-        throw notAvailableYet();
+        PersonMemoriesView memories = listPersonMemories.list(new ListPersonMemoriesCommand(familyId, personId,
+                page, size));
+        return ResponseEntity.ok(new MemoryPage(
+                memories.items().stream().map(MemoriesController::toResponse).toList(),
+                new PageMeta(memories.page(), memories.size(), memories.totalElements(), memories.totalPages())));
     }
 
     @Override
@@ -90,7 +102,8 @@ class MemoriesController implements MemoriesApi {
         return new MemoryResponse(memory.id().value(), memory.familyId(), MemoryType.valueOf(memory.type().name()),
                 MemoryStatus.valueOf(memory.status().name()),
                 view.relatedPersons().stream()
-                        .map(person -> new RelatedPersonReference(person.id(), person.displayName()))
+                        .map(person -> new RelatedPersonReference(person.id(), person.displayName(),
+                                PersonStatus.valueOf(person.status().name())))
                         .toList(),
                 new ActivityActor(view.createdBy().userId(), view.createdBy().displayName(),
                         view.createdBy().deleted()),

@@ -10,6 +10,7 @@ import { EditPersonPage } from '../pages/EditPersonPage';
 import { FamilyGatePage } from '../pages/FamilyGatePage';
 import { FamilyHomePage } from '../pages/FamilyHomePage';
 import { FamilyTreePage } from '../pages/FamilyTreePage';
+import { MemoryPage } from '../pages/MemoryPage';
 import { PersonProfilePage } from '../pages/PersonProfilePage';
 import { SearchPage } from '../pages/SearchPage';
 import { SignInCallbackPage } from '../pages/SignInCallbackPage';
@@ -35,6 +36,7 @@ export const routes: RouteObject[] = [
           { path: 'families/:familyId/persons/:personId', element: <PersonProfilePage /> },
           { path: 'families/:familyId/persons/:personId/edit', element: <EditPersonPage /> },
           { path: 'families/:familyId/memories/new', element: <AddMemoryPage /> },
+          { path: 'families/:familyId/memories/:memoryId', element: <MemoryPage /> },
           { path: SETTINGS_PATH.slice(1), element: <AccountSettingsPage /> },
         ],
       },

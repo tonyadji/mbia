@@ -17,7 +17,7 @@ import org.springframework.http.MediaType;
 import org.springframework.test.web.servlet.assertj.MvcTestResult;
 
 /**
- * PR-29: {@code GET /families/{familyId}/memories/{memoryId}} (openapi {@code getMemory};
+ * PR-29, PR-31: {@code GET /families/{familyId}/memories/{memoryId}} (openapi {@code getMemory};
  * person-relationships-collaboration.md §13; OQ-037).
  */
 class GetMemoryApiTest extends ApiTestSupport {
@@ -52,6 +52,7 @@ class GetMemoryApiTest extends ApiTestSupport {
                                 .isEqualTo("Grand-mère vendait du plantain.");
                         json.assertThat().extractingPath("$.relatedPersons[0].id").isEqualTo(grandmother.toString());
                         json.assertThat().extractingPath("$.relatedPersons[0].displayName").isEqualTo("Awa");
+                        json.assertThat().extractingPath("$.relatedPersons[0].status").isEqualTo("ACTIVE");
                         json.assertThat().extractingPath("$.createdBy.userId").isEqualTo(contributor.toString());
                         json.assertThat().extractingPath("$.createdBy.displayName").isNotNull();
                         json.assertThat().extractingPath("$.createdBy.deleted").isEqualTo(false);
@@ -66,7 +67,11 @@ class GetMemoryApiTest extends ApiTestSupport {
 
         assertThat(memories.get(family.viewer(), family.familyId(), memory))
                 .hasStatusOk()
-                .bodyJson().extractingPath("$.relatedPersons[0].id").isEqualTo(grandmother.toString());
+                .bodyJson().satisfies(json -> {
+                    json.assertThat().extractingPath("$.relatedPersons[0].id").isEqualTo(grandmother.toString());
+                    // Shown as archived on the Memory (OQ-035).
+                    json.assertThat().extractingPath("$.relatedPersons[0].status").isEqualTo("ARCHIVED");
+                });
     }
 
     @Test

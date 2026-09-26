@@ -149,6 +149,8 @@ function personApi({
   unclaim,
   tree = () => jsonResponse(lonelyTree()),
   archived = () => jsonResponse([]),
+  memories = () =>
+    jsonResponse({ items: [], page: { page: 0, size: 20, totalElements: 0, totalPages: 0 } }),
   other = {},
 }: {
   role?: string;
@@ -158,6 +160,7 @@ function personApi({
   unclaim?: Handler;
   tree?: Handler;
   archived?: Handler;
+  memories?: Handler;
   other?: Record<string, Handler>;
 } = {}) {
   return fakeApi({
@@ -165,6 +168,7 @@ function personApi({
     [`GET /families/${ADJI_ID}/persons/${MARIE_ID}`]: get,
     [`GET /families/${ADJI_ID}/tree`]: tree,
     [`GET /families/${ADJI_ID}/persons/${MARIE_ID}/archived-relationships`]: archived,
+    [`GET /families/${ADJI_ID}/persons/${MARIE_ID}/memories`]: memories,
     ...other,
     ...(patch ? { [`PATCH /families/${ADJI_ID}/persons/${MARIE_ID}`]: patch } : {}),
     ...(claim ? { [`POST /families/${ADJI_ID}/persons/${MARIE_ID}/claim`]: claim } : {}),
@@ -206,7 +210,7 @@ describe('Person screens', () => {
   });
 
   describe('Person profile (SCREEN-005)', () => {
-    it('shows the header and About, with an empty Family section and no Memories', async () => {
+    it('shows the header and About, with empty Memories and Family sections', async () => {
       personApi();
       renderApp(PROFILE);
 
@@ -224,7 +228,9 @@ describe('Person screens', () => {
       expect(within(about).getByText('12 mars 1954')).toBeInTheDocument();
       expect(within(about).getByText('2020')).toBeInTheDocument();
       expect(within(about).getByText('Institutrice à Ebolowa.')).toBeInTheDocument();
-      expect(screen.queryByText(/souvenir|photo/i)).not.toBeInTheDocument();
+      expect(
+        await screen.findByText("Aucun souvenir n'est encore lié à Marie Adji."),
+      ).toBeInTheDocument();
       expect(screen.getByRole('link', { name: 'Modifier' })).toHaveAttribute(
         'href',
         `${PROFILE}/edit`,

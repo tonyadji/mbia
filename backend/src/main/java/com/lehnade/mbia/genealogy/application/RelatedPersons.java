@@ -61,6 +61,7 @@ public class RelatedPersons {
     }
 
     private static RelatedPerson toRelated(Person person) {
-        return new RelatedPerson(person.id().value(), person.details().displayName());
+        return new RelatedPerson(person.id().value(), person.details().displayName(),
+                RelatedPerson.Status.valueOf(person.status().name()));
     }
 }

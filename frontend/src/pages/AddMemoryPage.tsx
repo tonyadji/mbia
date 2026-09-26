@@ -16,7 +16,8 @@ import { useCreateStoryMemory } from '../memories/useCreateStoryMemory';
 import { usePerson } from '../persons/usePerson';
 import { familyHomePath } from './FamilyHomePage';
 import { FamilyNotFoundPage } from './FamilyNotFoundPage';
-import { displayNameOf, personPath, type PersonProfileState } from './PersonProfilePage';
+import { memoryPath, type MemoryPageState } from './MemoryPage';
+import { displayNameOf, personPath } from './PersonProfilePage';
 
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
@@ -136,12 +137,9 @@ function StoryForm({
         content: values.content,
         relatedPersonIds: persons.map((person) => person.id),
       });
-      const first = memory.relatedPersons[0]?.id ?? persons[0]?.id ?? '';
-      // Until the Memory screen exists (PR-31), the User lands on the first related Person.
-      const state: PersonProfileState = {
-        memoryPublished: { title: memory.title ?? values.title },
-      };
-      void navigate(personPath(familyId, first), { replace: true, state });
+      // The User lands on the Memory just published (SCREEN-013).
+      const state: MemoryPageState = { published: true };
+      void navigate(memoryPath(familyId, memory.id), { replace: true, state });
     } catch (failure) {
       if (failure instanceof ApiError) {
         for (const fieldError of failure.fieldErrors) {
