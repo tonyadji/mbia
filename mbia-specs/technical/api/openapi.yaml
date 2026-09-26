@@ -805,7 +805,11 @@ paths:
       tags: [Relationships]
       operationId: archiveRelationship
       summary: Remove/archive an explicit relationship
-      description: ADMIN or CONTRIBUTOR. Derived kinship changes immediately after archival.
+      description: |
+        ADMIN or CONTRIBUTOR. Derived kinship changes immediately after archival.
+        A relationship unknown or of another family returns 404 `RESOURCE_NOT_FOUND`.
+        Archiving an already ARCHIVED relationship with its current version changes nothing
+        and returns 204 (OQ-020).
       parameters:
         - $ref: '#/components/parameters/IfMatch'
       responses:
@@ -826,7 +830,14 @@ paths:
       tags: [Relationships]
       operationId: restoreRelationship
       summary: Restore an archived relationship
-      description: ADMIN only. Restore is rejected if the current graph would become invalid.
+      description: |
+        ADMIN only. Restore is rejected if the current graph would become invalid: Person
+        ARCHIVED or MERGED (409 `PERSON_NOT_ACTIVE`), identical ACTIVE relationship
+        (409 `RELATIONSHIP_ALREADY_EXISTS`), parental cycle (409 `RELATIONSHIP_CREATES_CYCLE`).
+        A relationship unknown or of another family returns 404 `RESOURCE_NOT_FOUND`.
+        Date warnings do not block a restore: they are recomputed from the current birth data
+        and returned in `warnings` for information (OQ-021). Restoring an already ACTIVE
+        relationship with its current version changes nothing and returns it unchanged (OQ-020).
       parameters:
         - $ref: '#/components/parameters/IfMatch'
       responses:

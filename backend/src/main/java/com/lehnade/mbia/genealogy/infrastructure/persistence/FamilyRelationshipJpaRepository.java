@@ -2,11 +2,32 @@ package com.lehnade.mbia.genealogy.infrastructure.persistence;
 
 import java.util.Collection;
 import java.util.List;
+import java.util.Optional;
 import java.util.UUID;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 
 interface FamilyRelationshipJpaRepository extends JpaRepository<FamilyRelationshipJpaEntity, UUID> {
+
+    Optional<FamilyRelationshipJpaEntity> findByIdAndFamilyId(UUID id, UUID familyId);
+
+    /**
+     * The ARCHIVED relationships of {@code personId}, each with the other Person, most recently
+     * archived first (data-model.md §23.2bis).
+     *
+     * @return pairs {@code [relationship, other Person]}
+     */
+    @Query("""
+            SELECT r, other
+            FROM FamilyRelationshipJpaEntity r
+            JOIN PersonJpaEntity other
+              ON (r.sourcePersonId = :personId AND other.id = r.targetPersonId)
+              OR (r.targetPersonId = :personId AND other.id = r.sourcePersonId)
+            WHERE r.familyId = :familyId AND r.status = 'ARCHIVED'
+              AND (r.sourcePersonId = :personId OR r.targetPersonId = :personId)
+            ORDER BY r.archivedAt DESC, r.id
+            """)
+    List<Object[]> findArchivedWithOtherPerson(UUID familyId, UUID personId);
 
     boolean existsByFamilyIdAndTypeAndSourcePersonIdAndTargetPersonIdAndStatus(UUID familyId, String type,
             UUID sourcePersonId, UUID targetPersonId, String status);

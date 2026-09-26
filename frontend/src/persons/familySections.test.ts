@@ -1,4 +1,4 @@
-import { familySections } from './familySections';
+import { familySections, sectionLink } from './familySections';
 import type { FamilyTree, TreeNode } from './useFamilyTree';
 
 function node(id: string): TreeNode {
@@ -74,5 +74,33 @@ describe('familySections', () => {
       [],
       [],
     ]);
+  });
+});
+
+describe('sectionLink', () => {
+  const tree: FamilyTree = {
+    focusPersonId: 'tony',
+    nodes: ['tony', 'marie', 'awa', 'chloe', 'eric'].map(node),
+    edges: [
+      edge('PARENT_OF', 'marie', 'tony'),
+      edge('PARENT_OF', 'marie', 'awa'),
+      edge('PARTNER_OF', 'chloe', 'tony'),
+      edge('PARENT_OF', 'tony', 'eric'),
+    ],
+  };
+
+  it('is the relationship that makes the relative a parent, partner or child', () => {
+    expect(sectionLink(tree, 'parents', 'tony', 'marie')?.relationshipId).toBe('marie-tony');
+    expect(sectionLink(tree, 'partners', 'tony', 'chloe')?.relationshipId).toBe('chloe-tony');
+    expect(sectionLink(tree, 'children', 'tony', 'eric')?.relationshipId).toBe('tony-eric');
+  });
+
+  it('keeps the direction of PARENT_OF', () => {
+    expect(sectionLink(tree, 'children', 'tony', 'marie')).toBeUndefined();
+    expect(sectionLink(tree, 'parents', 'tony', 'eric')).toBeUndefined();
+  });
+
+  it('has no relationship for a sibling', () => {
+    expect(sectionLink(tree, 'siblings', 'tony', 'awa')).toBeUndefined();
   });
 });

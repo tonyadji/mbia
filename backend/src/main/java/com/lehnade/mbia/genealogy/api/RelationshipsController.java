@@ -3,18 +3,28 @@ package com.lehnade.mbia.genealogy.api;
 import com.lehnade.mbia.api.generated.RelationshipsApi;
 import com.lehnade.mbia.api.generated.model.ArchivedRelationshipResponse;
 import com.lehnade.mbia.api.generated.model.CreateRelationshipRequest;
+import com.lehnade.mbia.api.generated.model.Gender;
+import com.lehnade.mbia.api.generated.model.PersonStatus;
+import com.lehnade.mbia.api.generated.model.PersonSummary;
 import com.lehnade.mbia.api.generated.model.RelationshipResponse;
 import com.lehnade.mbia.api.generated.model.RelationshipStatus;
 import com.lehnade.mbia.api.generated.model.RelationshipType;
 import com.lehnade.mbia.api.generated.model.RelationshipWarning;
 import com.lehnade.mbia.api.generated.model.RelationshipWarningCode;
+import com.lehnade.mbia.genealogy.application.archiverelationship.ArchiveRelationshipCommand;
+import com.lehnade.mbia.genealogy.application.archiverelationship.ArchiveRelationshipUseCase;
 import com.lehnade.mbia.genealogy.application.createrelationship.CreateRelationshipCommand;
 import com.lehnade.mbia.genealogy.application.createrelationship.CreateRelationshipUseCase;
 import com.lehnade.mbia.genealogy.application.createrelationship.CreatedRelationship;
+import com.lehnade.mbia.genealogy.application.listarchivedpersonrelationships.ListArchivedPersonRelationshipsUseCase;
+import com.lehnade.mbia.genealogy.application.restorerelationship.RestoreRelationshipCommand;
+import com.lehnade.mbia.genealogy.application.restorerelationship.RestoreRelationshipUseCase;
+import com.lehnade.mbia.genealogy.application.restorerelationship.RestoredRelationship;
+import com.lehnade.mbia.genealogy.domain.ArchivedRelationship;
 import com.lehnade.mbia.genealogy.domain.FamilyRelationship;
+import com.lehnade.mbia.genealogy.domain.Person;
+import com.lehnade.mbia.genealogy.domain.PersonDetails;
 import com.lehnade.mbia.shared.api.web.ETags;
-import com.lehnade.mbia.shared.domain.DomainException;
-import com.lehnade.mbia.shared.domain.ErrorCode;
 import java.time.ZoneOffset;
 import java.util.List;
 import java.util.Map;
@@ -23,17 +33,22 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.RestController;
 
-/**
- * Explicit relationships of a Family. Operations delivered by later Phase 2 PRs answer like a
- * route that does not exist yet ({@code RESOURCE_NOT_FOUND}).
- */
+/** Explicit relationships of a Family: creation, removal, restoration and the removed ones of a Person. */
 @RestController
 class RelationshipsController implements RelationshipsApi {
 
     private final CreateRelationshipUseCase createRelationship;
+    private final ArchiveRelationshipUseCase archiveRelationship;
+    private final RestoreRelationshipUseCase restoreRelationship;
+    private final ListArchivedPersonRelationshipsUseCase listArchivedPersonRelationships;
 
-    RelationshipsController(CreateRelationshipUseCase createRelationship) {
+    RelationshipsController(CreateRelationshipUseCase createRelationship,
+            ArchiveRelationshipUseCase archiveRelationship, RestoreRelationshipUseCase restoreRelationship,
+            ListArchivedPersonRelationshipsUseCase listArchivedPersonRelationships) {
         this.createRelationship = createRelationship;
+        this.archiveRelationship = archiveRelationship;
+        this.restoreRelationship = restoreRelationship;
+        this.listArchivedPersonRelationships = listArchivedPersonRelationships;
     }
 
     @Override
@@ -43,37 +58,70 @@ class RelationshipsController implements RelationshipsApi {
                 request.getSourcePersonId(), request.getTargetPersonId(),
                 Boolean.TRUE.equals(request.getConfirmWarnings())));
         FamilyRelationship relationship = created.relationship();
-        List<RelationshipWarning> warnings = created.warnings().stream()
-                .map(warning -> new RelationshipWarning(RelationshipWarningCode.fromValue(warning.code().name()))
-                        .context(Map.of("parentBirthYear", warning.parentBirthYear(),
-                                "childBirthYear", warning.childBirthYear())))
-                .toList();
         return ResponseEntity.status(HttpStatus.CREATED)
                 .eTag(ETags.of(relationship.version()))
-                .body(new RelationshipResponse(relationship.id().value(), relationship.familyId(),
-                        RelationshipType.fromValue(relationship.type().name()), relationship.source().value(),
-                        relationship.target().value(), RelationshipStatus.fromValue(relationship.status().name()),
-                        warnings, relationship.version(), relationship.createdAt().atOffset(ZoneOffset.UTC)));
+                .body(toResponse(relationship, created.warnings()));
     }
 
     @Override
     public ResponseEntity<Void> archiveRelationship(String ifMatch, UUID familyId, UUID relationshipId) {
-        throw notAvailableYet();
+        archiveRelationship.archive(
+                new ArchiveRelationshipCommand(familyId, relationshipId, ETags.parseIfMatch(ifMatch)));
+        return ResponseEntity.noContent().build();
     }
 
     @Override
     public ResponseEntity<RelationshipResponse> restoreRelationship(String ifMatch, UUID familyId,
             UUID relationshipId) {
-        throw notAvailableYet();
+        RestoredRelationship restored = restoreRelationship.restore(
+                new RestoreRelationshipCommand(familyId, relationshipId, ETags.parseIfMatch(ifMatch)));
+        FamilyRelationship relationship = restored.relationship();
+        return ResponseEntity.ok()
+                .eTag(ETags.of(relationship.version()))
+                .body(toResponse(relationship, restored.warnings()));
     }
 
     @Override
     public ResponseEntity<List<ArchivedRelationshipResponse>> listArchivedPersonRelationships(UUID familyId,
             UUID personId) {
-        throw notAvailableYet();
+        return ResponseEntity.ok(listArchivedPersonRelationships.list(familyId, personId).stream()
+                .map(RelationshipsController::toResponse)
+                .toList());
     }
 
-    private static DomainException notAvailableYet() {
-        return new DomainException(ErrorCode.RESOURCE_NOT_FOUND, "Resource not found.");
+    private static RelationshipResponse toResponse(FamilyRelationship relationship,
+            List<com.lehnade.mbia.genealogy.domain.RelationshipWarning> domainWarnings) {
+        List<RelationshipWarning> warnings = domainWarnings.stream()
+                .map(warning -> new RelationshipWarning(RelationshipWarningCode.fromValue(warning.code().name()))
+                        .context(Map.of("parentBirthYear", warning.parentBirthYear(),
+                                "childBirthYear", warning.childBirthYear())))
+                .toList();
+        return new RelationshipResponse(relationship.id().value(), relationship.familyId(),
+                RelationshipType.fromValue(relationship.type().name()), relationship.source().value(),
+                relationship.target().value(), RelationshipStatus.fromValue(relationship.status().name()),
+                warnings, relationship.version(), relationship.createdAt().atOffset(ZoneOffset.UTC));
+    }
+
+    private static ArchivedRelationshipResponse toResponse(ArchivedRelationship archived) {
+        FamilyRelationship relationship = archived.relationship();
+        return new ArchivedRelationshipResponse(relationship.id().value(),
+                RelationshipType.fromValue(relationship.type().name()), relationship.source().value(),
+                relationship.target().value(), relationship.version(),
+                relationship.archivedAt().atOffset(ZoneOffset.UTC), toSummary(archived.relatedPerson()));
+    }
+
+    /** No photo in this phase: {@code profilePictureUrl} is always null (Phase 2 plan §3.1). */
+    private static PersonSummary toSummary(Person person) {
+        PersonDetails details = person.details();
+        return new PersonSummary(person.id().value(), person.familyId(), details.firstName(),
+                Gender.fromValue(details.gender().name()), PersonApiMapping.toApi(details.birth()),
+                details.deceased(), PersonApiMapping.toApi(details.death()),
+                PersonStatus.fromValue(person.status().name()), person.version())
+                .middleNames(details.middleNames())
+                .lastName(details.lastName())
+                .preferredName(details.preferredName())
+                .displayName(details.displayName())
+                .profilePictureUrl(null)
+                .linkedUserId(person.linkedUserId().orElse(null));
     }
 }

@@ -118,6 +118,31 @@
     "added": "{{name}} was added to the family and linked to {{anchor}}.",
     "viewProfile": "View their profile"
   },
+  "removeLink": {
+    "action": "Remove link",
+    "actionFor": "Remove the link with {{name}}",
+    "warning": "Removing this link may change family relationships calculated by Mbia.",
+    "confirm": "Remove link",
+    "cancel": "Cancel",
+    "done": "The link with {{name}} was removed."
+  },
+  "removedLinks": {
+    "title": "Removed links",
+    "removedOn": "Removed on {{date}}",
+    "restore": "Restore",
+    "restoreFor": "Restore the link with {{name}}",
+    "restored": "The link was restored.",
+    "restoredWithWarnings": "The link was restored. The birth dates of these two people look unusual: check them on their profiles.",
+    "status": {
+      "ARCHIVED": "Archived profile",
+      "MERGED": "Merged profile"
+    },
+    "refused": {
+      "PERSON_NOT_ACTIVE": "This link cannot be restored: {{name}}'s profile was archived or merged.",
+      "RELATIONSHIP_ALREADY_EXISTS": "This link cannot be restored: these two people are already linked this way.",
+      "RELATIONSHIP_CREATES_CYCLE": "This link cannot be restored: with the current links, it would make someone one of their own ancestors."
+    }
+  },
   "kinship": {
     "label": {
       "SELF": "You",

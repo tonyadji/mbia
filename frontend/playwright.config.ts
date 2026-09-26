@@ -28,9 +28,9 @@ export default defineConfig({
       use: { ...devices['Desktop Chrome'], viewport: { width: 375, height: 812 } },
     },
     {
-      // The tree also works on desktop (phase-2-core-family-graph.md PR-23).
+      // The tree (PR-23) and the profile's links (PR-24) also work on desktop.
       name: 'chromium-desktop',
-      testMatch: 'family-tree.spec.ts',
+      testMatch: ['family-tree.spec.ts', 'remove-relationship.spec.ts'],
       use: { ...devices['Desktop Chrome'], viewport: { width: 1280, height: 800 } },
     },
   ],

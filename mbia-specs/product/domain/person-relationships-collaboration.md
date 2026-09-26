@@ -182,6 +182,8 @@ The age is `childBirthYear - parentBirthYear`, also when exact dates are known. 
 
 When warnings exist and the User has not confirmed, the relation is not created and the warnings are returned. The User may retry with explicit confirmation.
 
+Restoring a removed relation does not ask for confirmation again: the warnings are recomputed from the current birth data and returned for information only (OQ-021).
+
 ## 8. Relationship removal
 
 ADMIN and CONTRIBUTOR may remove a relationship.
@@ -191,6 +193,10 @@ Removal means `ARCHIVED`, not physical delete.
 Before removal, UI warns that derived kinship may change.
 
 ADMIN may restore if the restored graph remains valid. The ADMIN finds removed relationships from the profile of either Person involved.
+
+Restoring re-runs the §7 blocks against the current graph: both Persons ACTIVE (`PERSON_NOT_ACTIVE`), no identical ACTIVE relation (`RELATIONSHIP_ALREADY_EXISTS`), no parental cycle (`RELATIONSHIP_CREATES_CYCLE`). Date warnings do not block it (§7.1).
+
+Removing a relation that is already removed, or restoring one that is already active, changes nothing and is not an error (OQ-020).
 
 ## 9. Derived relations
 

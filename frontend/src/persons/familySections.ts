@@ -55,3 +55,42 @@ export function familySections(tree: FamilyTree, personId: string): FamilySectio
   }
   return sections;
 }
+
+export type TreeEdge = FamilyTree['edges'][number];
+
+/**
+ * The explicit relationship that puts `relativeId` in `section` of `personId`: `PARENT_OF` from a
+ * parent or to a child, `PARTNER_OF` for a partner. Siblings have none: their link comes from shared
+ * parents (SCREEN-005).
+ */
+export function sectionLink(
+  tree: FamilyTree,
+  section: keyof FamilySections,
+  personId: string,
+  relativeId: string,
+): TreeEdge | undefined {
+  return tree.edges.find((edge) => {
+    if (section === 'parents') {
+      return (
+        edge.type === 'PARENT_OF' &&
+        edge.sourcePersonId === relativeId &&
+        edge.targetPersonId === personId
+      );
+    }
+    if (section === 'children') {
+      return (
+        edge.type === 'PARENT_OF' &&
+        edge.sourcePersonId === personId &&
+        edge.targetPersonId === relativeId
+      );
+    }
+    if (section === 'partners') {
+      return (
+        edge.type === 'PARTNER_OF' &&
+        ((edge.sourcePersonId === personId && edge.targetPersonId === relativeId) ||
+          (edge.sourcePersonId === relativeId && edge.targetPersonId === personId))
+      );
+    }
+    return false;
+  });
+}
