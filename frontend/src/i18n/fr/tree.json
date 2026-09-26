@@ -12,6 +12,8 @@
   "quickView": {
     "children_one": "{{count}} enfant",
     "children_other": "{{count}} enfants",
+    "memories_one": "{{count}} souvenir",
+    "memories_other": "{{count}} souvenirs",
     "seeHow": "Voir le lien",
     "viewProfile": "Voir le profil",
     "center": "Centrer l'arbre sur {{name}}",

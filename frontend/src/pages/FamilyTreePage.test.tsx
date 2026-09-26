@@ -128,6 +128,7 @@ interface FakeApiOptions {
 }
 
 const trees: Record<string, unknown> = { [TONY]: tonyTree, [MARIE]: marieTree, [ALICE]: aliceTree };
+const memoryCounts: Record<string, number> = { [MARIE]: 3, [TONY]: 1 };
 
 function fakeApi({
   familyBody = family(),
@@ -136,6 +137,7 @@ function fakeApi({
   locale = 'fr',
 }: FakeApiOptions = {}) {
   const treeRequests: (string | null)[] = [];
+  const memoryRequests: string[] = [];
   fetchMock.mockImplementation((input) => {
     const request = input as Request;
     const url = new URL(request.url);
@@ -158,9 +160,18 @@ function fakeApi({
       const tree = trees[focus];
       return tree ? jsonResponse(tree) : problemResponse('PERSON_NOT_FOUND', 404);
     }
+    const personId = new RegExp(`^/families/${FAMILY_ID}/persons/([^/]+)/memories$`).exec(path)?.[1];
+    if (personId !== undefined) {
+      memoryRequests.push(`${personId}${url.search}`);
+      const total = memoryCounts[personId] ?? 0;
+      return jsonResponse({
+        items: [],
+        page: { page: 0, size: 1, totalElements: total, totalPages: total },
+      });
+    }
     return problemResponse('RESOURCE_NOT_FOUND', 404);
   }
-  return { treeRequests };
+  return { treeRequests, memoryRequests };
 }
 
 function renderApp(path: string) {
@@ -191,7 +202,7 @@ describe('Family tree (SCREEN-003)', () => {
   });
 
   it('draws parents, the focus with partners and children, and a siblings chip', async () => {
-    fakeApi();
+    const api = fakeApi();
     renderApp(treePath);
 
     expect(await screen.findByRole('heading', { level: 1, name: 'Arbre familial' })).toBeVisible();
@@ -214,6 +225,8 @@ describe('Family tree (SCREEN-003)', () => {
     expect(screen.getByRole('button', { name: 'Ajouter un ou une partenaire' })).toBeVisible();
     expect(screen.getByRole('button', { name: 'Ajouter un enfant' })).toBeVisible();
     expect(window.localStorage.getItem(`mbia.tree.focus.${FAMILY_ID}`)).toBe(TONY);
+    // The Memory count is read only when a Quick View opens (OQ-038).
+    expect(api.memoryRequests).toEqual([]);
   });
 
   it('opens the Quick View, then recenters the tree and remembers the focus', async () => {
@@ -225,7 +238,8 @@ describe('Family tree (SCREEN-003)', () => {
     expect(within(quickView).getByText('Votre mère')).toBeVisible();
     expect(within(quickView).getByText('1975 –')).toBeVisible();
     expect(await within(quickView).findByText('2 enfants')).toBeVisible();
-    expect(within(quickView).queryByText(/souvenir/i)).not.toBeInTheDocument();
+    expect(await within(quickView).findByText('3 souvenirs')).toBeVisible();
+    expect(api.memoryRequests).toEqual([`${MARIE}?page=0&size=1`]);
     expect(within(quickView).getByRole('link', { name: 'Voir le profil' })).toHaveAttribute(
       'href',
       `/families/${FAMILY_ID}/persons/${MARIE}`,
@@ -413,6 +427,7 @@ describe('Family tree (SCREEN-003)', () => {
     const quickView = screen.getByRole('dialog', { name: 'Marie' });
     expect(within(quickView).getByText('Your mother')).toBeVisible();
     expect(await within(quickView).findByText('2 children')).toBeVisible();
+    expect(await within(quickView).findByText('3 memories')).toBeVisible();
     expect(
       within(quickView).getByRole('button', { name: 'Center the tree on Marie' }),
     ).toBeVisible();

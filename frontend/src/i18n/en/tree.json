@@ -12,6 +12,8 @@
   "quickView": {
     "children_one": "{{count}} child",
     "children_other": "{{count}} children",
+    "memories_one": "{{count}} memory",
+    "memories_other": "{{count}} memories",
     "seeHow": "See how",
     "viewProfile": "View profile",
     "center": "Center the tree on {{name}}",
