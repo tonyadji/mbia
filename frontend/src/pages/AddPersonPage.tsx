@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { useForm } from 'react-hook-form';
+import { useForm, useWatch } from 'react-hook-form';
 import { useTranslation } from 'react-i18next';
 import { Link, useNavigate, useParams, useSearchParams } from 'react-router';
 import { ApiError } from '../api/client';
@@ -10,6 +10,7 @@ import { ErrorState } from '../components/ErrorState';
 import { lifeYears } from '../components/PersonCard';
 import { Skeleton } from '../components/Skeleton';
 import { i18n } from '../i18n';
+import { PHOTO_UNCHANGED, PhotoField, type PhotoChange } from '../media/PhotoField';
 import {
   BiographyField,
   EMPTY_PERSON_FORM,
@@ -61,7 +62,8 @@ interface Relative {
  * (`relativeOf`, `relation`, `from`). In relative mode, the first option is a Person already in the
  * Family (SCREEN-007), the second a new Person (family-tree-ux.md §9). Only first and last names
  * are shown first; other details are behind "More information" (§5). Similar Persons already in the
- * Family are shown before creating (person-relationships-collaboration.md §4.1). No photo in Phase 2.
+ * Family are shown before creating (person-relationships-collaboration.md §4.1). The photo is among
+ * the first fields (§5, SCREEN-004 `profilePicture`).
  */
 export function AddPersonPage() {
   const { familyId = '' } = useParams();
@@ -137,6 +139,10 @@ function AddPersonForm({
   const [notLinked, setNotLinked] = useState(false);
   const [pending, setPending] = useState(false);
   const [showMore, setShowMore] = useState(false);
+  const [photo, setPhoto] = useState<PhotoChange>(PHOTO_UNCHANGED);
+  const [uploading, setUploading] = useState(false);
+  // The photo asset already attached to `created`: it cannot be attached twice (OQ-036).
+  const [attachedAssetId, setAttachedAssetId] = useState<string | null>(null);
   // The Person already in the Family chosen instead of a new one.
   const [chosen, setChosen] = useState<PersonSummary | null>(null);
   // Similar Persons already in the Family, reported before creating (POSSIBLE_DUPLICATE).
@@ -148,6 +154,7 @@ function AddPersonForm({
     },
   });
 
+  const firstName = useWatch({ control: form.control, name: 'firstName' });
   const anchorName = relative ? displayNameOf(relative.anchor) : '';
   const backPath =
     relative?.from === 'profile'
@@ -214,15 +221,26 @@ function AddPersonForm({
     setPending(true);
     try {
       let person = created;
+      const newAssetId = photo.kind === 'new' ? photo.assetId : null;
       if (person === null) {
-        person = await createPerson.mutateAsync(toRequest(values, startWithMe, confirmDuplicate));
+        person = await createPerson.mutateAsync({
+          ...toRequest(values, startWithMe, confirmDuplicate),
+          profileMediaAssetId: newAssetId ?? undefined,
+        });
+        setAttachedAssetId(newAssetId);
         setCreated(person);
       } else {
         // "Correct information" after a warning: the Person exists, only their details change.
+        const photoChanged = newAssetId !== attachedAssetId;
         person = await updatePerson.mutateAsync({
           version: person.version,
-          body: toPersonFields(values),
+          body: {
+            ...toPersonFields(values),
+            ...(photoChanged && newAssetId !== null ? { profileMediaAssetId: newAssetId } : {}),
+            ...(photoChanged && newAssetId === null ? { removeProfilePicture: true } : {}),
+          },
         });
+        setAttachedAssetId(newAssetId);
         setCreated(person);
       }
       await link(person, false);
@@ -310,6 +328,15 @@ function AddPersonForm({
         className="flex flex-col gap-4"
       >
         <NameFields form={form} autoComplete={startWithMe} />
+        <PhotoField
+          familyId={familyId}
+          name={firstName}
+          currentUrl={null}
+          value={photo}
+          onChange={setPhoto}
+          onBusy={setUploading}
+          disabled={pending}
+        />
 
         <button
           type="button"
@@ -366,7 +393,7 @@ function AddPersonForm({
         )}
         {error !== null && !notLinked && <p role="alert">{errorMessage(i18n, error)}</p>}
         {!warnings && !notLinked && !candidates && (
-          <Button type="submit" disabled={pending}>
+          <Button type="submit" disabled={pending || uploading}>
             {startWithMe ? t('person:form.submitMe') : t('person:form.submit')}
           </Button>
         )}
@@ -453,7 +480,7 @@ function ExistingPersonChoice({
         {t('relative.existing.chosen')}
       </h2>
       <div className="flex items-center gap-3 rounded-xl border border-border bg-surface px-4 py-3">
-        <Avatar displayName={name} />
+        <Avatar displayName={name} photoUrl={chosen.profilePictureUrl} />
         <div className="flex min-w-0 flex-col">
           <p className="text-body font-semibold break-words text-text">{name}</p>
           {years && <p className="text-caption text-text-muted">{years}</p>}

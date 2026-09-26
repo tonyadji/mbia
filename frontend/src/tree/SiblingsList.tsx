@@ -37,7 +37,7 @@ export function SiblingsList({
                 }}
                 className="flex w-full items-center gap-3 rounded-xl border border-border bg-surface px-4 py-3 text-left hover:border-primary focus-visible:outline-2 focus-visible:outline-primary"
               >
-                <Avatar displayName={name} />
+                <Avatar displayName={name} photoUrl={sibling.profilePictureUrl} />
                 <span className="flex min-w-0 flex-col">
                   <span className="text-body font-semibold break-words text-text">{name}</span>
                   {relationship && (

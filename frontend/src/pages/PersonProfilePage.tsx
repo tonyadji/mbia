@@ -231,7 +231,11 @@ function PersonProfile({
           {t('settings:back')}
         </Link>
         <div className="flex items-center gap-4">
-          <Avatar displayName={displayNameOf(person)} size="lg" />
+          <Avatar
+            displayName={displayNameOf(person)}
+            photoUrl={person.profilePictureUrl}
+            size="lg"
+          />
           <div className="flex min-w-0 flex-col gap-1">
             <h1 className="text-display break-words text-text">{displayNameOf(person)}</h1>
             {lifespan.length > 0 && (
@@ -474,7 +478,7 @@ function RelativeRow({ familyId, relative }: { familyId: string; relative: TreeN
       to={personPath(familyId, relative.id)}
       className="flex items-center gap-3 rounded-xl border border-border bg-surface px-4 py-3 hover:border-primary"
     >
-      <Avatar displayName={name} />
+      <Avatar displayName={name} photoUrl={relative.profilePictureUrl} />
       <span className="flex min-w-0 flex-col">
         <span className="text-body font-semibold break-words text-text">{name}</span>
         {relationship && <span className="text-caption text-text-muted">{relationship}</span>}
@@ -607,7 +611,7 @@ function RemovedLinkRow({
   return (
     <div className="flex flex-col gap-2">
       <div className="flex items-center gap-3">
-        <Avatar displayName={name} />
+        <Avatar displayName={name} photoUrl={related.profilePictureUrl} />
         <div className="flex min-w-0 flex-col">
           <Link
             to={personPath(familyId, related.id)}

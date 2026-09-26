@@ -51,6 +51,7 @@ function toPersons(memory: Memory): RelatedPerson[] {
   return memory.relatedPersons.map((person) => ({
     id: person.id,
     name: person.displayName,
+    photoUrl: person.profilePictureUrl,
     archived: person.status !== 'ACTIVE',
   }));
 }

@@ -41,7 +41,11 @@ export function PersonCard({
       aria-current={isFocus ? 'true' : undefined}
       className={`relative flex size-full flex-col items-center justify-center gap-1 rounded-2xl border bg-surface px-2 py-2 text-center transition-colors hover:border-primary focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary ${isFocus ? 'border-2 border-primary' : 'border-border'}`}
     >
-      <Avatar displayName={name} size={isFocus ? 'lg' : 'card'} />
+      <Avatar
+        displayName={name}
+        photoUrl={person.profilePictureUrl}
+        size={isFocus ? 'lg' : 'card'}
+      />
       <span className="line-clamp-2 max-w-full text-caption font-semibold break-words text-text">
         {name}
       </span>

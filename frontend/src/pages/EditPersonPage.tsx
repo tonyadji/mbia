@@ -6,6 +6,7 @@ import { ApiError } from '../api/client';
 import { errorMessage } from '../api/errorMessage';
 import { Button, buttonClassName } from '../components/Button';
 import { i18n } from '../i18n';
+import { PHOTO_UNCHANGED, PhotoField, type PhotoChange } from '../media/PhotoField';
 import {
   BiographyField,
   LifeFields,
@@ -22,7 +23,8 @@ import { PersonRoute, canEditPerson, displayNameOf, personPath } from './PersonP
 /**
  * SCREEN-012 — Edit Person, for ADMIN / CONTRIBUTOR. The form sends the version it was loaded
  * with; when someone changed the Person meanwhile, the User reloads the latest version before
- * retrying. Form values are never merged automatically.
+ * retrying. Form values are never merged automatically. The photo is added, changed or removed
+ * with the other fields, when the form is saved (OQ-040).
  */
 export function EditPersonPage() {
   return (
@@ -52,6 +54,8 @@ function EditPersonForm({
   // The version this form was built from; a background refresh of the Person does not change it.
   const [base, setBase] = useState(loaded);
   const form = useForm<PersonFormValues>({ defaultValues: toFormValues(base) });
+  const [photo, setPhoto] = useState<PhotoChange>(PHOTO_UNCHANGED);
+  const [uploading, setUploading] = useState(false);
   const update = useUpdatePerson(familyId, base.id);
   const profile = personPath(familyId, base.id);
   const isConflict =
@@ -59,7 +63,7 @@ function EditPersonForm({
 
   const submit = form.handleSubmit((values) => {
     update.mutate(
-      { version: base.version, body: toPersonFields(values) },
+      { version: base.version, body: { ...toPersonFields(values), ...photoFields(photo) } },
       { onSuccess: () => void navigate(profile) },
     );
   });
@@ -69,6 +73,7 @@ function EditPersonForm({
     if (latest) {
       setBase(latest);
       form.reset(toFormValues(latest));
+      setPhoto(PHOTO_UNCHANGED);
       update.reset();
     }
   };
@@ -91,6 +96,16 @@ function EditPersonForm({
           <h2 id="edit-identity" className="text-section text-text">
             {t('person:edit.identity')}
           </h2>
+          <PhotoField
+            // A new version starts from its own photo.
+            key={base.version}
+            familyId={familyId}
+            name={displayNameOf(base)}
+            currentUrl={base.profilePictureUrl ?? null}
+            value={photo}
+            onChange={setPhoto}
+            onBusy={setUploading}
+          />
           <NameFields form={form} autoComplete={false} />
           <OtherIdentityFields form={form} />
         </section>
@@ -121,7 +136,11 @@ function EditPersonForm({
           update.isError && <p role="alert">{errorMessage(i18n, update.error)}</p>
         )}
         <div className="flex flex-col gap-3 sm:flex-row">
-          <Button type="submit" disabled={update.isPending || isConflict} className="sm:w-auto">
+          <Button
+            type="submit"
+            disabled={update.isPending || isConflict || uploading}
+            className="sm:w-auto"
+          >
             {t('person:edit.submit')}
           </Button>
           <Link to={profile} className={buttonClassName('secondary', 'sm:w-auto')}>
@@ -131,4 +150,11 @@ function EditPersonForm({
       </form>
     </div>
   );
+}
+
+/** The photo part of `updatePerson`: nothing when unchanged (OQ-008, OQ-040). */
+function photoFields(photo: PhotoChange) {
+  if (photo.kind === 'new') return { profileMediaAssetId: photo.assetId };
+  if (photo.kind === 'removed') return { removeProfilePicture: true };
+  return {};
 }

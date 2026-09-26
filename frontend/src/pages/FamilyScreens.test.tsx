@@ -395,7 +395,8 @@ describe('Family screens', () => {
         'firstName',
         'lastName',
       ]);
-      expect(screen.queryByText(/photo/i)).not.toBeInTheDocument();
+      // The photo is among the first fields (family-tree-ux.md §5, PR-38).
+      expect(screen.getByRole('button', { name: 'Ajouter une photo' })).toBeInTheDocument();
       type('Prénom', '  Marie ');
       type('Nom', 'Adji');
       fireEvent.click(screen.getByRole('button', { name: "M'ajouter à la famille" }));

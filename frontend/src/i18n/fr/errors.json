@@ -13,5 +13,10 @@
   "PERSON_NOT_ACTIVE": "Cette personne a été archivée ou fusionnée : elle ne peut plus recevoir de nouveau lien.",
   "RELATIONSHIP_WARNING_CONFIRMATION_REQUIRED": "Les dates de naissance semblent incohérentes. Vérifiez-les ou confirmez le lien.",
   "POSSIBLE_DUPLICATE": "Une personne semblable est déjà dans la famille.",
-  "PERSON_MERGE_CONFLICT": "Ces deux fiches ne peuvent pas être fusionnées."
+  "PERSON_MERGE_CONFLICT": "Ces deux fiches ne peuvent pas être fusionnées.",
+  "MEDIA_TOO_LARGE": "Cette photo est trop lourde. Choisissez une photo de 15 Mo maximum.",
+  "MEDIA_INVALID": "Ce fichier ne peut pas être utilisé comme photo. Choisissez-en un autre.",
+  "MEDIA_NOT_READY": "Cette photo n'est pas encore prête. Choisissez-la de nouveau.",
+  "MEDIA_ALREADY_USED": "Cette photo est déjà utilisée. Choisissez-la de nouveau.",
+  "MEDIA_NOT_FOUND": "Cette photo est introuvable. Choisissez-la de nouveau."
 }

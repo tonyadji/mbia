@@ -297,5 +297,24 @@
       "PERSON_RESTORED": "Profile restored",
       "PERSONS_MERGED": "Merged with a duplicate profile"
     }
+  },
+  "photo": {
+    "label": "Photo",
+    "add": "Add a photo",
+    "change": "Change the photo",
+    "remove": "Remove the photo",
+    "removedHint": "The photo will be removed when you save.",
+    "preparing": "Preparing the photo…",
+    "uploading": "Sending the photo… {{percent}} %",
+    "processing": "Checking the photo…",
+    "progressLabel": "Sending the photo",
+    "errors": {
+      "unsupported": "This file is not a photo Mbia can use. Choose a JPEG, PNG or WEBP photo.",
+      "tooLarge": "This photo is too large. Choose a photo of 15 MB or less.",
+      "failed": "The photo could not be sent. Check your connection and try again.",
+      "invalid": "This file cannot be used as a photo. Choose another one."
+    },
+    "retry": "Try again",
+    "chooseAnother": "Choose another photo"
   }
 }

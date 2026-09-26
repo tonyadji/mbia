@@ -127,9 +127,11 @@ jobs:
           cache: npm
           cache-dependency-path: frontend/package-lock.json
 
-      # RustFS is not used before media arrive.
-      - name: Start PostgreSQL, Mailpit and Keycloak
-        run: docker compose up -d --wait --wait-timeout 300 postgres mailpit keycloak
+      # RustFS holds the Person photos; rustfs-init creates the bucket and its CORS rule (PR-38).
+      - name: Start PostgreSQL, RustFS, Mailpit and Keycloak
+        run: |
+          docker compose up -d --wait --wait-timeout 300 postgres rustfs mailpit keycloak
+          docker compose up --exit-code-from rustfs-init rustfs-init
 
       # Tests already ran in the backend job.
       - name: Start the backend
