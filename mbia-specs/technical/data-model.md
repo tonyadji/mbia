@@ -645,7 +645,8 @@ Rules (processing details: ADR-007):
 - the API describes an asset by the MIME type and size declared at upload (`upload_mime_type`, `upload_size_bytes`), and by the dimensions of its `display` derivative (OQ-045);
 - an asset is attached once, to a single use of its purpose (for example one Person's photo); attaching it again is refused with `MEDIA_ALREADY_USED` (OQ-036);
 - a `READY` asset still unattached 24 hours after `ready_at` becomes `FAILED` and its objects are deleted by the same scheduled task (OQ-036);
-- a replaced or removed Person photo becomes `ARCHIVED` and no URL is served for it (OQ-040);
+- a replaced or removed Person photo becomes `ARCHIVED` and no URL is served for it (OQ-040); its objects are kept, as the rest of the soft lifecycle;
+- a Person's photo is served as the pre-signed URL of its `thumbnail` derivative (`profilePictureUrl`), signed from the Person row without reading `media_assets`: an attached asset is always `READY`;
 - only `READY` media may be attached to a person profile or photo memory;
 - storage keys are internal and must not be exposed as public permanent URLs;
 - views use pre-signed GET URLs valid for 60 minutes.
@@ -802,7 +803,7 @@ Memories write (OQ-039):
 - `MEMORY_UPDATED`: one entry per changed field; for `title`, `content` and `caption` only the field name is recorded, never the text; for related Persons, the ids before and after;
 - `MEMORY_ARCHIVED`.
 
-Media operations are not audited: their state is in `media_assets`. Storage keys and pre-signed URLs are never written.
+Media operations are not audited: their state is in `media_assets`. Storage keys and pre-signed URLs are never written. Setting, replacing or removing a Person's photo changes the Person: it is a `PERSON_UPDATED` entry of the field `profilePicture`, whose values are the asset ids, and the Person history shows it without values (OQ-046).
 
 Examples:
 
@@ -858,7 +859,7 @@ Transaction steps:
 
 1. lock both Person rows;
 2. verify expected versions;
-3. retain target scalar values when both source and target are non-empty; fill only empty target fields from source (empty: absent text, `gender = UNKNOWN`, date precision `UNKNOWN`; the target is deceased when either is, and an unknown target death date takes the source's, OQ-028);
+3. retain target scalar values when both source and target are non-empty; fill only empty target fields from source (empty: absent text, `gender = UNKNOWN`, date precision `UNKNOWN`; the target is deceased when either is, and an unknown target death date takes the source's, OQ-028); the target keeps its photo or takes the source's, the source keeps none, and its photo becomes `ARCHIVED` when the target already had one (OQ-047);
 4. move `memory_persons` links from B to A, deduplicating existing links;
 5. move relationships from B to A, ACTIVE and ARCHIVED (OQ-027); an ARCHIVED relation between A and B stays on B;
 6. canonicalize `PARTNER_OF` relations after replacement;

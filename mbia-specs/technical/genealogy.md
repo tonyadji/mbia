@@ -217,7 +217,7 @@ The Person history endpoint maps only presentation-safe Person-related entries (
 
 - entries whose resource is the Person (`resource_type = PERSON`), with the actions above; relationship entries are not part of a Person's history in the MVP;
 - most recent first (`occurred_at DESC`, then `id`), paged;
-- `PERSON_UPDATED` shows its `field` with the old and new values, except `biography`, shown without values;
+- `PERSON_UPDATED` shows its `field` with the old and new values, except `biography` and `profilePicture` (the photo, OQ-046), shown without values;
 - other actions show no field and no value (never a linked user id, status or merge details);
 - readable by any ACTIVE member of the Family, whatever the Person's status, like the profile; an unknown Person or one of another Family returns 404.
 

@@ -1,8 +1,12 @@
 package com.lehnade.mbia.memory.application;
 
 import com.lehnade.mbia.memory.domain.MediaAsset;
+import com.lehnade.mbia.memory.domain.MediaAssetId;
 import com.lehnade.mbia.memory.domain.MediaStatus;
+import com.lehnade.mbia.memory.domain.MediaStorageKeys;
+import java.net.URI;
 import java.time.Duration;
+import java.util.UUID;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
@@ -29,5 +33,13 @@ public class MediaViews {
                 asset.uploadSizeBytes(), asset.widthPx(), asset.heightPx(),
                 ready ? objectStorage.presignDownload(asset.displayStorageKey(), downloadUrlValidity) : null,
                 ready ? objectStorage.presignDownload(asset.thumbnailStorageKey(), downloadUrlValidity) : null);
+    }
+
+    /**
+     * The pre-signed URL of the thumbnail of an asset known to be READY, such as a Person's photo:
+     * its key is formed from the ids, so no query is needed.
+     */
+    public URI thumbnailUrl(UUID familyId, MediaAssetId id) {
+        return objectStorage.presignDownload(MediaStorageKeys.thumbnail(familyId, id), downloadUrlValidity);
     }
 }

@@ -3,19 +3,20 @@ package com.lehnade.mbia.genealogy.application;
 import com.lehnade.mbia.genealogy.domain.PartialDate;
 import com.lehnade.mbia.genealogy.domain.Person;
 import com.lehnade.mbia.genealogy.domain.PersonDetails;
+import java.net.URI;
 import java.util.LinkedHashMap;
 import java.util.Map;
 
 /**
  * A Person as the openapi {@code PersonSummary} describes it, for the {@code details} of a problem
- * response (the candidates of {@code POSSIBLE_DUPLICATE}). Absent values are left out; no photo in
- * Phase 2.
+ * response (the candidates of {@code POSSIBLE_DUPLICATE}). Absent values are left out.
  */
 public final class PersonSummaries {
 
     private PersonSummaries() {}
 
-    public static Map<String, Object> of(Person person) {
+    /** @param profilePictureUrl the URL of the Person's photo, or {@code null} */
+    public static Map<String, Object> of(Person person, URI profilePictureUrl) {
         PersonDetails details = person.details();
         Map<String, Object> summary = new LinkedHashMap<>();
         summary.put("id", person.id().value());
@@ -29,6 +30,7 @@ public final class PersonSummaries {
         summary.put("birth", of(details.birth()));
         summary.put("isDeceased", details.deceased());
         summary.put("death", of(details.death()));
+        putIfPresent(summary, "profilePictureUrl", profilePictureUrl == null ? null : profilePictureUrl.toString());
         person.linkedUserId().ifPresent(user -> summary.put("linkedUserId", user));
         summary.put("status", person.status().name());
         summary.put("version", person.version());

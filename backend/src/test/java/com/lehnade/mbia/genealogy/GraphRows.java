@@ -1,5 +1,6 @@
 package com.lehnade.mbia.genealogy;
 
+import com.lehnade.mbia.memory.MediaFixtures;
 import java.sql.Timestamp;
 import java.time.Instant;
 import java.time.LocalDate;
@@ -47,6 +48,18 @@ public final class GraphRows {
         jdbc.sql("UPDATE persons SET last_name = ?, preferred_name = ? WHERE id = ?")
                 .params(lastName, preferredName, id).update();
         return id;
+    }
+
+    /**
+     * Gives the Person a READY photo uploaded by the Family's user, written straight to the
+     * database (no object in storage: signing its URL needs none).
+     *
+     * @return the media asset of the photo
+     */
+    public UUID photo(UUID personId) {
+        UUID photo = MediaFixtures.insertRow(jdbc, familyId, userId, "READY");
+        jdbc.sql("UPDATE persons SET profile_media_asset_id = ? WHERE id = ?").params(photo, personId).update();
+        return photo;
     }
 
     public void archivePerson(UUID personId) {

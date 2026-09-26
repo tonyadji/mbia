@@ -16,6 +16,7 @@ import com.lehnade.mbia.shared.domain.Versions;
 import java.time.Clock;
 import java.time.Instant;
 import java.util.Collection;
+import java.util.Comparator;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
@@ -115,8 +116,12 @@ public class UpdateMemoryUseCase {
                 memory.id().value(), oldValue, newValue, now));
     }
 
+    /**
+     * In text order, which is PostgreSQL's {@code uuid} order and that of {@code MEMORY_CREATED}.
+     * Not {@link UUID#compareTo}: it compares signed numbers and puts {@code 8…}–{@code f…} first.
+     */
     private static List<UUID> sorted(Memory memory) {
-        return memory.relatedPersonIds().stream().sorted().toList();
+        return memory.relatedPersonIds().stream().sorted(Comparator.comparing(UUID::toString)).toList();
     }
 
     private MemoryView view(Memory memory) {

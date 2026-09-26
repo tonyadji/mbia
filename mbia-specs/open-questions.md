@@ -98,7 +98,7 @@ When a question is answered, update the relevant spec, then move the entry to **
 - **Options:** A — reject with 400 `VALIDATION_FAILED` on that field (no media asset can exist yet, so the reference is invalid) / B — ignore the field silently / C — remove the field from the contract until media is delivered (breaking change, needs `api-breaking-approved`, re-added later).
 - **Recommendation:** A; the contract stays stable and nothing is silently dropped. `profilePictureUrl` is always `null` in Phase 2 responses.
 - **Blocking:** the handling of that field in PR-17 and PR-18 only; the rest of those PRs can proceed.
-- **Answer:** B (human, 2026-09-25): the value is ignored and the request behaves as if the field were absent. Documented in `delivery/phase-2-core-family-graph.md` §3.1 and PR-17 / PR-18 acceptance criteria.
+- **Answer:** B (human, 2026-09-25): the value is ignored and the request behaves as if the field were absent. Documented in `delivery/phase-2-core-family-graph.md` §3.1 and PR-17 / PR-18 acceptance criteria. Ended in PR-37 (Phase 3): the value is used, with the rules of OQ-036 and OQ-040.
 
 ### OQ-006 — Where an ADMIN finds what can be restored
 
@@ -497,3 +497,23 @@ When a question is answered, update the relevant spec, then move the entry to **
 - **Recommendation:** A. They are the only stored values, and the served images are always JPEG (ADR-007).
 - **Blocking:** the response of `completeMediaUpload` (PR-36).
 - **Answer:** A (human, 2026-09-26). Documented in `data-model.md` §13 and `openapi.yaml` (`MediaAssetResponse`).
+
+### OQ-046 — A Person photo change in the history
+
+- **Raised by / date:** coding agent (PR-37), 2026-09-26
+- **Context:** `genealogy.md` §13 audits each changed Person field as `PERSON_UPDATED`, and the Person history shows old → new values. `data-model.md` §17 says that media operations are not audited, but attaching, replacing or removing a Person's photo (OQ-040) changes the Person. An asset id means nothing to a family member.
+- **Question:** is a photo change audited and shown in the Person history?
+- **Options:** A — audited as `PERSON_UPDATED` with the field `profilePicture` (the asset ids in the internal audit), shown in the history without values, like `biography` / B — not audited.
+- **Recommendation:** A. The history says who changed the photo and when, without any technical value.
+- **Blocking:** the audit of PR-37.
+- **Answer:** A (human, 2026-09-26). Documented in `data-model.md` §17 and `genealogy.md` §13; implemented in PR-37. The history label "Photo" arrives with the photo screens (PR-38); until then the entry reads as a generic profile change.
+
+### OQ-047 — The photo in a merge
+
+- **Raised by / date:** coding agent (PR-37), 2026-09-26
+- **Context:** `data-model.md` §19 step 3 keeps the target's values and fills its empty ones from the source (OQ-028), but does not mention the photo. OQ-036 attaches an asset to a single Person.
+- **Question:** what happens to the photos of the two Persons in a merge?
+- **Options:** A — the target keeps its photo; without one, it takes the source's. The MERGED source keeps no photo; when the target already had one, the source's becomes `ARCHIVED` / B — nothing moves: the MERGED source keeps its photo.
+- **Recommendation:** A, the rule of OQ-028; a photo stays attached to one Person.
+- **Blocking:** the merge of PR-37.
+- **Answer:** A (human, 2026-09-26). Documented in `data-model.md` §19 and `openapi.yaml` (`mergePerson` description, text only); implemented in PR-37.

@@ -6,6 +6,7 @@ import static org.mockito.Mockito.doThrow;
 
 import com.lehnade.mbia.ApiTestSupport;
 import com.lehnade.mbia.family.FamilyFixtures.FamilyWithMembers;
+import com.lehnade.mbia.genealogy.GraphRows;
 import com.lehnade.mbia.genealogy.PersonFixtures;
 import com.lehnade.mbia.memory.MemoryFixtures;
 import com.lehnade.mbia.shared.application.audit.AuditLog;
@@ -75,6 +76,23 @@ class MemoryMutationAuditTest extends ApiTestSupport {
                 .params("%(" + String.join("|", OLD_TITLE, NEW_TITLE, OLD_CONTENT, NEW_CONTENT) + ")%",
                         "%(" + String.join("|", OLD_TITLE, NEW_TITLE, OLD_CONTENT, NEW_CONTENT) + ")%")
                 .query(Long.class).single()).isZero();
+    }
+
+    /** Deterministic: one id on each side of the sign bit, which {@code UUID.compareTo} orders the other way. */
+    @Test
+    void thePersonIdsAreAuditedInTextOrder() {
+        String random = UUID.randomUUID().toString().substring(1);
+        UUID low = UUID.fromString("3" + random);
+        UUID high = UUID.fromString("d" + random);
+        GraphRows rows = new GraphRows(jdbc, family.familyId(), families().userId(family.admin()));
+        rows.person(high, "Haute", null, null);
+        rows.person(low, "Basse", null, null);
+
+        assertThat(memories.update(family.admin(), family.familyId(), memory, "\"0\"",
+                "{\"relatedPersonIds\": [\"" + high + "\", \"" + low + "\"]}")).hasStatusOk();
+
+        assertThat(updates()).singleElement().satisfies(row -> assertThat((String) row.get("new_value"))
+                .isEqualTo("{\"relatedPersonIds\": [\"" + low + "\", \"" + high + "\"]}"));
     }
 
     @Test

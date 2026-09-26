@@ -206,18 +206,16 @@ class CreatePersonApiTest extends ApiTestSupport {
                 "{\"firstName\": \"Marie\", \"middleNames\": \"" + "x".repeat(251) + "\"}"));
     }
 
-    // --- No photo until PR-37 (OQ-005): the column exists since V008 (PR-35) but stays empty ---
+    // --- PR-37 replaces OQ-005: profileMediaAssetId is used; the photo rules are in PersonPhotoApiTest ---
 
     @Test
-    void profileMediaAssetIdIsIgnored() {
-        MvcTestResult result = persons.create(family.admin(), family.familyId(),
-                "{\"firstName\": \"Marie\", \"profileMediaAssetId\": \"" + UUID.randomUUID() + "\"}");
+    void anUnknownProfileMediaAssetIdIsRefusedAndNothingIsCreated() {
+        long before = persons.count(family.familyId());
 
-        assertThat(result).hasStatus(HttpStatus.CREATED);
-        assertThat(result).bodyJson().extractingPath("$.profilePictureUrl").isNull();
-        assertThat(jdbc.sql("SELECT profile_media_asset_id FROM persons WHERE id = ?")
-                .param(UUID.fromString(JsonPath.read(FamilyFixtures.body(result), "$.id")))
-                .query().singleRow()).containsEntry("profile_media_asset_id", null);
+        assertThat(persons.create(family.admin(), family.familyId(),
+                "{\"firstName\": \"Marie\", \"profileMediaAssetId\": \"" + UUID.randomUUID() + "\"}"))
+                .hasStatus(HttpStatus.NOT_FOUND).bodyJson().extractingPath("$.code").isEqualTo("MEDIA_NOT_FOUND");
+        assertThat(persons.count(family.familyId())).isEqualTo(before);
     }
 
     // --- Access: ADMIN and CONTRIBUTOR only; not an ACTIVE member → 404 ---

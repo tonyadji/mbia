@@ -1,5 +1,6 @@
 package com.lehnade.mbia.genealogy.application.getpersonhistory;
 
+import com.lehnade.mbia.genealogy.application.audit.PersonAuditValues;
 import com.lehnade.mbia.genealogy.application.getpersonhistory.PersonHistoryQuery.Entry;
 import java.util.HashSet;
 import java.util.Set;
@@ -7,7 +8,7 @@ import java.util.Set;
 /**
  * What the Person history shows of the audit trail (data-model.md §18, genealogy.md §13, OQ-031):
  * only entries whose resource is the Person, and only the old and new value of a field changed by
- * {@code PERSON_UPDATED}, except the biography. Other values (user ids, merge details, statuses)
+ * {@code PERSON_UPDATED}, except the biography and the photo (OQ-046). Other values (user ids, merge details, statuses)
  * stay in the internal audit.
  */
 final class PresentationSafeHistory {
@@ -16,7 +17,7 @@ final class PresentationSafeHistory {
             "PERSON_UNCLAIMED", "PERSON_ARCHIVED", "PERSON_RESTORED", "PERSONS_MERGED");
 
     /** Fields whose change is shown without its values. */
-    private static final Set<String> FIELDS_WITHOUT_VALUES = Set.of("biography");
+    private static final Set<String> FIELDS_WITHOUT_VALUES = Set.of("biography", PersonAuditValues.PROFILE_PICTURE);
 
     private PresentationSafeHistory() {}
 

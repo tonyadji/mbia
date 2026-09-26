@@ -13,11 +13,10 @@ interface PersonJpaRepository extends JpaRepository<PersonJpaEntity, UUID> {
 
     Optional<PersonJpaEntity> findByIdAndFamilyId(UUID id, UUID familyId);
 
-    /** {@code profile_media_asset_id} is not mapped on the entity until Persons carry a photo (PR-37). */
-    @Query(nativeQuery = true, value = """
-            SELECT DISTINCT p.profile_media_asset_id
-            FROM persons p
-            WHERE p.profile_media_asset_id IN (:mediaAssetIds)
+    @Query("""
+            SELECT DISTINCT p.profileMediaAssetId
+            FROM PersonJpaEntity p
+            WHERE p.profileMediaAssetId IN :mediaAssetIds
             """)
     List<UUID> findProfilePicturesAmong(Collection<UUID> mediaAssetIds);
 

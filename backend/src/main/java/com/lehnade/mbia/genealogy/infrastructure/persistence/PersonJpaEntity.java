@@ -59,6 +59,9 @@ class PersonJpaEntity {
     @Column(columnDefinition = "text")
     private String biography;
 
+    @Column(name = "profile_media_asset_id")
+    private UUID profileMediaAssetId;
+
     @Column(name = "linked_user_id")
     private UUID linkedUserId;
 
@@ -92,7 +95,8 @@ class PersonJpaEntity {
     PersonJpaEntity(UUID id, UUID familyId, String firstName, String middleNames, String lastName,
             String preferredName, String gender, LocalDate birthDate, Short birthYear, String birthDatePrecision,
             boolean deceased, LocalDate deathDate, Short deathYear, String deathDatePrecision, String biography,
-            UUID linkedUserId, String status, UUID createdBy, UUID updatedBy, Instant createdAt, Instant updatedAt) {
+            UUID profileMediaAssetId, UUID linkedUserId, String status, UUID createdBy, UUID updatedBy,
+            Instant createdAt, Instant updatedAt) {
         this.id = id;
         this.familyId = familyId;
         this.firstName = firstName;
@@ -108,6 +112,7 @@ class PersonJpaEntity {
         this.deathYear = deathYear;
         this.deathDatePrecision = deathDatePrecision;
         this.biography = biography;
+        this.profileMediaAssetId = profileMediaAssetId;
         this.linkedUserId = linkedUserId;
         this.status = status;
         this.createdBy = createdBy;
@@ -134,6 +139,10 @@ class PersonJpaEntity {
         this.biography = biography;
         this.updatedBy = updatedBy;
         this.updatedAt = updatedAt;
+    }
+
+    void changeProfilePicture(UUID profileMediaAssetId) {
+        this.profileMediaAssetId = profileMediaAssetId;
     }
 
     void changeLinkedUser(UUID linkedUserId) {
@@ -208,6 +217,10 @@ class PersonJpaEntity {
 
     String biography() {
         return biography;
+    }
+
+    UUID profileMediaAssetId() {
+        return profileMediaAssetId;
     }
 
     UUID linkedUserId() {

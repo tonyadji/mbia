@@ -17,6 +17,7 @@ import org.junit.jupiter.params.provider.ValueSource;
 /**
  * PR-35: an upload slot is a PENDING_UPLOAD Person photo of at most 15 MB, JPEG, PNG or WEBP
  * (data-model.md §13; Phase 3 plan §3.3), whose storage key is formed by the backend (§3.5).
+ * PR-37: only its uploader attaches a READY asset, and a replaced photo is archived (OQ-036, OQ-040).
  */
 class MediaAssetTest {
 
@@ -165,6 +166,54 @@ class MediaAssetTest {
         assertThatThrownBy(() -> failed.markReady(10, 10, NOW)).isInstanceOf(IllegalStateException.class);
         assertThatThrownBy(() -> failed.markFailed(MediaFailureReason.UPLOAD_EXPIRED))
                 .isInstanceOf(IllegalStateException.class);
+    }
+
+    // --- PR-37: a READY upload becomes the photo of a Person (OQ-036, OQ-040) ---
+
+    @Test
+    void onlyItsUploaderMayAttachAReadyAsset() {
+        MediaAsset ready = upload(MediaPurpose.PROFILE_PICTURE, "image/png", 1_000).markReady(10, 10, NOW);
+
+        ready.requireAttachableAsProfilePictureBy(USER);
+        assertRefused(() -> ready.requireAttachableAsProfilePictureBy(UUID.randomUUID()),
+                ErrorCode.PERMISSION_DENIED);
+    }
+
+    @Test
+    void anAssetThatIsNotReadyCannotBeAttached() {
+        MediaAsset pending = upload(MediaPurpose.PROFILE_PICTURE, "image/png", 1_000);
+        MediaAsset failed = pending.markFailed(MediaFailureReason.UNREADABLE);
+        MediaAsset archived = pending.markReady(10, 10, NOW).archive(NOW);
+
+        for (MediaAsset asset : new MediaAsset[] {pending, failed, archived}) {
+            assertRefused(() -> asset.requireAttachableAsProfilePictureBy(USER), ErrorCode.MEDIA_NOT_READY);
+        }
+        // Another member's upload is refused first, whatever its status.
+        assertRefused(() -> pending.requireAttachableAsProfilePictureBy(UUID.randomUUID()),
+                ErrorCode.PERMISSION_DENIED);
+    }
+
+    @Test
+    void aReplacedOrRemovedPhotoIsArchivedAndServesNoUrlAnyMore() {
+        MediaAsset ready = upload(MediaPurpose.PROFILE_PICTURE, "image/png", 1_000).markReady(10, 10, NOW);
+        Instant later = NOW.plusSeconds(60);
+
+        MediaAsset archived = ready.archive(later);
+
+        assertThat(archived.status()).isEqualTo(MediaStatus.ARCHIVED);
+        assertThat(archived.archivedAt()).isEqualTo(later);
+        assertThat(archived.readyAt()).isEqualTo(NOW);
+        assertThat(ready.archivedAt()).isNull();
+        assertThatThrownBy(() -> archived.archive(later)).isInstanceOf(IllegalStateException.class);
+        assertThatThrownBy(() -> archived.markFailed(MediaFailureReason.NEVER_ATTACHED))
+                .isInstanceOf(IllegalStateException.class);
+        assertThatThrownBy(() -> upload(MediaPurpose.PROFILE_PICTURE, "image/png", 1_000).archive(later))
+                .isInstanceOf(IllegalStateException.class);
+    }
+
+    private static void assertRefused(ThrowingCallable call, ErrorCode code) {
+        assertThatThrownBy(call).isInstanceOfSatisfying(DomainException.class,
+                e -> assertThat(e.code()).isEqualTo(code));
     }
 
     private static MediaAsset upload(MediaPurpose purpose, String mimeType, long sizeBytes) {

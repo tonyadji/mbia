@@ -43,7 +43,8 @@ class JpaMediaAssetRepository implements MediaAssetRepository {
                 .orElseThrow(() -> new IllegalStateException("The media asset to update does not exist."));
         entity.change(asset.status().name(), asset.displayStorageKey(), asset.thumbnailStorageKey(),
                 asset.widthPx(), asset.heightPx(),
-                asset.failureReason() == null ? null : asset.failureReason().name(), asset.readyAt());
+                asset.failureReason() == null ? null : asset.failureReason().name(), asset.readyAt(),
+                asset.archivedAt());
         jpa.saveAndFlush(entity);
     }
 
@@ -65,6 +66,6 @@ class JpaMediaAssetRepository implements MediaAssetRepository {
                 entity.originalFilename(), entity.uploadMimeType(), entity.uploadSizeBytes(), entity.uploadedBy(),
                 entity.createdAt(), entity.widthPx(), entity.heightPx(),
                 entity.failureReason() == null ? null : MediaFailureReason.valueOf(entity.failureReason()),
-                entity.readyAt());
+                entity.readyAt(), entity.archivedAt());
     }
 }

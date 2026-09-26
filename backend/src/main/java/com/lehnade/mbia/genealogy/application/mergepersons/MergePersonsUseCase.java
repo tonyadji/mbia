@@ -6,6 +6,7 @@ import com.lehnade.mbia.genealogy.application.MemoryLinksPort;
 import com.lehnade.mbia.genealogy.application.MemoryLinksPort.MovedMemoryLinks;
 import com.lehnade.mbia.genealogy.application.PersonNotFound;
 import com.lehnade.mbia.genealogy.application.PersonView;
+import com.lehnade.mbia.genealogy.application.ProfilePictures;
 import com.lehnade.mbia.genealogy.application.RelationshipToCurrentUser;
 import com.lehnade.mbia.genealogy.application.audit.PersonAuditValues;
 import com.lehnade.mbia.genealogy.domain.FamilyGraphLock;
@@ -42,7 +43,8 @@ import org.springframework.transaction.annotation.Transactional;
  * module (Phase 3 plan §3.4). The relationships of the duplicate move to the kept Person (OQ-027): an ACTIVE one identical to an ACTIVE relationship of the kept Person is
  * archived instead, and a removed link between the two stays with the duplicate. The kept Person
  * keeps its known values and takes the missing ones from the duplicate (OQ-028), and its User when
- * it has none. Refusals are {@code PERSON_MERGE_CONFLICT} with a {@code reason} (OQ-026).
+ * it has none. It keeps its photo, or takes the duplicate's when it has none; the duplicate keeps
+ * no photo, and its photo is archived when the kept Person already had one (OQ-047). Refusals are {@code PERSON_MERGE_CONFLICT} with a {@code reason} (OQ-026).
  */
 @Service
 public class MergePersonsUseCase {
@@ -59,13 +61,14 @@ public class MergePersonsUseCase {
     private final RelationshipToCurrentUser relationshipToCurrentUser;
     private final FamilyGraphLock graphLock;
     private final MemoryLinksPort memoryLinks;
+    private final ProfilePictures profilePictures;
     private final AuditLog auditLog;
     private final Clock clock;
 
     public MergePersonsUseCase(CurrentUserAccessor currentUserAccessor, FamilyAccess familyAccess,
             PersonRepository persons, RelationshipRepository relationships, ParentalCycleCheck cycleCheck,
             RelationshipToCurrentUser relationshipToCurrentUser, FamilyGraphLock graphLock, MemoryLinksPort memoryLinks,
-            AuditLog auditLog, Clock clock) {
+            ProfilePictures profilePictures, AuditLog auditLog, Clock clock) {
         this.currentUserAccessor = currentUserAccessor;
         this.familyAccess = familyAccess;
         this.persons = persons;
@@ -74,6 +77,7 @@ public class MergePersonsUseCase {
         this.relationshipToCurrentUser = relationshipToCurrentUser;
         this.graphLock = graphLock;
         this.memoryLinks = memoryLinks;
+        this.profilePictures = profilePictures;
         this.auditLog = auditLog;
         this.clock = clock;
     }
@@ -125,6 +129,10 @@ public class MergePersonsUseCase {
 
         persons.update(source.mergeInto(targetId, callerId, now));
         Person kept = persons.update(target.absorb(source, callerId, now));
+        if (target.profileMediaAssetId().isPresent()) {
+            source.profileMediaAssetId()
+                    .ifPresent(photo -> profilePictures.archive(command.familyId(), photo, now));
+        }
 
         auditLog.append(new AuditEntry(kept.familyId(), callerId, "PERSONS_MERGED", AuditEntry.PERSON,
                 kept.id().value(), PersonAuditValues.changed(target.details(), kept.details()),
@@ -157,6 +165,9 @@ public class MergePersonsUseCase {
         values.put("memoriesDeduplicated", memories.deduplicated());
         if (!target.isLinked()) {
             kept.linkedUserId().ifPresent(user -> values.put("linkedUserId", user));
+        }
+        if (target.profileMediaAssetId().isEmpty()) {
+            values.putAll(PersonAuditValues.profilePicture(kept.profileMediaAssetId().orElse(null)));
         }
         return values;
     }
