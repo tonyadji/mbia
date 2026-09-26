@@ -14,6 +14,7 @@ import { isSupportedLanguage, DEFAULT_LANGUAGE } from '../i18n/language';
 import { AddRelativeMenu } from '../persons/AddRelativeMenu';
 import { ArchivePersonDialog } from '../persons/ArchivePersonDialog';
 import { MergePersonDialog } from '../persons/MergePersonDialog';
+import { PersonHistory } from '../persons/PersonHistory';
 import { formatDate } from '../i18n/formatDate';
 import { formatPartialDate, yearOf } from '../persons/formatPartialDate';
 import { familySections, sectionLink, type TreeEdge } from '../persons/familySections';
@@ -148,8 +149,8 @@ export function PersonRoute({
 }
 
 /**
- * SCREEN-005 — Person profile: header, Family (ACTIVE Persons only), the ADMIN's Removed links and
- * About; no Memory, History or photo in this phase (Phase 2 plan §3.1, §3.2). An ARCHIVED Person
+ * SCREEN-005 — Person profile: header, Family (ACTIVE Persons only), the ADMIN's Removed links,
+ * About and History; no Memory or photo in this phase (Phase 2 plan §3.1, §3.2). An ARCHIVED Person
  * shows a notice and no mutation action except, for the ADMIN, `Restore`; a MERGED Person, a notice
  * leading to the kept profile.
  */
@@ -216,7 +217,7 @@ function PersonProfile({
       <header className="flex flex-col gap-4">
         <Link
           to={familyHomePath(familyId)}
-          className="self-start text-body font-semibold text-primary underline-offset-4 hover:underline"
+          className="inline-flex min-h-12 items-center self-start text-body font-semibold text-primary underline-offset-4 hover:underline"
         >
           {t('settings:back')}
         </Link>
@@ -322,6 +323,8 @@ function PersonProfile({
           )}
         </dl>
       </section>
+
+      <PersonHistory familyId={familyId} personId={person.id} />
     </div>
   );
 }
@@ -590,7 +593,7 @@ function RemovedLinkRow({
         <div className="flex min-w-0 flex-col">
           <Link
             to={personPath(familyId, related.id)}
-            className="text-body font-semibold break-words text-text underline-offset-4 hover:underline"
+            className="flex min-h-12 items-center text-body font-semibold break-words text-text underline-offset-4 hover:underline"
           >
             {name}
           </Link>
@@ -827,6 +830,8 @@ function MergeAction({
               },
               {
                 onSuccess: (kept) => {
+                  // The profile page stays mounted for the kept Person: close the dialog first.
+                  setMerging(false);
                   const state: PersonProfileState = { merged: { name: displayNameOf(person) } };
                   void navigate(personPath(familyId, kept.id), { state });
                 },

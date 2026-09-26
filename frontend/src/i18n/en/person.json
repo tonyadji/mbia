@@ -264,5 +264,38 @@
   "merged": {
     "notice": "This profile was merged into another profile, which describes the same person.",
     "open": "Open the kept profile"
+  },
+  "history": {
+    "title": "History",
+    "empty": "No changes recorded yet.",
+    "more": "Show more",
+    "byOn": "{{date}} · {{actor}}",
+    "formerMember": "Former member",
+    "member": "A member",
+    "noValue": "(empty)",
+    "yes": "Yes",
+    "no": "No",
+    "biographyChanged": "Biography changed",
+    "fieldChanged": "{{field}}: {{from}} → {{to}}",
+    "fields": {
+      "firstName": "First name",
+      "middleNames": "Middle names",
+      "lastName": "Last name",
+      "preferredName": "Preferred name or nickname",
+      "gender": "Gender",
+      "birth": "Birth",
+      "isDeceased": "Deceased",
+      "death": "Death",
+      "biography": "Biography"
+    },
+    "actions": {
+      "PERSON_CREATED": "Profile created",
+      "PERSON_UPDATED": "Profile changed",
+      "PERSON_CLAIMED": "Linked to a member's account",
+      "PERSON_UNCLAIMED": "No longer linked to a member's account",
+      "PERSON_ARCHIVED": "Profile archived",
+      "PERSON_RESTORED": "Profile restored",
+      "PERSONS_MERGED": "Merged with a duplicate profile"
+    }
   }
 }

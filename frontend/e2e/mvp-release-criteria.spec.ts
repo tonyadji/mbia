@@ -14,19 +14,19 @@ test.describe('MVP release criteria (mvp.md §28)', () => {
     // Covered in Phase 1 by first-journey.spec.ts; joins this journey when the next steps exist.
   });
   test.fixme('3. create own Person', () => {
-    // Phase 2+: Persons.
+    // Covered in Phase 2 by phase-2-journey.spec.ts; joins this journey when the next steps exist.
   });
   test.fixme('4. add parents', () => {
-    // Phase 2+: relationships.
+    // Covered in Phase 2 by phase-2-journey.spec.ts; joins this journey when the next steps exist.
   });
   test.fixme('5. view tree', () => {
-    // Phase 2+: tree.
+    // Covered in Phase 2 by phase-2-journey.spec.ts; joins this journey when the next steps exist.
   });
   test.fixme('6. add grandparent', () => {
-    // Phase 2+: relationships.
+    // Covered in Phase 2 by phase-2-journey.spec.ts; joins this journey when the next steps exist.
   });
   test.fixme('7. see derived kinship', () => {
-    // Phase 2+: kinship engine.
+    // Covered in Phase 2 by phase-2-journey.spec.ts; joins this journey when the next steps exist.
   });
   test.fixme('8. add photo and Story', () => {
     // Phase 2+: memories and media.

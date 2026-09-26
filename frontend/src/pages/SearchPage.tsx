@@ -71,7 +71,7 @@ export function SearchPage() {
       <header className="flex flex-col gap-4">
         <Link
           to={backPath}
-          className="self-start text-body font-semibold text-primary underline-offset-4 hover:underline"
+          className="inline-flex min-h-12 items-center self-start text-body font-semibold text-primary underline-offset-4 hover:underline"
         >
           {t('settings:back')}
         </Link>
@@ -81,7 +81,7 @@ export function SearchPage() {
       {!fromTree && family.data?.myRole === 'ADMIN' && (
         <Link
           to={archivedPeoplePath(familyId)}
-          className="self-start text-body font-semibold text-primary underline-offset-4 hover:underline"
+          className="inline-flex min-h-12 items-center self-start text-body font-semibold text-primary underline-offset-4 hover:underline"
         >
           {t('person:archivedPeople.title')}
         </Link>

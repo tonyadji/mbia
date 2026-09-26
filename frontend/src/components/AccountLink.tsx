@@ -14,7 +14,8 @@ export function AccountLink() {
     <Link
       to={SETTINGS_PATH}
       aria-label={t('open')}
-      className="shrink-0 rounded-full focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary"
+      // The 40 px avatar sits in a 48 px touch target (design-guidelines.md §9).
+      className="inline-flex size-12 shrink-0 items-center justify-center rounded-full focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary"
     >
       <Avatar displayName={currentUser.displayName} email={currentUser.email} />
     </Link>

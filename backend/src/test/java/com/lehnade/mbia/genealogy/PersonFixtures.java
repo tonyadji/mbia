@@ -40,6 +40,15 @@ public final class PersonFixtures {
                 .exchange();
     }
 
+    public MvcTestResult history(TestJwts.Token token, UUID familyId, UUID personId, String... query) {
+        var request = mvc.get().uri("/api/v1/families/{familyId}/persons/{personId}/history", familyId, personId)
+                .header(HttpHeaders.AUTHORIZATION, token.bearer());
+        for (int i = 0; i + 1 < query.length; i += 2) {
+            request = request.param(query[i], query[i + 1]);
+        }
+        return request.exchange();
+    }
+
     public MvcTestResult update(TestJwts.Token token, UUID familyId, UUID personId, String ifMatch, String json) {
         var request = mvc.patch().uri("/api/v1/families/{familyId}/persons/{personId}", familyId, personId)
                 .header(HttpHeaders.AUTHORIZATION, token.bearer())

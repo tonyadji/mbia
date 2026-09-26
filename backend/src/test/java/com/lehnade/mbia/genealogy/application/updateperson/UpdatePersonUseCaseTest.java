@@ -6,6 +6,7 @@ import static org.mockito.ArgumentMatchers.argThat;
 import static org.mockito.Mockito.doAnswer;
 import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 
 import com.lehnade.mbia.ApiTestSupport;
@@ -22,8 +23,8 @@ import org.springframework.http.HttpStatus;
 import org.springframework.test.context.bean.override.mockito.MockitoSpyBean;
 
 /**
- * PR-18: an update is audited field by field in its transaction (genealogy.md §13, Phase 2 plan
- * §3.4); a no-op writes nothing (OQ-008); a change committed between the version check and the
+ * PR-18: an update is audited field by field, one entry per field, in its transaction
+ * (genealogy.md §13, Phase 2 plan §3.4, OQ-031); a no-op writes nothing (OQ-008); a change committed between the version check and the
  * write is not overwritten (technical-specification.md §13).
  */
 class UpdatePersonUseCaseTest extends ApiTestSupport {
@@ -47,15 +48,23 @@ class UpdatePersonUseCaseTest extends ApiTestSupport {
     }
 
     @Test
-    void onlyTheChangedFieldsAreAudited() {
+    void onlyTheChangedFieldsAreAuditedEachInItsOwnEntry() {
         persons.update(family.contributor(), family.familyId(), marie, "\"0\"",
                 "{\"firstName\": \"Marie\", \"lastName\": \"Mbida\", \"birth\": {\"precision\": \"YEAR_ONLY\", \"year\": 1956}}");
 
+        UUID contributor = families().userId(family.contributor());
         verify(auditLog).append(argThat(entry -> entry.action().equals("PERSON_UPDATED")
                 && entry.resourceId().equals(marie)
-                && entry.actorUserId().equals(families().userId(family.contributor()))
+                && entry.actorUserId().equals(contributor)
                 && entry.oldValue().equals(Map.of("birth", "1954"))
-                && entry.newValue().equals(Map.of("birth", "1956", "lastName", "Mbida"))));
+                && entry.newValue().equals(Map.of("birth", "1956"))));
+        verify(auditLog).append(argThat(entry -> entry.action().equals("PERSON_UPDATED")
+                && entry.resourceId().equals(marie)
+                && entry.actorUserId().equals(contributor)
+                && entry.oldValue().isEmpty()
+                && entry.newValue().equals(Map.of("lastName", "Mbida"))));
+        verify(auditLog, times(2)).append(argThat(entry -> entry.action().equals("PERSON_UPDATED")
+                && entry.resourceId().equals(marie)));
     }
 
     @Test

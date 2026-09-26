@@ -1,10 +1,11 @@
 import { useEffect, useEffectEvent, useId, useRef, type ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
+import { trapTab } from './focusTrap';
 
 /**
  * A panel over the screen (design-guidelines.md §7): a bottom sheet on a phone, a side panel on
  * desktop (family-tree-ux.md §3, §8). Escape, the backdrop and the close button close it; focus
- * moves into it and comes back where it was.
+ * moves into it, stays there on Tab and comes back where it was.
  */
 export function BottomSheet({
   title,
@@ -25,6 +26,7 @@ export function BottomSheet({
     panel.current?.focus();
     const onKeyDown = (event: KeyboardEvent) => {
       if (event.key === 'Escape') close();
+      trapTab(event, panel.current);
     };
     document.addEventListener('keydown', onKeyDown);
     return () => {

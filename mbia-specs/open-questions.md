@@ -302,3 +302,12 @@ When a question is answered, update the relevant spec, then move the entry to **
 - **Options:** A — from the duplicate's profile: the ADMIN searches the profile to keep (SCREEN-007), compares both, confirms, and lands on the kept profile / B — the same, with a way to swap which profile is kept.
 - **Recommendation:** A.
 - **Answer:** A (human, 2026-09-26). Documented in `screens.md` SCREEN-005 and SCREEN-COMPONENT-004; implemented in PR-27.
+
+### OQ-031 — What the Person history shows
+
+- **Raised by / date:** coding agent (PR-28), 2026-09-26
+- **Context:** `genealogy.md` §13 says the Person history maps "presentation-safe Person-related entries" and `data-model.md` §18 shows a field change ("Birth year: 1954 → 1956"), but neither says which audit entries are "Person-related" (relationship entries have the relationship as resource), how an update of several fields is shown (`PersonHistoryEntry` has one `field`), nor which values are safe to show.
+- **Question:** which entries and which values does the Person history show?
+- **Options:** scope: A — only entries whose resource is the Person / B — also the created, removed and restored relationships of the Person. Values: A — one audit entry per changed field, old → new, except the biography (changed, without values); no value for other actions (never a user id) / B — old → new for every field, biography included / C — the changed field only, no values.
+- **Recommendation:** A for both.
+- **Answer:** A for both (human, 2026-09-26). Documented in `genealogy.md` §13 and `data-model.md` §18; implemented in PR-28.

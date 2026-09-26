@@ -99,7 +99,7 @@ function FamilyContent({ family }: { family: Family }) {
           </p>
           <Link
             to={personPath(family.id, personAdded.id)}
-            className="self-start font-semibold text-primary underline-offset-4 hover:underline"
+            className="inline-flex min-h-12 items-center self-start font-semibold text-primary underline-offset-4 hover:underline"
           >
             {t('home.viewProfile')}
           </Link>

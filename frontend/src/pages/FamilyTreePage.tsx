@@ -135,7 +135,7 @@ function FamilyTree({ family }: { family: Family }) {
       <header className="flex flex-col gap-2">
         <Link
           to={familyHomePath(family.id)}
-          className="self-start text-body font-semibold text-primary underline-offset-4 hover:underline"
+          className="inline-flex min-h-12 items-center self-start text-body font-semibold text-primary underline-offset-4 hover:underline"
         >
           {family.name}
         </Link>

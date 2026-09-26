@@ -127,6 +127,7 @@ function fakeApi(handlers: Record<string, Handler>) {
     return handler ? handler(request) : problemResponse('RESOURCE_NOT_FOUND', 404);
   });
   return {
+    all: () => requests,
     patches: () => requests.filter((request) => request.method === 'PATCH'),
     claims: () => requests.filter((request) => new URL(request.url).pathname.endsWith('/claim')),
     trees: () => requests.filter((request) => new URL(request.url).pathname.endsWith('/tree')),
@@ -223,7 +224,7 @@ describe('Person screens', () => {
       expect(within(about).getByText('12 mars 1954')).toBeInTheDocument();
       expect(within(about).getByText('2020')).toBeInTheDocument();
       expect(within(about).getByText('Institutrice à Ebolowa.')).toBeInTheDocument();
-      expect(screen.queryByText(/souvenir|historique|photo/i)).not.toBeInTheDocument();
+      expect(screen.queryByText(/souvenir|photo/i)).not.toBeInTheDocument();
       expect(screen.getByRole('link', { name: 'Modifier' })).toHaveAttribute(
         'href',
         `${PROFILE}/edit`,
@@ -1050,6 +1051,8 @@ describe('Person screens', () => {
         ),
       ).toBeInTheDocument();
       expect(router.state.location.pathname).toBe(`/families/${ADJI_ID}/persons/${MARIA_ID}`);
+      // The dialog does not reopen on the kept profile.
+      expect(screen.queryByRole('dialog')).toBeNull();
       const [request] = mergeRequests();
       expect(await request?.json()).toEqual({
         targetPersonId: MARIA_ID,
@@ -1260,6 +1263,133 @@ describe('Person screens', () => {
         await screen.findByRole('heading', { level: 1, name: 'Marie Adji' }),
       ).toBeInTheDocument();
       expect(router.state.location.pathname).toBe(PROFILE);
+    });
+  });
+
+  describe('Person history (SCREEN-005, PR-28)', () => {
+    const HISTORY = `GET /families/${ADJI_ID}/persons/${MARIE_ID}/history`;
+
+    function entry(overrides: Record<string, unknown> = {}) {
+      return {
+        id: crypto.randomUUID(),
+        action: 'PERSON_UPDATED',
+        actor: { userId: 'u1', displayName: 'Alice', deleted: false },
+        field: null,
+        oldValue: null,
+        newValue: null,
+        occurredAt: '2026-09-26T10:00:00Z',
+        ...overrides,
+      };
+    }
+
+    function page(items: unknown[], pageNumber = 0, totalPages = 1) {
+      return {
+        items,
+        page: { page: pageNumber, size: 20, totalElements: items.length, totalPages },
+      };
+    }
+
+    function historyRequests(api: ReturnType<typeof personApi>) {
+      return api.all().filter((request) => new URL(request.url).pathname.endsWith('/history'));
+    }
+
+    async function openHistory() {
+      const heading = await screen.findByRole('heading', { level: 2, name: /Historique|History/ });
+      const details = heading.closest('details');
+      if (details === null) throw new Error('History is not collapsible');
+      expect(details).not.toHaveAttribute('open');
+      details.open = true;
+      fireEvent(details, new Event('toggle'));
+      return details;
+    }
+
+    it('is collapsed and loads nothing until opened, then shows readable changes', async () => {
+      const api = personApi({
+        other: {
+          [HISTORY]: () =>
+            jsonResponse(
+              page([
+                entry({ action: 'PERSON_CLAIMED' }),
+                entry({ field: 'birth', oldValue: '1954', newValue: '1956' }),
+                entry({ field: 'birth', oldValue: '1954-03-12', newValue: 'UNKNOWN' }),
+                entry({ field: 'lastName', oldValue: null, newValue: 'Adji' }),
+                entry({ field: 'gender', oldValue: 'UNKNOWN', newValue: 'FEMALE' }),
+                entry({ field: 'isDeceased', oldValue: false, newValue: true }),
+                entry({ field: 'biography' }),
+                entry({
+                  action: 'PERSON_CREATED',
+                  actor: { userId: 'u2', displayName: null, deleted: true },
+                }),
+              ]),
+            ),
+        },
+      });
+      renderApp(PROFILE);
+
+      await screen.findByRole('heading', { level: 2, name: 'Historique' });
+      expect(historyRequests(api)).toHaveLength(0);
+      const details = await openHistory();
+
+      const list = await within(details).findByRole('list', { name: 'Historique' });
+      const items = within(list).getAllByRole('listitem');
+      expect(items.map((item) => item.querySelector('p')?.textContent)).toEqual([
+        "Fiche reliée au compte d'un membre",
+        'Naissance : 1954 → 1956',
+        'Naissance : 12 mars 1954 → Inconnue',
+        'Nom : (vide) → Adji',
+        'Genre : Non précisé → Femme',
+        'Décès déclaré : Non → Oui',
+        'Biographie modifiée',
+        'Fiche créée',
+      ]);
+      expect(items[0]).toHaveTextContent('26 septembre 2026 · Alice');
+      expect(items[7]).toHaveTextContent('Ancien membre');
+      expect(list).not.toHaveTextContent(/PERSON_|birth|lastName|u1/);
+      expect(historyRequests(api)).toHaveLength(1);
+
+      await act(() => i18n.changeLanguage('en'));
+      expect(await screen.findByText('Birth: 1954 → 1956')).toBeInTheDocument();
+      expect(screen.getByText('Former member', { exact: false })).toBeInTheDocument();
+    });
+
+    it('says when nothing was recorded', async () => {
+      personApi({ other: { [HISTORY]: () => jsonResponse(page([])) } });
+      renderApp(PROFILE);
+
+      await openHistory();
+
+      expect(
+        await screen.findByText("Aucune modification enregistrée pour l'instant."),
+      ).toBeInTheDocument();
+    });
+
+    it('loads older changes on demand', async () => {
+      personApi({
+        other: {
+          [HISTORY]: (request) =>
+            new URL(request.url).searchParams.get('page') === '1'
+              ? jsonResponse(page([entry({ action: 'PERSON_CREATED' })], 1, 2))
+              : jsonResponse(page([entry({ action: 'PERSON_ARCHIVED' })], 0, 2)),
+        },
+      });
+      renderApp(PROFILE);
+
+      await openHistory();
+      fireEvent.click(await screen.findByRole('button', { name: 'Voir plus' }));
+
+      expect(await screen.findByText('Fiche créée')).toBeInTheDocument();
+      expect(screen.getByText('Fiche archivée')).toBeInTheDocument();
+      expect(screen.queryByRole('button', { name: 'Voir plus' })).toBeNull();
+    });
+
+    it('translates an error, without the raw server message', async () => {
+      personApi({ other: { [HISTORY]: () => problemResponse('PERMISSION_DENIED', 403) } });
+      renderApp(PROFILE);
+
+      await openHistory();
+
+      expect(await screen.findByRole('alert')).not.toHaveTextContent('raw server detail');
+      expect(screen.getByRole('button', { name: 'Réessayer' })).toBeInTheDocument();
     });
   });
 });

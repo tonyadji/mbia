@@ -26,8 +26,8 @@ import org.springframework.transaction.annotation.Transactional;
  * Changes the identity and profile of an ACTIVE Person, from its current version (openapi
  * {@code updatePerson}, SCREEN-012, technical-specification.md §13). ADMIN or CONTRIBUTOR
  * (person-relationships-collaboration.md §2); a Person linked to a User is protected: only that
- * User or an ADMIN may change it (mvp.md §7, OQ-009). A request that changes nothing writes nothing
- * and keeps the version (OQ-008).
+ * User or an ADMIN may change it (mvp.md §7, OQ-009). Each changed field is audited on its own
+ * (OQ-031). A request that changes nothing writes nothing and keeps the version (OQ-008).
  */
 @Service
 public class UpdatePersonUseCase {
@@ -80,9 +80,12 @@ public class UpdatePersonUseCase {
 
         Instant now = clock.instant();
         Person updated = persons.update(person.update(changed, callerId, now));
-        auditLog.append(new AuditEntry(updated.familyId(), callerId, "PERSON_UPDATED", AuditEntry.PERSON,
-                updated.id().value(), PersonAuditValues.changed(current, changed),
-                PersonAuditValues.changed(changed, current), now));
+        // One field-focused entry per changed field (genealogy.md §13, data-model.md §18, OQ-031).
+        for (String field : PersonAuditValues.changedFields(current, changed)) {
+            auditLog.append(new AuditEntry(updated.familyId(), callerId, "PERSON_UPDATED", AuditEntry.PERSON,
+                    updated.id().value(), PersonAuditValues.field(current, field),
+                    PersonAuditValues.field(changed, field), now));
+        }
         return new PersonView(updated, relationshipToCurrentUser.of(updated, callerId));
     }
 }
