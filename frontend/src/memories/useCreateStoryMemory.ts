@@ -3,6 +3,7 @@ import { apiClient } from '../api/client';
 import type { components } from '../api/generated/schema';
 import { familyQueryKey } from '../families/useFamily';
 import { familiesQueryKey } from '../families/useMyFamilies';
+import { familyMemoriesQueryKey } from './useFamilyMemories';
 import { personMemoriesQueryKey } from './usePersonMemories';
 
 export type CreateStoryMemoryRequest = components['schemas']['CreateStoryMemoryRequest'];
@@ -23,9 +24,10 @@ export function useCreateStoryMemory(familyId: string) {
       return data;
     },
     onSuccess: (memory) => {
-      // The Memory count of the Family changed, and the Memories of each related Person.
+      // The Memory count and list of the Family changed, and the Memories of each related Person.
       void queryClient.invalidateQueries({ queryKey: familyQueryKey(familyId), exact: true });
       void queryClient.invalidateQueries({ queryKey: familiesQueryKey, exact: true });
+      void queryClient.invalidateQueries({ queryKey: familyMemoriesQueryKey(familyId) });
       for (const person of memory.relatedPersons) {
         void queryClient.invalidateQueries({
           queryKey: personMemoriesQueryKey(familyId, person.id),

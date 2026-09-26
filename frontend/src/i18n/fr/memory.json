@@ -28,6 +28,12 @@
     "add": "Ajouter un souvenir",
     "more": "Voir plus"
   },
+  "family": {
+    "title": "Souvenirs",
+    "empty": "La famille n'a pas encore de souvenir. Les histoires racontées sur vos proches apparaîtront ici.",
+    "add": "Ajouter un souvenir",
+    "more": "Voir plus"
+  },
   "screen": {
     "persons": "Personnes concernées",
     "status": {

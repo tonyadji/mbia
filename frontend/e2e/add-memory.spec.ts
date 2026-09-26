@@ -4,10 +4,11 @@ import { t, type Language } from './support/i18n';
 import { newUser, registerAndVerify } from './support/keycloak';
 
 /**
- * PR-30, PR-31 (phase-3-family-memories.md): from Family Home, a User writes a long story about
- * themselves and their mother (SCREEN-006). Their own Person is preselected, the mother is found
- * with the Family search (SCREEN-007), and the story is published; it is then read on the Memory
- * screen (SCREEN-013) and found on the mother's profile (SCREEN-005). Runs at phone width.
+ * PR-30, PR-31, PR-32 (phase-3-family-memories.md): from Family Home, a User writes a long story
+ * about themselves and their mother (SCREEN-006). Their own Person is preselected, the mother is
+ * found with the Family search (SCREEN-007), and the story is published; it is then read on the
+ * Memory screen (SCREEN-013), found on the mother's profile (SCREEN-005) and in the Family
+ * `Memories` tab (SCREEN-015), and counted on Family Home (SCREEN-002). Runs at phone width.
  */
 for (const { language, locale } of [
   { language: 'fr', locale: 'fr-FR' },
@@ -112,6 +113,28 @@ for (const { language, locale } of [
       await memories.getByRole('link', { name: new RegExp(title) }).click();
       await expect(page).toHaveURL(memoryUrl);
       await expect(page.getByRole('heading', { level: 1 })).toHaveText(title);
+
+      // PR-32: Family Home counts it, and the Memories tab lists it.
+      await page.goto(familyUrl);
+      await expect(
+        page.getByText(t(language, 'family:home.memoryCount_one', { count: '1' }), { exact: true }),
+      ).toBeVisible();
+      const navigation = page.getByRole('navigation', {
+        name: t(language, 'family:navigation.label'),
+      });
+      await navigation
+        .getByRole('link', { name: t(language, 'family:navigation.memories') })
+        .click();
+      await expect(page).toHaveURL(`${familyUrl}/memories`);
+      await expect(page.getByRole('heading', { level: 1 })).toHaveText(
+        t(language, 'memory:family.title'),
+      );
+      const familyMemories = page.getByRole('list', { name: t(language, 'memory:family.title') });
+      await expect(familyMemories.getByRole('listitem')).toHaveCount(1);
+      await expectAccessibleControls(page);
+      await expectNoPageScroll(page);
+      await familyMemories.getByRole('link', { name: new RegExp(title) }).click();
+      await expect(page).toHaveURL(memoryUrl);
     });
   });
 }

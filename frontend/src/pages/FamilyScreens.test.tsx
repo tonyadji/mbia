@@ -238,15 +238,14 @@ describe('Family screens', () => {
       ).not.toBeInTheDocument();
     });
 
-    it('shows the Person count and Add a person once Persons exist, without a Memory count', async () => {
+    it('shows the Person and Memory counts and Add a person once Persons exist', async () => {
       fakeApi({
         [`GET /families/${ADJI_ID}`]: () => jsonResponse(family(ADJI_ID, 'ADJI', 3, 1)),
       });
       renderApp(`/families/${ADJI_ID}`);
 
       expect(await screen.findByText('3 personnes')).toBeInTheDocument();
-      // The Memory count arrives with Family Memories (phase-3-family-memories.md PR-32).
-      expect(screen.queryByText(/\d+ souvenirs?/)).not.toBeInTheDocument();
+      expect(screen.getByText('1 souvenir')).toBeInTheDocument();
       expect(screen.queryByText('Ajoutons la première personne.')).not.toBeInTheDocument();
       expect(screen.getByRole('link', { name: 'Ajouter une personne' })).toHaveAttribute(
         'href',
@@ -265,7 +264,18 @@ describe('Family screens', () => {
       expect(screen.queryByRole('link', { name: 'Ajouter une personne' })).not.toBeInTheDocument();
     });
 
-    it('has a navigation bar with Home and Tree, and opens settings from the avatar', async () => {
+    it('shows the Memory count in the plural, in French then English', async () => {
+      fakeApi({
+        [`GET /families/${ADJI_ID}`]: () => jsonResponse(family(ADJI_ID, 'ADJI', 3, 250, 'VIEWER')),
+      });
+      renderApp(`/families/${ADJI_ID}`);
+
+      expect(await screen.findByText('250 souvenirs')).toBeInTheDocument();
+      await act(() => i18n.changeLanguage('en'));
+      expect(screen.getByText('250 memories')).toBeInTheDocument();
+    });
+
+    it('has a navigation bar with Home, Tree and Memories, and opens settings from the avatar', async () => {
       fakeApi({ [`GET /families/${ADJI_ID}`]: () => jsonResponse(family(ADJI_ID, 'ADJI')) });
       const { router } = renderApp(`/families/${ADJI_ID}`);
       await screen.findByRole('heading', { level: 1, name: 'ADJI' });
@@ -274,11 +284,13 @@ describe('Family screens', () => {
         name: 'Navigation de la famille',
       });
       const tabs = within(navigation).getAllByRole('link');
-      expect(tabs).toHaveLength(2);
+      expect(tabs).toHaveLength(3);
       expect(tabs[0]).toHaveAccessibleName('Accueil');
       expect(tabs[0]).toHaveAttribute('aria-current', 'page');
       expect(tabs[1]).toHaveAccessibleName('Arbre');
       expect(tabs[1]).toHaveAttribute('href', `/families/${ADJI_ID}/tree`);
+      expect(tabs[2]).toHaveAccessibleName('Souvenirs');
+      expect(tabs[2]).toHaveAttribute('href', `/families/${ADJI_ID}/memories`);
 
       fireEvent.click(screen.getByRole('link', { name: 'Paramètres du compte' }));
 

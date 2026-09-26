@@ -47,11 +47,30 @@ class JpaMemoryRepository implements MemoryRepository {
 
     @Override
     public List<Memory> findActiveForPerson(UUID familyId, UUID personId, int page, int size) {
-        List<MemoryJpaEntity> found = jpa.findActiveForPerson(familyId, personId, PageRequest.of(page, size));
+        return withPersons(familyId, jpa.findActiveForPerson(familyId, personId, PageRequest.of(page, size)));
+    }
+
+    @Override
+    public long countActiveForPerson(UUID familyId, UUID personId) {
+        return jpa.countActiveForPerson(familyId, personId);
+    }
+
+    @Override
+    public List<Memory> findActiveInFamily(UUID familyId, Optional<MemoryType> type, int page, int size) {
+        return withPersons(familyId, jpa.findActiveInFamily(familyId, type.map(Enum::name).orElse(null),
+                PageRequest.of(page, size)));
+    }
+
+    @Override
+    public long countActiveInFamily(UUID familyId, Optional<MemoryType> type) {
+        return jpa.countActiveInFamily(familyId, type.map(Enum::name).orElse(null));
+    }
+
+    /** The Memories with their Persons, read for the whole page in one query. */
+    private List<Memory> withPersons(UUID familyId, List<MemoryJpaEntity> found) {
         if (found.isEmpty()) {
             return List.of();
         }
-        // The Persons of the whole page in one query.
         Map<UUID, Set<UUID>> personsByMemory = links
                 .findByFamilyIdAndMemoryIdIn(familyId, found.stream().map(MemoryJpaEntity::id).toList()).stream()
                 .collect(Collectors.groupingBy(MemoryPersonJpaEntity::memoryId,
@@ -59,11 +78,6 @@ class JpaMemoryRepository implements MemoryRepository {
         return found.stream()
                 .map(entity -> toDomain(entity, personsByMemory.getOrDefault(entity.id(), Set.of())))
                 .toList();
-    }
-
-    @Override
-    public long countActiveForPerson(UUID familyId, UUID personId) {
-        return jpa.countActiveForPerson(familyId, personId);
     }
 
     private static Memory toDomain(MemoryJpaEntity entity, Set<UUID> relatedPersonIds) {
