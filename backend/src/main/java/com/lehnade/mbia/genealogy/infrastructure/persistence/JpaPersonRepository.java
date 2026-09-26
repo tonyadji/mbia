@@ -14,6 +14,7 @@ import java.time.LocalDate;
 import java.util.Collection;
 import java.util.List;
 import java.util.Optional;
+import java.util.Set;
 import java.util.UUID;
 import org.hibernate.exception.ConstraintViolationException;
 import org.springframework.dao.DataIntegrityViolationException;
@@ -58,6 +59,14 @@ class JpaPersonRepository implements PersonRepository {
         return jpa.lockInFamily(familyId, ids.stream().map(PersonId::value).toList()).stream()
                 .map(JpaPersonRepository::toDomain)
                 .toList();
+    }
+
+    @Override
+    public Set<UUID> findProfilePicturesAmong(Collection<UUID> mediaAssetIds) {
+        if (mediaAssetIds.isEmpty()) {
+            return Set.of();
+        }
+        return Set.copyOf(jpa.findProfilePicturesAmong(mediaAssetIds));
     }
 
     @Override

@@ -46,6 +46,11 @@ mbia:
     path-style-access: true
     # Validity of a pre-signed upload (PUT) URL, returned as `expiresAt`.
     upload-url-validity: PT15M
+    # Validity of a pre-signed view (GET) URL of an image derivative (data-model.md §13).
+    download-url-validity: PT60M
+  media:
+    # Interval between two runs of the cleanup of expired uploads and unattached photos (ADR-007 §4, OQ-036).
+    cleanup-interval: PT1H
 
 ---
 # Structured JSON logs everywhere except local development (technical-specification.md §19).
@@ -115,3 +120,6 @@ mbia:
     cors:
       allowed-origins: http://localhost:5173
   # mbia.storage.* comes from the RustFS container of TestcontainersConfiguration.
+  # Tests run the scheduled tasks themselves.
+  scheduling:
+    enabled: false

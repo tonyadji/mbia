@@ -63,6 +63,8 @@ cd backend && ./mvnw spring-boot:run -Dspring-boot.run.profiles=local   # API on
 cd frontend && npm ci
 cd frontend && npm run generate:api       # regenerate the TypeScript types (also run before dev, build, typecheck, lint, test)
 npx @redocly/cli@2.54.3 lint mbia-specs/technical/api/openapi.yaml   # lint the contract (rules: redocly.yaml)
+python3 -m venv .venv-fixtures && .venv-fixtures/bin/pip install Pillow==12.3.0   # once, to regenerate the image fixtures
+.venv-fixtures/bin/python backend/scripts/generate-media-fixtures.py   # regenerate backend/src/test/resources/media/ (≤ 100 KB each)
 cd frontend && npm run typecheck
 cd frontend && npm run lint
 cd frontend && npm run i18n:check        # French and English translations have the same keys, no empty value

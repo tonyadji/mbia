@@ -13,6 +13,14 @@ interface PersonJpaRepository extends JpaRepository<PersonJpaEntity, UUID> {
 
     Optional<PersonJpaEntity> findByIdAndFamilyId(UUID id, UUID familyId);
 
+    /** {@code profile_media_asset_id} is not mapped on the entity until Persons carry a photo (PR-37). */
+    @Query(nativeQuery = true, value = """
+            SELECT DISTINCT p.profile_media_asset_id
+            FROM persons p
+            WHERE p.profile_media_asset_id IN (:mediaAssetIds)
+            """)
+    List<UUID> findProfilePicturesAmong(Collection<UUID> mediaAssetIds);
+
     List<PersonJpaEntity> findByFamilyIdAndIdIn(UUID familyId, Collection<UUID> ids);
 
     /** {@code SELECT … FOR UPDATE}, rows sorted by id before they are locked (genealogy.md §12). */

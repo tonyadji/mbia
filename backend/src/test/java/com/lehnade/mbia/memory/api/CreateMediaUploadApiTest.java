@@ -23,7 +23,6 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.test.system.CapturedOutput;
 import org.springframework.boot.test.system.OutputCaptureExtension;
-import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.test.web.servlet.assertj.MvcTestResult;
@@ -208,20 +207,6 @@ class CreateMediaUploadApiTest extends ApiTestSupport {
         assertThat(media.count(family.familyId())).isZero();
     }
 
-    /** Completion arrives with PR-36. */
-    @Test
-    void completingAnUploadIsNotAvailableYet() {
-        Slot slot = media.createSlot(family.admin(), family.familyId(), "image/jpeg", 1_000);
-
-        assertThat(mvc.post().uri("/api/v1/families/{familyId}/media/uploads/{mediaAssetId}/complete",
-                        family.familyId(), slot.mediaAssetId())
-                .header(HttpHeaders.AUTHORIZATION, family.admin().bearer())
-                .exchange())
-                .hasStatus(HttpStatus.NOT_FOUND)
-                .bodyJson().extractingPath("$.code").isEqualTo("RESOURCE_NOT_FOUND");
-        assertThat(media.row(slot.mediaAssetId())).containsEntry("status", "PENDING_UPLOAD");
-    }
-
     @Test
     void theStorageKeyIsNeitherLoggedNorInAnError(CapturedOutput output) {
         Slot slot = media.createSlot(family.admin(), family.familyId(), "image/jpeg", 1_000);
@@ -229,15 +214,12 @@ class CreateMediaUploadApiTest extends ApiTestSupport {
                 "image/jpeg", 1_000);
         MvcTestResult tooLarge = media.createUpload(family.admin(), family.familyId(), "PROFILE_PICTURE",
                 "image/jpeg", FIFTEEN_MB + 1);
-        MvcTestResult notYet = mvc.post().uri("/api/v1/families/{familyId}/media/uploads/{mediaAssetId}/complete",
-                        family.familyId(), slot.mediaAssetId())
-                .header(HttpHeaders.AUTHORIZATION, family.admin().bearer())
-                .exchange();
+        MvcTestResult nothingUploaded = media.complete(family.admin(), family.familyId(), slot.mediaAssetId());
 
         // The API path /families/{familyId}/media/uploads looks like a key prefix: look for whole keys.
         String key = "families/" + family.familyId() + "/media/" + slot.mediaAssetId() + "/upload";
         assertThat(output.getAll()).doesNotContain(key).doesNotContain("/upload?").doesNotContain("X-Amz-");
-        for (MvcTestResult error : new MvcTestResult[] {refused, tooLarge, notYet}) {
+        for (MvcTestResult error : new MvcTestResult[] {refused, tooLarge, nothingUploaded}) {
             assertThat(FamilyFixtures.body(error)).doesNotContain(key).doesNotContain("/upload");
         }
     }

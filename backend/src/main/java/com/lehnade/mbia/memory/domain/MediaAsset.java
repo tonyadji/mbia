@@ -4,6 +4,7 @@ import com.lehnade.mbia.shared.domain.DomainException;
 import com.lehnade.mbia.shared.domain.ErrorCode;
 import com.lehnade.mbia.shared.domain.FieldValidationException;
 import java.time.Instant;
+import java.util.List;
 import java.util.Objects;
 import java.util.Set;
 import java.util.UUID;
@@ -12,7 +13,7 @@ import java.util.UUID;
  * An image uploaded directly by the browser to object storage (data-model.md §13, ADR-004,
  * ADR-007). In this iteration only Person photos are uploaded (Phase 3 plan §3.3, OQ-040).
  *
- * <p>The storage key is internal: it is never returned, logged or audited (Phase 3 plan §3.5).
+ * <p>Storage keys are internal: they are never returned, logged or audited (Phase 3 plan §3.5).
  */
 public final class MediaAsset {
 
@@ -20,6 +21,8 @@ public final class MediaAsset {
     public static final long MAX_SIZE_BYTES = 15L * 1024 * 1024;
     public static final int FILE_NAME_MAX_LENGTH = 500;
     public static final Set<String> SUPPORTED_MIME_TYPES = Set.of("image/jpeg", "image/png", "image/webp");
+    /** Decompression-bomb protection (ADR-007 §3). */
+    public static final long MAX_PIXELS = 40_000_000L;
 
     private final MediaAssetId id;
     private final UUID familyId;
@@ -31,10 +34,15 @@ public final class MediaAsset {
     private final long uploadSizeBytes;
     private final UUID uploadedBy;
     private final Instant createdAt;
+    private final Integer widthPx;
+    private final Integer heightPx;
+    private final MediaFailureReason failureReason;
+    private final Instant readyAt;
 
     private MediaAsset(MediaAssetId id, UUID familyId, MediaPurpose purpose, MediaStatus status,
             String uploadStorageKey, String originalFilename, String uploadMimeType, long uploadSizeBytes,
-            UUID uploadedBy, Instant createdAt) {
+            UUID uploadedBy, Instant createdAt, Integer widthPx, Integer heightPx, MediaFailureReason failureReason,
+            Instant readyAt) {
         this.id = Objects.requireNonNull(id, "id");
         this.familyId = Objects.requireNonNull(familyId, "familyId");
         this.purpose = Objects.requireNonNull(purpose, "purpose");
@@ -45,6 +53,10 @@ public final class MediaAsset {
         this.uploadSizeBytes = uploadSizeBytes;
         this.uploadedBy = Objects.requireNonNull(uploadedBy, "uploadedBy");
         this.createdAt = Objects.requireNonNull(createdAt, "createdAt");
+        this.widthPx = widthPx;
+        this.heightPx = heightPx;
+        this.failureReason = failureReason;
+        this.readyAt = readyAt;
     }
 
     /**
@@ -75,7 +87,60 @@ public final class MediaAsset {
             throw tooLarge();
         }
         return new MediaAsset(id, familyId, purpose, MediaStatus.PENDING_UPLOAD,
-                MediaStorageKeys.upload(familyId, id), fileName, mimeType, sizeBytes, uploadedBy, now);
+                MediaStorageKeys.upload(familyId, id), fileName, mimeType, sizeBytes, uploadedBy, now, null, null,
+                null, null);
+    }
+
+    /** An asset as stored. */
+    public static MediaAsset restore(MediaAssetId id, UUID familyId, MediaPurpose purpose, MediaStatus status,
+            String originalFilename, String uploadMimeType, long uploadSizeBytes, UUID uploadedBy,
+            Instant createdAt, Integer widthPx, Integer heightPx, MediaFailureReason failureReason,
+            Instant readyAt) {
+        return new MediaAsset(id, familyId, purpose, status, MediaStorageKeys.upload(familyId, id),
+                originalFilename, uploadMimeType, uploadSizeBytes, uploadedBy, createdAt, widthPx, heightPx,
+                failureReason, readyAt);
+    }
+
+    /**
+     * The upload was processed: both derivatives are stored and the original is deleted (ADR-007
+     * §3).
+     *
+     * @param widthPx the width of the {@code display} derivative
+     * @param heightPx the height of the {@code display} derivative
+     */
+    public MediaAsset markReady(int widthPx, int heightPx, Instant now) {
+        requireStatus(MediaStatus.PENDING_UPLOAD);
+        return new MediaAsset(id, familyId, purpose, MediaStatus.READY, uploadStorageKey, originalFilename,
+                uploadMimeType, uploadSizeBytes, uploadedBy, createdAt, widthPx, heightPx, null, now);
+    }
+
+    /**
+     * The upload is invalid or expired (ADR-007 §3, §4), or the READY asset was never attached
+     * (OQ-036). Its objects are deleted by the caller.
+     */
+    public MediaAsset markFailed(MediaFailureReason reason) {
+        Objects.requireNonNull(reason, "reason");
+        if (status != MediaStatus.PENDING_UPLOAD && status != MediaStatus.READY) {
+            throw new IllegalStateException("A " + status + " media asset cannot fail.");
+        }
+        return new MediaAsset(id, familyId, purpose, MediaStatus.FAILED, uploadStorageKey, originalFilename,
+                uploadMimeType, uploadSizeBytes, uploadedBy, createdAt, widthPx, heightPx, reason, readyAt);
+    }
+
+    private void requireStatus(MediaStatus expected) {
+        if (status != expected) {
+            throw new IllegalStateException("The media asset is " + status + ", not " + expected + ".");
+        }
+    }
+
+    /** {@code MEDIA_INVALID}: the upload is not a usable JPEG, PNG or WEBP image (ADR-007 §3). */
+    public static DomainException invalid() {
+        return new DomainException(ErrorCode.MEDIA_INVALID, "The file is not a valid JPEG, PNG or WEBP image.");
+    }
+
+    /** {@code MEDIA_NOT_FOUND}: unknown, or of another Family (OQ-037). */
+    public static DomainException notFound() {
+        return new DomainException(ErrorCode.MEDIA_NOT_FOUND, "Media not found.");
     }
 
     /** {@code MEDIA_TOO_LARGE}: the file is above {@link #MAX_SIZE_BYTES}. */
@@ -122,6 +187,39 @@ public final class MediaAsset {
 
     public Instant createdAt() {
         return createdAt;
+    }
+
+    /** Internal: never returned, logged or audited. Set once the asset has been READY. */
+    public String displayStorageKey() {
+        return readyAt != null ? MediaStorageKeys.display(familyId, id) : null;
+    }
+
+    /** Internal: never returned, logged or audited. Set once the asset has been READY. */
+    public String thumbnailStorageKey() {
+        return readyAt != null ? MediaStorageKeys.thumbnail(familyId, id) : null;
+    }
+
+    /** Every object this asset may have in storage, for deletion. Internal. */
+    public List<String> allStorageKeys() {
+        return List.of(uploadStorageKey, MediaStorageKeys.display(familyId, id),
+                MediaStorageKeys.thumbnail(familyId, id));
+    }
+
+    /** Of the {@code display} derivative; null until READY. */
+    public Integer widthPx() {
+        return widthPx;
+    }
+
+    public Integer heightPx() {
+        return heightPx;
+    }
+
+    public MediaFailureReason failureReason() {
+        return failureReason;
+    }
+
+    public Instant readyAt() {
+        return readyAt;
     }
 
     /** Never shows the storage key. */
