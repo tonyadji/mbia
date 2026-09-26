@@ -51,7 +51,7 @@ export function PersonQuickView({
   return (
     <BottomSheet title={name} onClose={onClose}>
       <div className="flex items-center gap-4">
-        <Avatar displayName={name} size="lg" />
+        <Avatar displayName={name} photoUrl={person.profilePictureUrl} size="lg" />
         <div className="flex min-w-0 flex-col gap-1">
           {years && <p className="text-body text-text-muted">{years}</p>}
           {relationship && (
@@ -105,5 +105,7 @@ function MemoryCount({ familyId, personId }: { familyId: string; personId: strin
   const count = usePersonMemoryCount(familyId, personId);
   if (count.isPending) return <Skeleton className="h-4 w-20" />;
   if (count.isError) return null;
-  return <p className="text-caption text-text-muted">{t('quickView.memories', { count: count.data })}</p>;
+  return (
+    <p className="text-caption text-text-muted">{t('quickView.memories', { count: count.data })}</p>
+  );
 }

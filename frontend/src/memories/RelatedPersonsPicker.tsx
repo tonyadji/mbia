@@ -10,6 +10,7 @@ import { PersonSearch } from '../persons/PersonSearch';
 export interface RelatedPerson {
   id: string;
   name: string;
+  photoUrl?: string | null;
   /** Already on an edited Memory while archived: it may stay, never be added again (OQ-035). */
   archived?: boolean;
 }
@@ -48,7 +49,7 @@ export function RelatedPersonsPicker({
               key={person.id}
               className="flex items-center gap-3 rounded-xl border border-border bg-surface py-1 pr-1 pl-4"
             >
-              <Avatar displayName={person.name} />
+              <Avatar displayName={person.name} photoUrl={person.photoUrl} />
               <span className="flex min-w-0 flex-1 flex-col">
                 <span className="text-body font-semibold break-words text-text">{person.name}</span>
                 {person.archived && (
@@ -107,7 +108,11 @@ export function RelatedPersonsPicker({
             onSelect={(person) => {
               onChange([
                 ...persons,
-                { id: person.id, name: person.displayName ?? person.firstName },
+                {
+                  id: person.id,
+                  name: person.displayName ?? person.firstName,
+                  photoUrl: person.profilePictureUrl,
+                },
               ]);
               setChoosing(false);
             }}

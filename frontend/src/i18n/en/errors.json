@@ -13,5 +13,10 @@
   "PERSON_NOT_ACTIVE": "This person was archived or merged: they cannot receive new links.",
   "RELATIONSHIP_WARNING_CONFIRMATION_REQUIRED": "The birth dates look inconsistent. Check them or confirm the link.",
   "POSSIBLE_DUPLICATE": "A similar person is already in the family.",
-  "PERSON_MERGE_CONFLICT": "These two profiles cannot be merged."
+  "PERSON_MERGE_CONFLICT": "These two profiles cannot be merged.",
+  "MEDIA_TOO_LARGE": "This photo is too large. Choose a photo of 15 MB or less.",
+  "MEDIA_INVALID": "This file cannot be used as a photo. Choose another one.",
+  "MEDIA_NOT_READY": "This photo is not ready yet. Choose it again.",
+  "MEDIA_ALREADY_USED": "This photo is already used. Choose it again.",
+  "MEDIA_NOT_FOUND": "This photo cannot be found. Choose it again."
 }

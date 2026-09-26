@@ -4,6 +4,7 @@ import { Link, useLocation, useNavigate, useParams } from 'react-router';
 import { ApiError } from '../api/client';
 import type { components } from '../api/generated/schema';
 import { useCurrentUser } from '../auth/useCurrentUser';
+import { Avatar } from '../components/Avatar';
 import { Button, buttonClassName } from '../components/Button';
 import { ErrorState } from '../components/ErrorState';
 import { Skeleton } from '../components/Skeleton';
@@ -279,11 +280,16 @@ function RelatedPersonRow({
       <span className="text-body font-semibold break-words text-text">{person.displayName}</span>
     );
   return (
-    <div className="flex flex-col">
-      {name}
-      {person.status !== 'ACTIVE' && (
-        <span className="text-caption text-text-muted">{t(`screen.status.${person.status}`)}</span>
-      )}
+    <div className="flex items-center gap-3">
+      <Avatar displayName={person.displayName} photoUrl={person.profilePictureUrl} />
+      <div className="flex min-w-0 flex-col">
+        {name}
+        {person.status !== 'ACTIVE' && (
+          <span className="text-caption text-text-muted">
+            {t(`screen.status.${person.status}`)}
+          </span>
+        )}
+      </div>
     </div>
   );
 }

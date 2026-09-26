@@ -59,7 +59,13 @@ export function AddMemoryPage() {
   // An unknown or archived Person is simply not preselected.
   const initialPersons: RelatedPerson[] =
     preselect.data?.status === 'ACTIVE'
-      ? [{ id: preselect.data.id, name: displayNameOf(preselect.data) }]
+      ? [
+          {
+            id: preselect.data.id,
+            name: displayNameOf(preselect.data),
+            photoUrl: preselect.data.profilePictureUrl,
+          },
+        ]
       : [];
 
   return (

@@ -41,7 +41,7 @@ export function DuplicateCandidates({
               className="flex flex-col gap-3 rounded-xl border border-border bg-surface px-4 py-3 sm:flex-row sm:items-center"
             >
               <div className="flex min-w-0 flex-1 items-center gap-3">
-                <Avatar displayName={name} />
+                <Avatar displayName={name} photoUrl={candidate.profilePictureUrl} />
                 <div className="flex min-w-0 flex-col">
                   <p className="text-body font-semibold break-words text-text">{name}</p>
                   {years && <p className="text-caption text-text-muted">{years}</p>}

@@ -143,7 +143,7 @@ function SearchResult({ person, onSelect }: { person: PersonSummary; onSelect: (
       onClick={onSelect}
       className="flex min-h-16 w-full items-center gap-3 rounded-xl border border-border bg-surface px-4 py-2 text-left transition-colors hover:border-primary focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary"
     >
-      <Avatar displayName={name} />
+      <Avatar displayName={name} photoUrl={person.profilePictureUrl} />
       <span className="flex min-w-0 flex-1 flex-col">
         <span className="text-body font-semibold break-words text-text">{name}</span>
         {years && <span className="text-caption text-text-muted">{years}</span>}

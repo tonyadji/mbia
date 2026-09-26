@@ -1,3 +1,7 @@
+import { useState } from 'react';
+import { useQueryClient } from '@tanstack/react-query';
+import { familiesQueryKey } from '../families/useMyFamilies';
+
 /** The first letter of the display name, otherwise of the email (user content, never translated). */
 export function initialOf(displayName: string | null | undefined, email: string): string {
   const name = displayName?.trim() ?? '';
@@ -12,24 +16,60 @@ const sizes = {
 } as const;
 
 /**
- * Round avatar showing the initial of a User or a Person (design-guidelines.md §7); decorative.
- * Persons have no photo in Phase 2.
+ * Round avatar of a User or a Person (design-guidelines.md §5, §7); decorative, the name is always
+ * next to it. A Person's photo is shown centre-cropped (OQ-040), with the initial as the fallback.
+ *
+ * Photo URLs are pre-signed for 60 minutes (data-model.md §13). When one fails to load, most likely
+ * because it expired, the Family data on screen is fetched again to get freshly signed URLs; a new
+ * URL that fails as well leaves the initial.
  */
 export function Avatar({
   displayName,
   email = '',
+  photoUrl = null,
   size = 'md',
 }: {
   displayName?: string | null;
   email?: string;
+  photoUrl?: string | null;
   size?: keyof typeof sizes;
 }) {
+  const queryClient = useQueryClient();
+  // The last URL that failed to load, until a photo loads again.
+  const [failed, setFailed] = useState<string | null>(null);
+  const showPhoto = photoUrl !== null && failed !== photoUrl;
+
+  const onError = () => {
+    if (photoUrl === null) return;
+    setFailed(photoUrl);
+    // A second failure in a row, with a fresh URL, keeps the initial: no reload loop.
+    if (failed === null) {
+      void queryClient.invalidateQueries(
+        { queryKey: familiesQueryKey, refetchType: 'active' },
+        { cancelRefetch: false },
+      );
+    }
+  };
+
   return (
     <span
       aria-hidden="true"
-      className={`inline-flex shrink-0 items-center justify-center rounded-full bg-primary font-semibold text-on-primary ${sizes[size]}`}
+      className={`inline-flex shrink-0 items-center justify-center overflow-hidden rounded-full bg-primary font-semibold text-on-primary ${sizes[size]}`}
     >
-      {initialOf(displayName, email)}
+      {showPhoto ? (
+        <img
+          src={photoUrl}
+          alt=""
+          loading="lazy"
+          onError={onError}
+          onLoad={() => {
+            setFailed(null);
+          }}
+          className="size-full object-cover"
+        />
+      ) : (
+        initialOf(displayName, email)
+      )}
     </span>
   );
 }

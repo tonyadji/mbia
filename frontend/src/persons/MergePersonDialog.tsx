@@ -157,7 +157,7 @@ function Summary({ label, person }: { label: string; person: Person }) {
     <div className="flex flex-col gap-2 rounded-xl border border-border bg-surface px-4 py-3">
       <p className="text-caption text-text-muted">{label}</p>
       <div className="flex items-center gap-3">
-        <Avatar displayName={name} />
+        <Avatar displayName={name} photoUrl={person.profilePictureUrl} />
         <div className="flex min-w-0 flex-col">
           <p className="text-body font-semibold break-words text-text">{name}</p>
           {years && <p className="text-caption text-text-muted">{years}</p>}
