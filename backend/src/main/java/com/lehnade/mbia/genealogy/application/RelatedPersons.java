@@ -9,6 +9,7 @@ import com.lehnade.mbia.shared.domain.ErrorCode;
 import java.util.Collection;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.UUID;
 import java.util.function.Function;
 import java.util.stream.Collectors;
@@ -40,13 +41,30 @@ public class RelatedPersons {
      */
     @Transactional(propagation = Propagation.MANDATORY)
     public List<RelatedPerson> requireLinkable(UUID familyId, Collection<UUID> personIds) {
+        return requireRelinkable(familyId, Set.of(), personIds);
+    }
+
+    /**
+     * The new Persons of existing content: as {@link #requireLinkable}, except that an ARCHIVED
+     * Person already attached may stay (OQ-035). Every Person is locked, so that the caller can
+     * rely on the returned statuses until the end of its transaction.
+     *
+     * @param alreadyLinked the Persons the content is attached to now
+     * @return the Persons, in UUID order, with their status
+     */
+    @Transactional(propagation = Propagation.MANDATORY)
+    public List<RelatedPerson> requireRelinkable(UUID familyId, Set<UUID> alreadyLinked,
+            Collection<UUID> personIds) {
         List<Person> found = persons.lockInFamily(familyId, personIds.stream().map(PersonId::new).toList());
         boolean allVisible = found.size() == personIds.stream().distinct().count()
                 && found.stream().noneMatch(person -> person.status() == PersonStatus.MERGED);
         if (!allVisible) {
             throw PersonNotFound.exception();
         }
-        if (!found.stream().allMatch(Person::isActive)) {
+        boolean newOnesActive = found.stream()
+                .filter(person -> !alreadyLinked.contains(person.id().value()))
+                .allMatch(Person::isActive);
+        if (!newOnesActive) {
             throw new DomainException(ErrorCode.PERSON_NOT_ACTIVE, "An archived person cannot be linked.");
         }
         return found.stream().map(RelatedPersons::toRelated).toList();

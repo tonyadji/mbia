@@ -15,20 +15,19 @@ import org.springframework.http.MediaType;
 import org.springframework.test.web.servlet.assertj.MvcTestResult;
 
 /**
- * PR-29: photo Memories are not created in this iteration (Phase 3 plan §3.1, OQ-042), and the
- * Memory operations of later PRs answer like a route that does not exist yet.
+ * PR-29: photo Memories are not created in this iteration (Phase 3 plan §3.1, OQ-042): the
+ * operation answers like a route that does not exist yet. Update and archive exist since PR-33.
  */
 class MemoryOperationsNotAvailableApiTest extends ApiTestSupport {
 
     private FamilyWithMembers family;
     private UUID person;
-    private UUID memory;
 
     @BeforeEach
     void givenAStory() {
         family = families().givenFamilyWithMembersOfEachRole();
         person = new PersonFixtures(mvc, jdbc).createId(family.admin(), family.familyId(), "{\"firstName\": \"Awa\"}");
-        memory = new MemoryFixtures(mvc, jdbc).createStoryId(family.admin(), family.familyId(), person);
+        new MemoryFixtures(mvc, jdbc).createStoryId(family.admin(), family.familyId(), person);
     }
 
     @Test
@@ -41,18 +40,6 @@ class MemoryOperationsNotAvailableApiTest extends ApiTestSupport {
                         """.formatted(UUID.randomUUID(), person))
                 .exchange());
         assertThat(new MemoryFixtures(mvc, jdbc).count(family.familyId())).isEqualTo(1);
-    }
-
-    @Test
-    void updateAndArchiveAnswer404() {
-        String bearer = family.admin().bearer();
-        assertNotAvailable(mvc.patch().uri("/api/v1/families/{familyId}/memories/{memoryId}", family.familyId(),
-                        memory)
-                .header(HttpHeaders.AUTHORIZATION, bearer).header(HttpHeaders.IF_MATCH, "\"0\"")
-                .contentType(MediaType.APPLICATION_JSON)
-                .content("{\"title\": \"Autre\", \"relatedPersonIds\": [\"" + person + "\"]}").exchange());
-        assertNotAvailable(mvc.delete().uri("/api/v1/families/{familyId}/memories/{memoryId}", family.familyId(),
-                memory).header(HttpHeaders.AUTHORIZATION, bearer).header(HttpHeaders.IF_MATCH, "\"0\"").exchange());
     }
 
     private static void assertNotAvailable(MvcTestResult result) {

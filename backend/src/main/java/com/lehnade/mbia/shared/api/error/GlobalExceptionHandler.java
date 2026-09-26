@@ -3,6 +3,7 @@ package com.lehnade.mbia.shared.api.error;
 import com.lehnade.mbia.shared.api.tracing.RequestIdFilter;
 import com.lehnade.mbia.shared.domain.DomainException;
 import com.lehnade.mbia.shared.domain.ErrorCode;
+import com.lehnade.mbia.shared.domain.FieldValidationException;
 import com.lehnade.mbia.shared.domain.Versions;
 import jakarta.validation.ConstraintViolationException;
 import java.util.List;
@@ -50,6 +51,11 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
 
     @ExceptionHandler(DomainException.class)
     ResponseEntity<Object> handleDomainException(DomainException ex, WebRequest request) {
+        if (ex instanceof FieldValidationException invalid) {
+            List<FieldErrorResponse> fieldErrors =
+                    List.of(new FieldErrorResponse(invalid.field(), invalid.fieldCode(), invalid.detail()));
+            return respond(problem(ex.code(), ex.detail(), fieldErrors, null), new HttpHeaders(), request);
+        }
         Map<String, Object> details = ex.details().isEmpty() ? null : ex.details();
         return respond(problem(ex.code(), ex.detail(), null, details), new HttpHeaders(), request);
     }

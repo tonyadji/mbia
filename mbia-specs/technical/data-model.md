@@ -726,7 +726,7 @@ Rules:
 - a photo/story can reference multiple people;
 - no duplicate association;
 - a `MERGED` source person must be replaced with the merge target during merge;
-- archived persons remain historically referenced but are not selectable for new associations: on create and edit, the resulting set has at least one ACTIVE Person, and every Person newly added is ACTIVE; archiving a Person leaves its associations and Memories unchanged (OQ-035).
+- archived persons remain historically referenced but are not selectable for new associations: on create, and on an edit that changes the set (OQ-043), the resulting set has at least one ACTIVE Person, and every Person newly added is ACTIVE; archiving a Person leaves its associations and Memories unchanged (OQ-035).
 
 ## 16. Table: `activities`
 

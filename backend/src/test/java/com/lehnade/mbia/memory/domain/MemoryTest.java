@@ -7,6 +7,7 @@ import com.lehnade.mbia.shared.domain.DomainException;
 import com.lehnade.mbia.shared.domain.ErrorCode;
 import java.time.Instant;
 import java.util.List;
+import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
 import org.junit.jupiter.api.Test;
@@ -14,7 +15,10 @@ import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.NullAndEmptySource;
 import org.junit.jupiter.params.provider.ValueSource;
 
-/** PR-29: a STORY has a title and a text, and at least one Person (mvp.md §17, data-model.md §14). */
+/**
+ * PR-29, PR-33: a STORY has a title and a text, and at least one Person (mvp.md §17, data-model.md
+ * §14); it is edited partially (OQ-008) and archived.
+ */
 class MemoryTest {
 
     private static final UUID FAMILY = UUID.randomUUID();
@@ -76,6 +80,69 @@ class MemoryTest {
     @Test
     void aPersonRepeatedIsLinkedOnce() {
         assertThat(story("Titre", "Texte", List.of(PERSON, PERSON)).relatedPersonIds()).isEqualTo(Set.of(PERSON));
+    }
+
+    // --- Edit and archive (PR-33) ---
+
+    private static final UUID EDITOR = UUID.randomUUID();
+    private static final Instant LATER = NOW.plusSeconds(60);
+
+    @Test
+    void anEditChangesOnlyTheGivenValues() {
+        Memory memory = story("Titre", "Texte", List.of(PERSON));
+        UUID other = UUID.randomUUID();
+
+        Memory edited = memory.updateStory(Optional.of("  Nouveau  "), Optional.empty(),
+                Optional.of(List.of(other)), EDITOR, LATER);
+
+        assertThat(edited.title()).isEqualTo("Nouveau");
+        assertThat(edited.content()).isEqualTo("Texte");
+        assertThat(edited.relatedPersonIds()).containsExactly(other);
+        assertThat(edited.updatedBy()).isEqualTo(EDITOR);
+        assertThat(edited.updatedAt()).isEqualTo(LATER);
+        assertThat(edited.createdBy()).isEqualTo(USER);
+        assertThat(edited.version()).isZero();
+    }
+
+    @Test
+    void anEditThatChangesNothingReturnsTheSameMemory() {
+        Memory memory = story("Titre", "Texte", List.of(PERSON));
+
+        assertThat(memory.updateStory(Optional.empty(), Optional.empty(), Optional.empty(), EDITOR, LATER))
+                .isSameAs(memory);
+        assertThat(memory.updateStory(Optional.of(" Titre "), Optional.of("Texte"), Optional.of(List.of(PERSON)),
+                EDITOR, LATER)).isSameAs(memory);
+    }
+
+    @Test
+    void anEditKeepsTheRulesOfAStory() {
+        Memory memory = story("Titre", "Texte", List.of(PERSON));
+
+        assertInvalid(() -> memory.updateStory(Optional.of(" "), Optional.empty(), Optional.empty(), EDITOR, LATER));
+        assertInvalid(() -> memory.updateStory(Optional.of("x".repeat(251)), Optional.empty(), Optional.empty(),
+                EDITOR, LATER));
+        assertInvalid(() -> memory.updateStory(Optional.empty(), Optional.of("\n"), Optional.empty(), EDITOR,
+                LATER));
+        assertInvalid(() -> memory.updateStory(Optional.empty(), Optional.empty(), Optional.of(List.of()), EDITOR,
+                LATER));
+    }
+
+    @Test
+    void anArchivedStoryKeepsItsContentAndPersons() {
+        Memory archived = story("Titre", "Texte", List.of(PERSON)).archive(EDITOR, LATER);
+
+        assertThat(archived.status()).isEqualTo(MemoryStatus.ARCHIVED);
+        assertThat(archived.title()).isEqualTo("Titre");
+        assertThat(archived.relatedPersonIds()).containsExactly(PERSON);
+        assertThat(archived.updatedBy()).isEqualTo(EDITOR);
+    }
+
+    @Test
+    void onlyItsCreatorIsTheCreator() {
+        Memory memory = story("Titre", "Texte", List.of(PERSON));
+
+        assertThat(memory.isCreatedBy(USER)).isTrue();
+        assertThat(memory.isCreatedBy(EDITOR)).isFalse();
     }
 
     private static Memory story(String title, String content, List<UUID> persons) {

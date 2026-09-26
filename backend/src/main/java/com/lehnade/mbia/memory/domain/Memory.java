@@ -1,10 +1,11 @@
 package com.lehnade.mbia.memory.domain;
 
 import com.lehnade.mbia.shared.domain.DomainException;
-import com.lehnade.mbia.shared.domain.ErrorCode;
+import com.lehnade.mbia.shared.domain.FieldValidationException;
 import java.time.Instant;
 import java.util.Collection;
 import java.util.Objects;
+import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
 
@@ -57,24 +58,69 @@ public final class Memory {
      */
     public static Memory createStory(MemoryId id, UUID familyId, String title, String content,
             Collection<UUID> relatedPersonIds, UUID createdBy, Instant now) {
-        String trimmedTitle = title == null ? null : title.strip();
-        if (trimmedTitle == null || trimmedTitle.isEmpty()) {
-            throw invalid("The title must not be blank.");
+        return new Memory(id, familyId, MemoryType.STORY, MemoryStatus.ACTIVE, validTitle(title),
+                validContent(content), validPersons(relatedPersonIds), createdBy, createdBy, now, now, 0);
+    }
+
+    /**
+     * This story with the given changes; an absent value keeps the current one (OQ-008). The
+     * version is the one read: the repository increments it when writing.
+     *
+     * @return this same instance when nothing changes, so that nothing is written
+     * @throws DomainException {@code VALIDATION_FAILED} for a blank or too long title or text, or
+     *     an empty list of Persons
+     */
+    public Memory updateStory(Optional<String> title, Optional<String> content,
+            Optional<? extends Collection<UUID>> relatedPersonIds, UUID updatedBy, Instant now) {
+        String newTitle = title.map(Memory::validTitle).orElse(this.title);
+        String newContent = content.map(Memory::validContent).orElse(this.content);
+        Set<UUID> newPersons = relatedPersonIds.map(Memory::validPersons).orElse(this.relatedPersonIds);
+        if (newTitle.equals(this.title) && newContent.equals(this.content)
+                && newPersons.equals(this.relatedPersonIds)) {
+            return this;
         }
-        if (trimmedTitle.length() > TITLE_MAX_LENGTH) {
-            throw invalid("The title must not exceed " + TITLE_MAX_LENGTH + " characters.");
+        return new Memory(id, familyId, type, status, newTitle, newContent, newPersons, createdBy, updatedBy,
+                createdAt, now, version);
+    }
+
+    /** This Memory, ARCHIVED: hidden everywhere, kept for support (mvp.md §17). */
+    public Memory archive(UUID archivedBy, Instant now) {
+        return new Memory(id, familyId, type, MemoryStatus.ARCHIVED, title, content, relatedPersonIds, createdBy,
+                archivedBy, createdAt, now, version);
+    }
+
+    public boolean isCreatedBy(UUID userId) {
+        return createdBy.equals(userId);
+    }
+
+    /** The title is trimmed. */
+    private static String validTitle(String title) {
+        String trimmed = title == null ? null : title.strip();
+        if (trimmed == null || trimmed.isEmpty()) {
+            throw invalid("title", "NOT_BLANK", "The title must not be blank.");
         }
+        if (trimmed.length() > TITLE_MAX_LENGTH) {
+            throw invalid("title", "SIZE", "The title must not exceed " + TITLE_MAX_LENGTH + " characters.");
+        }
+        return trimmed;
+    }
+
+    /** The text is kept as written, line breaks included. */
+    private static String validContent(String content) {
         if (content == null || content.isBlank()) {
-            throw invalid("The story must not be blank.");
+            throw invalid("content", "NOT_BLANK", "The story must not be blank.");
         }
         if (content.length() > CONTENT_MAX_LENGTH) {
-            throw invalid("The story must not exceed " + CONTENT_MAX_LENGTH + " characters.");
+            throw invalid("content", "SIZE", "The story must not exceed " + CONTENT_MAX_LENGTH + " characters.");
         }
+        return content;
+    }
+
+    private static Set<UUID> validPersons(Collection<UUID> relatedPersonIds) {
         if (relatedPersonIds == null || relatedPersonIds.isEmpty()) {
-            throw invalid("A memory must be linked to at least one person.");
+            throw invalid("relatedPersonIds", "SIZE", "A memory must be linked to at least one person.");
         }
-        return new Memory(id, familyId, MemoryType.STORY, MemoryStatus.ACTIVE, trimmedTitle, content,
-                Set.copyOf(relatedPersonIds), createdBy, createdBy, now, now, 0);
+        return Set.copyOf(relatedPersonIds);
     }
 
     /** Rebuilds a stored Memory. */
@@ -85,8 +131,8 @@ public final class Memory {
                 createdAt, updatedAt, version);
     }
 
-    private static DomainException invalid(String detail) {
-        return new DomainException(ErrorCode.VALIDATION_FAILED, detail);
+    private static DomainException invalid(String field, String fieldCode, String detail) {
+        return new FieldValidationException(field, fieldCode, detail);
     }
 
     public MemoryId id() {

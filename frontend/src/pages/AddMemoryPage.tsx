@@ -7,11 +7,15 @@ import { errorMessage } from '../api/errorMessage';
 import { Button } from '../components/Button';
 import { ErrorState } from '../components/ErrorState';
 import { Skeleton } from '../components/Skeleton';
-import { TextArea } from '../components/TextArea';
-import { TextField } from '../components/TextField';
 import { useFamily } from '../families/useFamily';
 import { i18n } from '../i18n';
 import { RelatedPersonsPicker, type RelatedPerson } from '../memories/RelatedPersonsPicker';
+import {
+  MEMORY_ERRORS,
+  showServerFieldErrors,
+  StoryFields,
+  type StoryFormValues,
+} from '../memories/StoryFields';
 import { useCreateStoryMemory } from '../memories/useCreateStoryMemory';
 import { usePerson } from '../persons/usePerson';
 import { familyHomePath } from './FamilyHomePage';
@@ -21,23 +25,9 @@ import { displayNameOf, personPath } from './PersonProfilePage';
 
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
-/** `CreateStoryMemoryRequest` limits (mvp.md §17, data-model.md §14). */
-const LIMITS = { title: 250, content: 50_000 } as const;
-
-/** Validation errors are stored as keys, so that their message follows a language change. */
-type FieldErrorKey = 'required' | 'tooLong' | 'invalid';
-
-/** Codes explained in the words of a Memory; others use the shared `errors` messages. */
-const MEMORY_ERRORS = ['PERSON_NOT_ACTIVE', 'PERSON_NOT_FOUND'] as const;
-
 /** SCREEN-006, started from a Person (`personId`, preselected) or from Family Home. */
 export function addMemoryPath(familyId: string, { personId }: { personId?: string } = {}) {
   return `/families/${familyId}/memories/new${personId ? `?person=${personId}` : ''}`;
-}
-
-interface StoryFormValues {
-  title: string;
-  content: string;
 }
 
 /**
@@ -118,17 +108,6 @@ function StoryForm({
   const form = useForm<StoryFormValues>({ defaultValues: { title: '', content: '' } });
   const pending = createStory.isPending;
 
-  const validate = (max: number) => (value: string) => {
-    if (value.trim() === '') return 'required' satisfies FieldErrorKey;
-    if (value.length > max) return 'tooLong' satisfies FieldErrorKey;
-    return true;
-  };
-
-  function message(field: keyof StoryFormValues) {
-    const key = form.formState.errors[field]?.message as FieldErrorKey | undefined;
-    return key === undefined ? undefined : t(`form.${key}`, { max: LIMITS[field] });
-  }
-
   const submit = form.handleSubmit(async (values) => {
     setError(null);
     try {
@@ -141,13 +120,7 @@ function StoryForm({
       const state: MemoryPageState = { published: true };
       void navigate(memoryPath(familyId, memory.id), { replace: true, state });
     } catch (failure) {
-      if (failure instanceof ApiError) {
-        for (const fieldError of failure.fieldErrors) {
-          if (fieldError.field === 'title' || fieldError.field === 'content') {
-            form.setError(fieldError.field, { type: 'server', message: 'invalid' });
-          }
-        }
-      }
+      showServerFieldErrors(form, failure);
       setError(failure);
     }
   });
@@ -157,20 +130,7 @@ function StoryForm({
 
   return (
     <form noValidate onSubmit={(event) => void submit(event)} className="flex flex-col gap-6">
-      <TextField
-        label={t('form.titleLabel')}
-        autoComplete="off"
-        required
-        error={message('title')}
-        {...form.register('title', { validate: validate(LIMITS.title) })}
-      />
-      <TextArea
-        label={t('form.contentLabel')}
-        rows={10}
-        required
-        error={message('content')}
-        {...form.register('content', { validate: validate(LIMITS.content) })}
-      />
+      <StoryFields form={form} />
       <RelatedPersonsPicker
         familyId={familyId}
         persons={persons}

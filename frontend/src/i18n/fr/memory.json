@@ -48,6 +48,26 @@
       "title": "Souvenir introuvable",
       "body": "Ce souvenir n'existe pas ou n'est plus visible dans cette famille.",
       "back": "Retour à la famille"
+    },
+    "edit": "Modifier",
+    "archive": "Archiver"
+  },
+  "saved": "Vos modifications de « {{title}} » ont été enregistrées.",
+  "edit": {
+    "title": "Modifier le souvenir",
+    "submit": "Enregistrer",
+    "cancel": "Annuler",
+    "conflict": "Ce souvenir a été modifié depuis que vous avez ouvert la page.",
+    "reload": "Recharger la dernière version",
+    "activePersonRequired": "Gardez au moins une personne dont le profil n'est pas archivé.",
+    "errors": {
+      "PERSON_NOT_ACTIVE": "Une des personnes ajoutées a été archivée ou fusionnée entre-temps. Retirez-la, puis enregistrez à nouveau.",
+      "PERSON_NOT_FOUND": "Une des personnes choisies ne fait plus partie de la famille. Retirez-la, puis enregistrez à nouveau."
     }
+  },
+  "archive": {
+    "warning": "Archiver ce souvenir ? Il disparaîtra pour toute la famille.",
+    "confirm": "Archiver",
+    "cancel": "Annuler"
   }
 }
