@@ -32,6 +32,20 @@ mbia:
     audience: mbia-api
     cors:
       allowed-origins: []
+  # S3-compatible object storage (ADR-004, ADR-009; Phase 3 plan §3.5). No bucket nor region outside
+  # local and test: startup fails without them. `endpoint` is the one the backend reaches (empty for
+  # the provider's default); `public-endpoint` the one the browser reaches, for which pre-signed URLs
+  # are signed (empty for `endpoint`). Credentials: empty for the default AWS credentials chain.
+  storage:
+    # bucket:
+    # region:
+    # endpoint:
+    # public-endpoint:
+    # access-key:
+    # secret-key:
+    path-style-access: true
+    # Validity of a pre-signed upload (PUT) URL, returned as `expiresAt`.
+    upload-url-validity: PT15M
 
 ---
 # Structured JSON logs everywhere except local development (technical-specification.md §19).
@@ -64,6 +78,13 @@ mbia:
     issuer-uri: http://localhost:${KEYCLOAK_PORT:8081}/realms/mbia
     cors:
       allowed-origins: http://localhost:5173
+  storage:
+    bucket: ${S3_BUCKET:mbia-media}
+    region: ${S3_REGION:us-east-1}
+    endpoint: ${S3_ENDPOINT:http://localhost:${S3_API_PORT:9000}}
+    public-endpoint: ${S3_PUBLIC_ENDPOINT:http://localhost:${S3_API_PORT:9000}}
+    access-key: ${S3_ACCESS_KEY:mbia-local}
+    secret-key: ${S3_SECRET_KEY:mbia-local-secret}
 
 logging:
   pattern:
@@ -93,3 +114,4 @@ mbia:
     issuer-uri: https://issuer.test/realms/mbia
     cors:
       allowed-origins: http://localhost:5173
+  # mbia.storage.* comes from the RustFS container of TestcontainersConfiguration.

@@ -22,7 +22,21 @@
         <!-- Not managed by the Spring Boot parent. -->
         <archunit.version>1.5.1</archunit.version>
         <openapi-generator.version>7.25.0</openapi-generator.version>
+        <aws-sdk.version>2.55.6</aws-sdk.version>
     </properties>
+
+    <dependencyManagement>
+        <dependencies>
+            <!-- Not managed by the Spring Boot parent. -->
+            <dependency>
+                <groupId>software.amazon.awssdk</groupId>
+                <artifactId>bom</artifactId>
+                <version>${aws-sdk.version}</version>
+                <type>pom</type>
+                <scope>import</scope>
+            </dependency>
+        </dependencies>
+    </dependencyManagement>
 
     <dependencies>
         <dependency>
@@ -58,6 +72,17 @@
             <groupId>org.postgresql</groupId>
             <artifactId>postgresql</artifactId>
             <scope>runtime</scope>
+        </dependency>
+        <!-- S3-compatible object storage, only through the S3 API (ADR-004, ADR-009). Synchronous client only. -->
+        <dependency>
+            <groupId>software.amazon.awssdk</groupId>
+            <artifactId>s3</artifactId>
+            <exclusions>
+                <exclusion>
+                    <groupId>software.amazon.awssdk</groupId>
+                    <artifactId>netty-nio-client</artifactId>
+                </exclusion>
+            </exclusions>
         </dependency>
 
         <!-- JUnit Jupiter, AssertJ and Mockito come with spring-boot-starter-test. -->
