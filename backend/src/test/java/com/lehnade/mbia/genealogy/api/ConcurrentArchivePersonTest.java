@@ -8,7 +8,7 @@ import com.lehnade.mbia.ApiTestSupport;
 import com.lehnade.mbia.family.FamilyFixtures.FamilyWithMembers;
 import com.lehnade.mbia.genealogy.PersonFixtures;
 import com.lehnade.mbia.genealogy.RelationshipFixtures;
-import com.lehnade.mbia.genealogy.application.audit.AuditLog;
+import com.lehnade.mbia.shared.application.audit.AuditLog;
 import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CountDownLatch;

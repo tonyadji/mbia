@@ -1,7 +1,9 @@
 package com.lehnade.mbia.genealogy.infrastructure.audit;
 
-import com.lehnade.mbia.genealogy.application.audit.AuditEntry;
 import com.lehnade.mbia.genealogy.application.getpersonhistory.PersonHistoryQuery;
+import com.lehnade.mbia.shared.application.audit.AuditEntry;
+import com.lehnade.mbia.shared.infrastructure.audit.AuditEntryJpaEntity;
+import com.lehnade.mbia.shared.infrastructure.audit.AuditEntryJpaRepository;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;

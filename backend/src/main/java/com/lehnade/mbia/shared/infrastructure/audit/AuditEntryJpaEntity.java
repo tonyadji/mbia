@@ -1,4 +1,4 @@
-package com.lehnade.mbia.genealogy.infrastructure.audit;
+package com.lehnade.mbia.shared.infrastructure.audit;
 
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
@@ -11,11 +11,14 @@ import org.hibernate.annotations.Immutable;
 import org.hibernate.annotations.JdbcTypeCode;
 import org.hibernate.type.SqlTypes;
 
-/** Row of {@code audit_entries} (data-model.md §17): written once, never changed. */
+/**
+ * Row of {@code audit_entries} (data-model.md §17): written once, never changed. Public, read-only,
+ * for the histories that modules build from it (the Person history, data-model.md §18).
+ */
 @Entity
 @Immutable
 @Table(name = "audit_entries")
-class AuditEntryJpaEntity {
+public class AuditEntryJpaEntity {
 
     @Id
     private UUID id;
@@ -66,27 +69,27 @@ class AuditEntryJpaEntity {
         this.occurredAt = occurredAt;
     }
 
-    UUID id() {
+    public UUID id() {
         return id;
     }
 
-    UUID actorUserId() {
+    public UUID actorUserId() {
         return actorUserId;
     }
 
-    String action() {
+    public String action() {
         return action;
     }
 
-    Map<String, Object> oldValue() {
+    public Map<String, Object> oldValue() {
         return oldValue == null ? Map.of() : oldValue;
     }
 
-    Map<String, Object> newValue() {
+    public Map<String, Object> newValue() {
         return newValue == null ? Map.of() : newValue;
     }
 
-    Instant occurredAt() {
+    public Instant occurredAt() {
         return occurredAt;
     }
 }

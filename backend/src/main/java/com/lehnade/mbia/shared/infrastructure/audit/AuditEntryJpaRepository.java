@@ -1,4 +1,4 @@
-package com.lehnade.mbia.genealogy.infrastructure.audit;
+package com.lehnade.mbia.shared.infrastructure.audit;
 
 import java.util.Collection;
 import java.util.List;
@@ -6,7 +6,8 @@ import java.util.UUID;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 
-interface AuditEntryJpaRepository extends JpaRepository<AuditEntryJpaEntity, UUID> {
+/** Writes and reads {@code audit_entries}; public for the histories of the modules. */
+public interface AuditEntryJpaRepository extends JpaRepository<AuditEntryJpaEntity, UUID> {
 
     /**
      * One page of the entries of one resource with one of {@code actions}, most recent first, on

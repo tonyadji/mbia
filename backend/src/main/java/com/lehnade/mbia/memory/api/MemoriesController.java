@@ -1,0 +1,109 @@
+package com.lehnade.mbia.memory.api;
+
+import com.lehnade.mbia.api.generated.MemoriesApi;
+import com.lehnade.mbia.api.generated.model.ActivityActor;
+import com.lehnade.mbia.api.generated.model.CreatePhotoMemoryRequest;
+import com.lehnade.mbia.api.generated.model.CreateStoryMemoryRequest;
+import com.lehnade.mbia.api.generated.model.MemoryPage;
+import com.lehnade.mbia.api.generated.model.MemoryResponse;
+import com.lehnade.mbia.api.generated.model.MemoryStatus;
+import com.lehnade.mbia.api.generated.model.MemoryType;
+import com.lehnade.mbia.api.generated.model.RelatedPersonReference;
+import com.lehnade.mbia.api.generated.model.UpdateMemoryRequest;
+import com.lehnade.mbia.memory.application.MemoryView;
+import com.lehnade.mbia.memory.application.createstorymemory.CreateStoryMemoryCommand;
+import com.lehnade.mbia.memory.application.createstorymemory.CreateStoryMemoryUseCase;
+import com.lehnade.mbia.memory.application.getmemory.GetMemoryUseCase;
+import com.lehnade.mbia.memory.domain.Memory;
+import com.lehnade.mbia.shared.api.web.ETags;
+import com.lehnade.mbia.shared.domain.DomainException;
+import com.lehnade.mbia.shared.domain.ErrorCode;
+import java.time.Instant;
+import java.time.OffsetDateTime;
+import java.time.ZoneOffset;
+import java.util.UUID;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.RestController;
+
+/**
+ * Memories of a Family. Only stories exist in this iteration (Phase 3 plan §3.1): photo Memories
+ * wait for OQ-042, and the operations of later Phase 3 PRs answer like a route that does not
+ * exist yet ({@code RESOURCE_NOT_FOUND}).
+ */
+@RestController
+class MemoriesController implements MemoriesApi {
+
+    private final CreateStoryMemoryUseCase createStoryMemory;
+    private final GetMemoryUseCase getMemory;
+
+    MemoriesController(CreateStoryMemoryUseCase createStoryMemory, GetMemoryUseCase getMemory) {
+        this.createStoryMemory = createStoryMemory;
+        this.getMemory = getMemory;
+    }
+
+    @Override
+    public ResponseEntity<MemoryResponse> createStoryMemory(UUID familyId, CreateStoryMemoryRequest request) {
+        MemoryView memory = createStoryMemory.create(new CreateStoryMemoryCommand(familyId, request.getTitle(),
+                request.getContent(), request.getRelatedPersonIds()));
+        return ResponseEntity.status(HttpStatus.CREATED)
+                .eTag(ETags.of(memory.memory().version()))
+                .body(toResponse(memory));
+    }
+
+    @Override
+    public ResponseEntity<MemoryResponse> getMemory(UUID familyId, UUID memoryId) {
+        MemoryView memory = getMemory.get(familyId, memoryId);
+        return ResponseEntity.ok().eTag(ETags.of(memory.memory().version())).body(toResponse(memory));
+    }
+
+    @Override
+    public ResponseEntity<MemoryResponse> createPhotoMemory(UUID familyId, CreatePhotoMemoryRequest request) {
+        throw notAvailableYet();
+    }
+
+    @Override
+    public ResponseEntity<MemoryPage> listFamilyMemories(UUID familyId, MemoryType type, Integer page,
+            Integer size) {
+        throw notAvailableYet();
+    }
+
+    @Override
+    public ResponseEntity<MemoryPage> listPersonMemories(UUID familyId, UUID personId, Integer page,
+            Integer size) {
+        throw notAvailableYet();
+    }
+
+    @Override
+    public ResponseEntity<MemoryResponse> updateMemory(String ifMatch, UUID familyId, UUID memoryId,
+            UpdateMemoryRequest request) {
+        throw notAvailableYet();
+    }
+
+    @Override
+    public ResponseEntity<Void> archiveMemory(String ifMatch, UUID familyId, UUID memoryId) {
+        throw notAvailableYet();
+    }
+
+    private static MemoryResponse toResponse(MemoryView view) {
+        Memory memory = view.memory();
+        return new MemoryResponse(memory.id().value(), memory.familyId(), MemoryType.valueOf(memory.type().name()),
+                MemoryStatus.valueOf(memory.status().name()),
+                view.relatedPersons().stream()
+                        .map(person -> new RelatedPersonReference(person.id(), person.displayName()))
+                        .toList(),
+                new ActivityActor(view.createdBy().userId(), view.createdBy().displayName(),
+                        view.createdBy().deleted()),
+                toDateTime(memory.createdAt()), toDateTime(memory.updatedAt()), memory.version())
+                .title(memory.title())
+                .content(memory.content());
+    }
+
+    private static OffsetDateTime toDateTime(Instant instant) {
+        return instant.atOffset(ZoneOffset.UTC);
+    }
+
+    private static DomainException notAvailableYet() {
+        return new DomainException(ErrorCode.RESOURCE_NOT_FOUND, "Resource not found.");
+    }
+}

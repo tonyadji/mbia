@@ -1,4 +1,4 @@
-package com.lehnade.mbia.genealogy.application.audit;
+package com.lehnade.mbia.shared.application.audit;
 
 import java.time.Instant;
 import java.util.Map;
@@ -17,6 +17,7 @@ public record AuditEntry(UUID familyId, UUID actorUserId, String action, String 
 
     public static final String PERSON = "PERSON";
     public static final String RELATIONSHIP = "RELATIONSHIP";
+    public static final String MEMORY = "MEMORY";
 
     public AuditEntry {
         Objects.requireNonNull(action, "action");
