@@ -256,7 +256,15 @@ RELATIONSHIP_WARNING_CONFIRMATION_REQUIRED
 PERSON_NOT_ACTIVE
 PERSON_MERGE_CONFLICT
 CONCURRENT_MODIFICATION
+MEMORY_NOT_FOUND
+MEDIA_NOT_FOUND
+MEDIA_TOO_LARGE
+MEDIA_INVALID
+MEDIA_NOT_READY
+MEDIA_ALREADY_USED
 ```
+
+Memories and media (OQ-037): an unknown, other-Family or ARCHIVED Memory → 404 `MEMORY_NOT_FOUND`; an unknown or other-Family media asset → 404 `MEDIA_NOT_FOUND`; a related Person unknown, of another Family or MERGED → 404 `PERSON_NOT_FOUND`, newly added and ARCHIVED → 409 `PERSON_NOT_ACTIVE`; a field irrelevant to the Memory type → 400 `VALIDATION_FAILED`; editing or archiving another member's Memory without being ADMIN → 403 `PERMISSION_DENIED`; completing or attaching another member's upload → 403 `PERMISSION_DENIED`; attaching an asset already used → 409 `MEDIA_ALREADY_USED` (OQ-036).
 
 The frontend translates stable codes into localized messages. It must not parse English server messages to determine behavior.
 

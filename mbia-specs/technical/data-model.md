@@ -640,6 +640,10 @@ Rules (processing details: ADR-007):
 - `completeMediaUpload` validates and processes the upload synchronously, writes the `display` and `thumbnail` JPEG derivatives without metadata, deletes the uploaded original, and sets `READY`; `width_px`/`height_px` describe the display derivative;
 - on validation failure the asset becomes `FAILED` with a `failure_reason`;
 - `PENDING_UPLOAD` assets older than 24 hours become `FAILED` and their objects are deleted by a scheduled task;
+- only the User who uploaded an asset may complete it and attach it; another member gets `PERMISSION_DENIED` (OQ-036);
+- an asset is attached once, to a single use of its purpose (for example one Person's photo); attaching it again is refused with `MEDIA_ALREADY_USED` (OQ-036);
+- a `READY` asset still unattached 24 hours after `ready_at` becomes `FAILED` and its objects are deleted by the same scheduled task (OQ-036);
+- a replaced or removed Person photo becomes `ARCHIVED` and no URL is served for it (OQ-040);
 - only `READY` media may be attached to a person profile or photo memory;
 - storage keys are internal and must not be exposed as public permanent URLs;
 - views use pre-signed GET URLs valid for 60 minutes.
@@ -722,7 +726,7 @@ Rules:
 - a photo/story can reference multiple people;
 - no duplicate association;
 - a `MERGED` source person must be replaced with the merge target during merge;
-- archived persons remain historically referenced but are not selectable for new associations.
+- archived persons remain historically referenced but are not selectable for new associations: on create and edit, the resulting set has at least one ACTIVE Person, and every Person newly added is ACTIVE; archiving a Person leaves its associations and Memories unchanged (OQ-035).
 
 ## 16. Table: `activities`
 
@@ -789,6 +793,14 @@ Rules:
 - audit rows are append-only from the application perspective;
 - secrets, access tokens and raw invitation tokens must never be written;
 - `old_value` / `new_value` may be field-focused rather than full entity snapshots when appropriate.
+
+Memories write (OQ-039):
+
+- `MEMORY_CREATED`: the type and the related Person ids;
+- `MEMORY_UPDATED`: one entry per changed field; for `title`, `content` and `caption` only the field name is recorded, never the text; for related Persons, the ids before and after;
+- `MEMORY_ARCHIVED`.
+
+Media operations are not audited: their state is in `media_assets`. Storage keys and pre-signed URLs are never written.
 
 Examples:
 
@@ -983,6 +995,8 @@ CREATE INDEX idx_memory_person_person
 ON memory_persons (family_id, person_id, memory_id);
 ```
 
+Person Memories are listed most recently added first: `memories.created_at DESC`, then `memories.id` (OQ-034).
+
 ### 23.4 Family memories
 
 ```sql
@@ -990,6 +1004,8 @@ CREATE INDEX idx_memories_family_recent
 ON memories (family_id, created_at DESC)
 WHERE status = 'ACTIVE';
 ```
+
+Family Memories are listed in the same order: `created_at DESC`, then `id` (OQ-034).
 
 ## 24. Database responsibilities vs domain responsibilities
 

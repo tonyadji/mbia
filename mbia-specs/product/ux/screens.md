@@ -253,6 +253,12 @@ About
 History
 ```
 
+## Memories section
+
+The Person's ACTIVE Memories, most recently added first, 20 at a time with `Show more` (OQ-034): photo thumbnails and story cards (title and first lines), each opening SCREEN-013. ADMIN / CONTRIBUTOR see `Add a memory` (SCREEN-006 with this Person preselected).
+
+Empty state: explains that no Memory is linked to this Person yet; ADMIN / CONTRIBUTOR also see `Add a memory`.
+
 ## Family section
 
 - parents;
@@ -323,6 +329,8 @@ caption optional
 relatedPersons[] * (at least one)
 ```
 
+Behind `More information`: `When was this photo taken?`, as exact date, year only or unknown, like a birth date (OQ-033).
+
 When launched from a Person profile, preselect that Person; otherwise preselect the User's linked Person when it exists.
 
 ## Story flow
@@ -334,6 +342,86 @@ title *
 content *
 relatedPersons[] * (at least one)
 ```
+
+A story is plain text: line breaks are kept; no formatting is interpreted (OQ-032).
+
+---
+
+# SCREEN-013 — Memory
+
+## Logical route
+
+```text
+/families/{familyId}/memories/{memoryId}
+```
+
+## Access
+
+Any ACTIVE Family member. An archived Memory is not found (OQ-037).
+
+## Display
+
+- a photo: its display version, the caption, and when it was taken if known;
+- a story: its title and full text, as plain text with line breaks kept;
+- the related Persons, each linking to their profile; an archived Person is shown by name, marked "archived", and links to their profile only for the ADMIN (OQ-035);
+- who added it and when ("Former member" when the account was deleted).
+
+## Actions
+
+For the creator or an ADMIN, with a role that can write (OQ-041):
+
+- `Edit` (SCREEN-014);
+- `Archive`: a Modal confirms that the Memory will disappear for the whole Family; afterwards the User returns to where they came from.
+
+(OQ-032)
+
+---
+
+# SCREEN-014 — Edit Memory
+
+## Access
+
+The creator or an ADMIN, with a role that can write (OQ-041).
+
+## Fields
+
+The fields of SCREEN-006 for the Memory's type, including `More information` for a photo. The photo itself cannot be replaced.
+
+## Behavior
+
+The related Persons must keep at least one ACTIVE Person. An archived Person already on the Memory may stay, but cannot be added (OQ-035).
+
+The form sends the version of the Memory it loaded. On `CONCURRENT_MODIFICATION`, it behaves as SCREEN-012: explain and offer `Reload latest version`, never merge values.
+
+(OQ-032)
+
+---
+
+# SCREEN-015 — Family Memories
+
+## Logical route
+
+```text
+/families/{familyId}/memories
+```
+
+The `Memories` entry of the primary navigation (`family-tree-ux.md` §4).
+
+## Access
+
+Any ACTIVE Family member.
+
+## Display
+
+The Family's ACTIVE Memories, most recently added first, 20 at a time with `Show more` (OQ-034): photo thumbnails and story cards, each opening SCREEN-013. A filter: `All`, `Photos`, `Stories`.
+
+ADMIN / CONTRIBUTOR see `Add a memory` (SCREEN-006).
+
+## Empty state
+
+Explains that the Family has no Memory yet; ADMIN / CONTRIBUTOR also see `Add a memory`, a VIEWER sees the text only.
+
+(OQ-032)
 
 ---
 
@@ -522,6 +610,10 @@ Identity
 Life
 About
 ```
+
+## Photo
+
+In Identity: `Add a photo` when the Person has none, otherwise `Change the photo` and `Remove the photo`. A new photo is uploaded, never chosen from Memories; it is shown centre-cropped in the round avatar, with no crop step (OQ-040). The same photo control is the `profilePicture` field of SCREEN-004.
 
 ## Behavior
 

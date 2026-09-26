@@ -285,7 +285,7 @@ May:
 - edit own linked Person;
 - create/remove relationships;
 - add Memories;
-- edit/archive own Memories;
+- edit/archive own Memories (only while CONTRIBUTOR: a creator who became VIEWER is read-only, OQ-041);
 - leave the Family.
 
 May not:

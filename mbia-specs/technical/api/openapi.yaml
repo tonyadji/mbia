@@ -516,9 +516,9 @@ paths:
         or an ADMIN: every field of the request is protected, and another CONTRIBUTOR
         gets 403 `PERMISSION_DENIED`.
         Only an ACTIVE Person can be edited: an ARCHIVED or MERGED Person returns 404
-        `PERSON_NOT_FOUND`. A request that changes nothing (same values, or only
-        `profileMediaAssetId`, which is ignored until media exist) returns 200 with the
-        unchanged Person and version.
+        `PERSON_NOT_FOUND`. A request that changes nothing returns 200 with the
+        unchanged Person and version. The photo follows the same rules as the other fields
+        (OQ-040).
       parameters:
         - $ref: '#/components/parameters/IfMatch'
       requestBody:
@@ -976,6 +976,9 @@ paths:
       tags: [Memories]
       operationId: listFamilyMemories
       summary: List active family memories
+      description: |
+        ACTIVE Memories of the Family, most recently added first (`createdAt` descending,
+        then `id`), for any ACTIVE member (OQ-034).
       parameters:
         - name: type
           in: query
@@ -993,6 +996,8 @@ paths:
                 $ref: '#/components/schemas/MemoryPage'
         '403':
           $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
 
   /families/{familyId}/memories/photos:
     parameters:
@@ -1060,6 +1065,9 @@ paths:
       tags: [Memories]
       operationId: getMemory
       summary: Get a memory
+      description: |
+        Any ACTIVE member. An unknown, other-Family or ARCHIVED Memory returns 404
+        `MEMORY_NOT_FOUND` (OQ-037).
       responses:
         '200':
           description: Memory
@@ -1078,7 +1086,14 @@ paths:
       tags: [Memories]
       operationId: updateMemory
       summary: Update a memory
-      description: The creator may edit their own memory; ADMIN may edit any family memory.
+      description: |
+        The creator may edit their own memory; ADMIN may edit any family memory. Both need
+        a role that can write: a VIEWER gets 403 `PERMISSION_DENIED` (OQ-041).
+        A field irrelevant to the Memory type is rejected with 400 `VALIDATION_FAILED`.
+        The new related Persons must include at least one ACTIVE Person; a Person newly
+        added must be ACTIVE (409 `PERSON_NOT_ACTIVE`), while an archived Person already on
+        the Memory may stay (OQ-035). An unknown, other-Family or ARCHIVED Memory returns
+        404 `MEMORY_NOT_FOUND` (OQ-037).
       parameters:
         - $ref: '#/components/parameters/IfMatch'
       requestBody:
@@ -1109,7 +1124,10 @@ paths:
       tags: [Memories]
       operationId: archiveMemory
       summary: Archive a memory
-      description: The creator may archive their own memory; ADMIN may archive any family memory.
+      description: |
+        The creator may archive their own memory; ADMIN may archive any family memory, with
+        a role that can write (OQ-041). An archived Memory is no longer listed nor returned
+        (404 `MEMORY_NOT_FOUND`).
       parameters:
         - $ref: '#/components/parameters/IfMatch'
       responses:
@@ -1130,6 +1148,9 @@ paths:
       tags: [Memories]
       operationId: listPersonMemories
       summary: List memories associated with a person
+      description: |
+        ACTIVE Memories linked to the Person, most recently added first (`createdAt`
+        descending, then `id`), for any ACTIVE member (OQ-034).
       parameters:
         - $ref: '#/components/parameters/Page'
         - $ref: '#/components/parameters/Size'
@@ -1183,7 +1204,9 @@ paths:
         megapixels), generates metadata-free JPEG `display` and `thumbnail`
         derivatives, deletes the uploaded original and marks the asset READY
         (ADR-007). On invalid content the asset becomes FAILED and 400
-        `MEDIA_INVALID` is returned.
+        `MEDIA_INVALID` is returned. Only the User who created the upload may
+        complete it (403 `PERMISSION_DENIED`); completing a READY asset again
+        returns it unchanged (OQ-036).
       responses:
         '200':
           description: Ready media asset
@@ -1779,6 +1802,15 @@ components:
         profileMediaAssetId:
           type: [string, 'null']
           format: uuid
+          description: |
+            A READY `PROFILE_PICTURE` asset, uploaded by the caller and not yet used, that
+            replaces the current photo (OQ-040). Otherwise 409 `MEDIA_NOT_READY` or
+            `MEDIA_ALREADY_USED`, or 403 for another member's asset (OQ-036).
+        removeProfilePicture:
+          type: boolean
+          description: |
+            `true` removes the Person's photo (OQ-040). Sent with `profileMediaAssetId`,
+            the request is rejected with 400 `VALIDATION_FAILED`.
 
     MergePersonRequest:
       type: object
@@ -2393,6 +2425,9 @@ components:
             - MEDIA_TOO_LARGE
             - MEDIA_INVALID
             - MEDIA_NOT_READY
+            - MEDIA_ALREADY_USED
+            - MEDIA_NOT_FOUND
+            - MEMORY_NOT_FOUND
             - VALIDATION_FAILED
             - INTERNAL_ERROR
             - AUTHENTICATION_REQUIRED

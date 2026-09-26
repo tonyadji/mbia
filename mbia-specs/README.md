@@ -37,7 +37,8 @@ mbia-specs/
 ├── open-questions.md
 ├── delivery/
 │   ├── phase-1-walking-skeleton.md
-│   └── phase-2-core-family-graph.md
+│   ├── phase-2-core-family-graph.md
+│   └── phase-3-family-memories.md
 ├── product/
 │   ├── vision.md
 │   ├── mvp.md
@@ -67,6 +68,19 @@ mbia-specs/
 The visual mockup is a design reference. Product rules and screen behavior are defined in text and remain authoritative.
 
 ## Changelog
+
+### 0.4 — 2026-09-26
+
+Precisions needed to deliver Phase 3 (Family Memories), from OQ-032 to OQ-041:
+
+- Memory screens: Memories section of the profile, Memory (SCREEN-013), Edit Memory (SCREEN-014), Family Memories (SCREEN-015); a story is plain text; optional taken date of a photo (`screens.md`);
+- Memory list order and paging (`openapi.yaml`, `data-model.md` §23.3–23.4);
+- Memories of an archived Person and rights of a creator who became VIEWER (`mvp.md` §17, `data-model.md` §15, `person-relationships-collaboration.md` §12);
+- Memory and media error codes `MEMORY_NOT_FOUND`, `MEDIA_NOT_FOUND` (`openapi.yaml`, `technical-specification.md` §12);
+- audit of Memory mutations (`data-model.md` §17);
+- setting, replacing and removing a Person's photo, `removeProfilePicture` (`openapi.yaml`, SCREEN-012);
+- lifecycle of an uploaded photo: uploader only, single use (`MEDIA_ALREADY_USED`), unattached READY assets deleted after 24 h (`data-model.md` §13, OQ-036);
+- delivery plan `delivery/phase-3-family-memories.md`: Memories are stories only in Phase 3; media in Memories wait for OQ-042.
 
 ### 0.3 — 2026-09-25
 

@@ -46,6 +46,21 @@ When a question is answered, update the relevant spec, then move the entry to **
 - **Recommendation:** A, the same shape as the archived notice; implemented provisionally in PR-27 and easy to change.
 - **Blocking:** nothing; only the wording and the behaviour of that notice.
 
+### OQ-042 — Adding media to a Memory (future iteration)
+
+- **Raised by / date:** human and coding agent (Phase 3 plan), 2026-09-26
+- **Context:** `mvp.md` §17 defines two Memory types, PHOTO and STORY, and `mvp.md` §28 expects "add photo and Story". While planning Phase 3, the human decided that a Memory is **a title and a text only** for this phase. Media will later be **added to a Memory**, rather than being a separate kind of Memory. Uploading a file is a technical action. The product action is "add a file to this Memory", and the moment the upload happens in the journey must be designed.
+- **Question:** in a later iteration, how does a Memory carry media, and when does the upload happen in the journey?
+- **Points to decide:**
+  - the model: a Memory with a title, a text and 0..n media, or one medium per Memory. This decides what becomes of the PHOTO / STORY types, `createPhotoMemory`, `memories.media_asset_id` and `caption` (`data-model.md` §14);
+  - whether title or text become optional when a medium is present;
+  - the moment of upload: when the file is chosen while writing the Memory (published with it), or after the Memory exists ("Add photos to this memory");
+  - per-medium caption and taken date (OQ-033 already answers the date's precision);
+  - the limit on media per Memory, to stay clear of "advanced albums" (`mvp.md` §27);
+  - `mvp.md` §17 and §28 wording.
+- **Recommendation:** decide it in a dedicated product discussion before the phase that adds media. Until then, Phase 3 creates nothing that assumes one model: no photo column in `memories`, and `createPhotoMemory` is not implemented.
+- **Blocking:** nothing in Phase 3.
+
 ## Resolved
 
 ### OQ-001 — JUnit major version with Spring Boot 4.1
@@ -311,3 +326,144 @@ When a question is answered, update the relevant spec, then move the entry to **
 - **Options:** scope: A — only entries whose resource is the Person / B — also the created, removed and restored relationships of the Person. Values: A — one audit entry per changed field, old → new, except the biography (changed, without values); no value for other actions (never a user id) / B — old → new for every field, biography included / C — the changed field only, no values.
 - **Recommendation:** A for both.
 - **Answer:** A for both (human, 2026-09-26). Documented in `genealogy.md` §13 and `data-model.md` §18; implemented in PR-28.
+
+### OQ-032 — Screens to view, edit and archive a Memory, and the Family Memories list
+
+- **Raised by / date:** coding agent (Phase 3 plan), 2026-09-26
+- **Context:** `screens.md` defines only SCREEN-006 Add Memory. Several things have no screen: opening a Memory, whether a photo in its larger version (`mvp.md` §23) or a story in full; editing it and archiving it (`mvp.md` §17, `updateMemory`, `archiveMemory`); and the Family's list of Memories. That list is the `Memories` tab of the primary navigation (`family-tree-ux.md` §4) and is served by `listFamilyMemories`. SCREEN-005 lists "Memories" first in its section order but does not describe the section. Nothing says either whether a story is plain text.
+- **Question:** which screens show, edit and archive a Memory, and what does each contain?
+- **Options:**
+  - A — the following screens:
+    - SCREEN-013 Memory:
+      - a photo in its display version, with caption, taken date when known, related Persons (links to their profiles) and author and date; or a story's title and full text as plain text with line breaks kept;
+      - `Edit` and `Archive` for the creator or an ADMIN.
+    - SCREEN-014 Edit Memory: the fields of SCREEN-006 except the file, since a photo cannot be replaced.
+    - Archive confirmation: a Modal saying the Memory disappears for the whole Family.
+    - SCREEN-015 Family Memories (`Memories` tab): photo thumbnails and story cards, with the filter All / Photos / Stories.
+    - SCREEN-005 Memories section: the Person's photo thumbnails and story cards, and `Add a memory` for ADMIN / CONTRIBUTOR.
+  - B — the same without SCREEN-015; the `Memories` tab waits for a later phase.
+- **Recommendation:** A. The second value moment ("open a grandparent and see photos or stories", `family-tree-ux.md` §15) needs SCREEN-013. SCREEN-015 is the only way to find a Memory without knowing who is on it.
+- **Blocking:** the Memory screens (PR-30 to PR-33).
+- **Answer:** A (human, 2026-09-26): SCREEN-013 Memory, SCREEN-014 Edit Memory, SCREEN-015 Family Memories; a story is plain text with line breaks kept. Documented in `screens.md` SCREEN-005 (Memories section), SCREEN-013, SCREEN-014, SCREEN-015 and SCREEN-006 (plain text).
+
+### OQ-033 — The taken date of a photo in the forms
+
+- **Raised by / date:** coding agent (Phase 3 plan), 2026-09-26
+- **Context:** `mvp.md` §17 lists `takenAt` / `takenAtPrecision` for a photo, and the contract accepts `takenAt` (a `PartialDate`) on create and update. But SCREEN-006 and the photo flow of `family-tree-ux.md` §13 do not ask for it. A story has no date in either spec.
+- **Question:** can the User enter when a photo was taken, and where?
+- **Options:** A — an optional "When was this photo taken?" (exact date / year only / unknown, as for a birth date), behind "More information" in SCREEN-006 and in SCREEN-014 / B — in SCREEN-014 only / C — not in the MVP UI; the API still accepts it.
+- **Recommendation:** A. It follows the progressive disclosure of `family-tree-ux.md` §5, and old family photos are often dated by year only.
+- **Blocking:** nothing in Phase 3: photos in Memories wait for OQ-042.
+- **Answer:** A (human, 2026-09-26): optional exact / year only / unknown, behind "More information". Documented in `screens.md` SCREEN-006 and SCREEN-014; delivered with media in Memories (OQ-042).
+
+### OQ-034 — Order and paging of Memory lists
+
+- **Raised by / date:** coding agent (Phase 3 plan), 2026-09-26
+- **Context:** `listFamilyMemories` and `listPersonMemories` are paged, but no spec gives their order. `data-model.md` §23.4 indexes `(family_id, created_at DESC)`. The taken date is often unknown, so it cannot order every Memory.
+- **Question:** in which order are Memories listed, and how much does the profile show at first?
+- **Options:** A — most recently added first (`created_at DESC`, then `id`), pages of 20, then "Show more", in both lists / B — by taken date when known, then by date added.
+- **Recommendation:** A. It is deterministic, matches the index and does not invent a chronology.
+- **Blocking:** PR-31 and PR-32 (list queries and UI).
+- **Answer:** A (human, 2026-09-26): most recently added first, pages of 20, "Show more". Documented in `openapi.yaml` (`listFamilyMemories`, `listPersonMemories`), `data-model.md` §23.3, §23.4 and `screens.md`.
+
+### OQ-035 — Memories of an archived Person
+
+- **Raised by / date:** coding agent (Phase 3 plan), 2026-09-26
+- **Context:** `mvp.md` §17 says "every Memory is linked to at least one ACTIVE Person", and `data-model.md` §15 keeps archived Persons "historically referenced but not selectable for new associations". Nothing says what happens when the only related Person of a Memory is archived, whether an edit may keep an archived Person already on the Memory, nor how an archived Person appears on a Memory.
+- **Question:** when does "at least one ACTIVE Person" apply, and how are archived Persons shown on a Memory?
+- **Options:**
+  - A:
+    - the rule is checked when a Memory is created or edited: the new list has at least one ACTIVE Person, and no Person newly added is non-ACTIVE; an archived Person already on the Memory may stay;
+    - archiving a Person never changes nor blocks its Memories: they stay ACTIVE, in the Family list and on the profiles of their other Persons;
+    - on a Memory, an archived Person is shown by name, marked "archived", and links to its profile only for the ADMIN (as for removed links, SCREEN-005);
+    - restoring the Person brings everything back.
+  - B — archiving a Person who is the only ACTIVE Person of some Memory is refused.
+- **Recommendation:** A. Archiving stays reversible and never hides family content by side effect.
+- **Blocking:** the related-Person rules of PR-29 and PR-33, and their display in PR-31.
+- **Answer:** A (human, 2026-09-26): the rule applies on create and edit only; archiving a Person never changes its Memories; an archived Person is shown as archived on a Memory. Documented in `mvp.md` §17, `data-model.md` §15, `openapi.yaml` (`updateMemory`) and `screens.md` SCREEN-013, SCREEN-014.
+
+### OQ-037 — Error codes of Memories and media
+
+- **Raised by / date:** coding agent (Phase 3 plan), 2026-09-26
+- **Context:** `ProblemDetails.code` has no code for an unknown Memory or media asset. Several other cases have no stated response: a related Person that is unknown, of another Family, MERGED or ARCHIVED; a field irrelevant to the Memory type (`UpdateMemoryRequest` says "rejected" without a code); and a CONTRIBUTOR editing another member's Memory. `listFamilyMemories` also lists no 404 response, although another Family must answer 404 (AGENTS.md §5).
+- **Question:** which status and code for each case?
+- **Options:**
+  - A:
+    - an unknown Memory, another Family's, or an ARCHIVED one → 404 `MEMORY_NOT_FOUND`;
+    - an unknown media asset or another Family's → 404 `MEDIA_NOT_FOUND`;
+    - both codes are new and additive;
+    - a related Person that is unknown, of another Family or MERGED → 404 `PERSON_NOT_FOUND`;
+    - a newly added ARCHIVED Person → 409 `PERSON_NOT_ACTIVE` (as OQ-011);
+    - a field irrelevant to the type → 400 `VALIDATION_FAILED` on that field;
+    - someone other than the creator or an ADMIN → 403 `PERMISSION_DENIED`;
+    - `404` is added to `listFamilyMemories` (additive).
+  - B — reuse `RESOURCE_NOT_FOUND` for unknown Memories and media.
+- **Recommendation:** A. It follows `PERSON_NOT_FOUND` and OQ-011, and the UI can explain each case.
+- **Blocking:** the API tests and messages of PR-29 to PR-37 (only the codes; the rules can be built).
+- **Answer:** A (human, 2026-09-26). Documented in `openapi.yaml` (`ProblemDetails.code`, Memory operations, 404 on `listFamilyMemories`) and `technical-specification.md` §12.
+
+### OQ-038 — Memory count in the Quick View
+
+- **Raised by / date:** coding agent (Phase 3 plan), 2026-09-26
+- **Context:** SCREEN-COMPONENT-001 shows a "Memory count" for the Person. But `getFamilyTree` nodes (`PersonSummary`) and `PersonResponse` carry no count, and loading `listPersonMemories` per card would be N+1.
+- **Question:** where does the Quick View get the Memory count?
+- **Options:** A — add an optional `memoryCount` (ACTIVE Memories) to the tree nodes, counted in one query for all returned nodes (additive) / B — the Quick View calls `listPersonMemories` with `size=1` and reads `totalElements` when it opens.
+- **Recommendation:** B. No contract change, one call only when a Quick View opens, and no cost on every tree load.
+- **Blocking:** the Quick View part of PR-34 only.
+- **Answer:** B (human, 2026-09-26): the Quick View calls `listPersonMemories` with `size=1`. Implementation choice, no spec change; recorded in `delivery/phase-3-family-memories.md` PR-34.
+
+### OQ-039 — Audit of Memory mutations
+
+- **Raised by / date:** coding agent (Phase 3 plan), 2026-09-26
+- **Context:** `data-model.md` §17 gives `MEMORY_ARCHIVED` as an example, and `technical-specification.md` §15 says important mutations are audited. But no list exists for Memories, as `genealogy.md` §13 gives for Persons.
+- **Question:** which Memory and media operations write an audit entry, and with which values?
+- **Options:** A — `MEMORY_CREATED` (type and related Person ids), `MEMORY_UPDATED` (field-focused, one entry per changed field; texts are not copied, only the fact that they changed), `MEMORY_ARCHIVED`. Media operations are not audited: their state is in `media_assets`. Storage keys and URLs are never written / B — `MEMORY_ARCHIVED` only.
+- **Recommendation:** A. It gives support what it needs to restore an archived Memory and to answer "who changed this", without copying family texts into the audit.
+- **Blocking:** the audit part of PR-29 and PR-33.
+- **Answer:** A (human, 2026-09-26). Documented in `data-model.md` §17.
+
+### OQ-040 — Setting, replacing and removing a Person's photo
+
+- **Raised by / date:** coding agent (Phase 3 plan), 2026-09-26
+- **Context:** `CreatePersonRequest` / `UpdatePersonRequest` accept `profileMediaAssetId` (`PROFILE_PICTURE` purpose). `family-tree-ux.md` §5 shows "Photo" in the quick create form. But nothing says:
+  - who may change a Person's photo;
+  - whether it may come from a Memory photo;
+  - how it is removed: OQ-008 makes an absent or `null` field "unchanged", so there is no way to clear it today;
+  - how a photo is framed in a round avatar.
+- **Question:** how is a Person's photo set, replaced and removed?
+- **Options:**
+  - A:
+    - the photo follows the edit rules of the Person (`person-relationships-collaboration.md` §2, linked-Person protection);
+    - "Add a photo" / "Change the photo" upload a new `PROFILE_PICTURE`. It is not chosen from Memories in the MVP;
+    - "Remove the photo" sends a new boolean `removeProfilePicture: true` to `updatePerson` (additive, consistent with OQ-008);
+    - the previous asset becomes `ARCHIVED`;
+    - the image is shown centre-cropped in the circle, with no crop tool.
+  - B — the same, with a crop step before upload.
+- **Recommendation:** A.
+- **Blocking:** PR-37 and PR-38.
+- **Answer:** A (human, 2026-09-26), confirmed after the Memory discussion: a Person photo is the separate upload of option A. Documented in `openapi.yaml` (`UpdatePersonRequest.removeProfilePicture`, `updatePerson`) and `screens.md` SCREEN-012.
+
+### OQ-041 — Memory rights of a creator who is no longer a CONTRIBUTOR
+
+- **Raised by / date:** coding agent (Phase 3 plan), 2026-09-26
+- **Context:** `mvp.md` §4 lets "the creator" edit or archive their own Memory. A VIEWER is read-only. Once roles can change (member management, a later phase), a creator may become a VIEWER.
+- **Question:** may a creator who is now a VIEWER still edit or archive their own Memory?
+- **Options:** A — no: editing and archiving need the ADMIN or CONTRIBUTOR role, and then being the creator or the ADMIN / B — yes: the creator keeps these rights whatever their role.
+- **Recommendation:** A. VIEWER stays strictly read-only.
+- **Blocking:** nothing in Phase 3, where roles do not change; the rule is implemented as A and changed if the answer is B.
+- **Answer:** A (human, 2026-09-26). Documented in `mvp.md` §17, `person-relationships-collaboration.md` §12 and `openapi.yaml` (`updateMemory`, `archiveMemory`).
+
+### OQ-036 — Lifecycle of an uploaded Person photo
+
+- **Raised by / date:** coding agent (Phase 3 plan), 2026-09-26; narrowed after the human's answer on Memories (OQ-042)
+- **Context:** in Phase 3 the only uploaded images are Person photos (`PROFILE_PICTURE`, OQ-040); Memories have no media (OQ-042). `data-model.md` §13 and ADR-007 describe upload and processing, but leave several points open: who may attach a READY asset, whether one asset may serve several Persons, and what happens to a READY asset that is never attached (only `PENDING_UPLOAD` assets are cleaned up after 24 h).
+- **Question:** what are the rules for an uploaded Person photo, from upload to replacement?
+- **Options:**
+  - A:
+    - only its uploader may complete an asset and attach it, once, to one Person. An already used asset → 409 with a new code `MEDIA_ALREADY_USED` (additive);
+    - a READY asset still unattached 24 hours after `ready_at` becomes `FAILED`, and its files are deleted by the same scheduled task as ADR-007 §4;
+    - a replaced or removed photo becomes `ARCHIVED` (OQ-040) and serves no URL.
+  - B — the same, but unattached READY assets are kept.
+- **Recommendation:** A. No uploaded photo stays stored without being visible, and no member can take over another member's upload.
+- **Blocking:** the Person photo PRs (PR-36, PR-37).
+- **Answer:** A (human, 2026-09-26). Documented in `data-model.md` §13, `openapi.yaml` (`completeMediaUpload`, `UpdatePersonRequest`, `ProblemDetails.code`) and `technical-specification.md` §12.
