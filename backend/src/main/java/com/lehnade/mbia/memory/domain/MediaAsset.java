@@ -38,11 +38,12 @@ public final class MediaAsset {
     private final Integer heightPx;
     private final MediaFailureReason failureReason;
     private final Instant readyAt;
+    private final Instant archivedAt;
 
     private MediaAsset(MediaAssetId id, UUID familyId, MediaPurpose purpose, MediaStatus status,
             String uploadStorageKey, String originalFilename, String uploadMimeType, long uploadSizeBytes,
             UUID uploadedBy, Instant createdAt, Integer widthPx, Integer heightPx, MediaFailureReason failureReason,
-            Instant readyAt) {
+            Instant readyAt, Instant archivedAt) {
         this.id = Objects.requireNonNull(id, "id");
         this.familyId = Objects.requireNonNull(familyId, "familyId");
         this.purpose = Objects.requireNonNull(purpose, "purpose");
@@ -57,6 +58,7 @@ public final class MediaAsset {
         this.heightPx = heightPx;
         this.failureReason = failureReason;
         this.readyAt = readyAt;
+        this.archivedAt = archivedAt;
     }
 
     /**
@@ -88,17 +90,17 @@ public final class MediaAsset {
         }
         return new MediaAsset(id, familyId, purpose, MediaStatus.PENDING_UPLOAD,
                 MediaStorageKeys.upload(familyId, id), fileName, mimeType, sizeBytes, uploadedBy, now, null, null,
-                null, null);
+                null, null, null);
     }
 
     /** An asset as stored. */
     public static MediaAsset restore(MediaAssetId id, UUID familyId, MediaPurpose purpose, MediaStatus status,
             String originalFilename, String uploadMimeType, long uploadSizeBytes, UUID uploadedBy,
             Instant createdAt, Integer widthPx, Integer heightPx, MediaFailureReason failureReason,
-            Instant readyAt) {
+            Instant readyAt, Instant archivedAt) {
         return new MediaAsset(id, familyId, purpose, status, MediaStorageKeys.upload(familyId, id),
                 originalFilename, uploadMimeType, uploadSizeBytes, uploadedBy, createdAt, widthPx, heightPx,
-                failureReason, readyAt);
+                failureReason, readyAt, archivedAt);
     }
 
     /**
@@ -111,7 +113,7 @@ public final class MediaAsset {
     public MediaAsset markReady(int widthPx, int heightPx, Instant now) {
         requireStatus(MediaStatus.PENDING_UPLOAD);
         return new MediaAsset(id, familyId, purpose, MediaStatus.READY, uploadStorageKey, originalFilename,
-                uploadMimeType, uploadSizeBytes, uploadedBy, createdAt, widthPx, heightPx, null, now);
+                uploadMimeType, uploadSizeBytes, uploadedBy, createdAt, widthPx, heightPx, null, now, null);
     }
 
     /**
@@ -124,7 +126,40 @@ public final class MediaAsset {
             throw new IllegalStateException("A " + status + " media asset cannot fail.");
         }
         return new MediaAsset(id, familyId, purpose, MediaStatus.FAILED, uploadStorageKey, originalFilename,
-                uploadMimeType, uploadSizeBytes, uploadedBy, createdAt, widthPx, heightPx, reason, readyAt);
+                uploadMimeType, uploadSizeBytes, uploadedBy, createdAt, widthPx, heightPx, reason, readyAt, null);
+    }
+
+    /**
+     * Checks that {@code userId} may make this asset a Person's photo (data-model.md §13, OQ-036):
+     * only its uploader, only a READY {@code PROFILE_PICTURE}. Whether it is already used is the
+     * caller's check.
+     *
+     * @throws DomainException {@code PERMISSION_DENIED} for another member's upload, then
+     *     {@code MEDIA_NOT_READY} unless READY, then {@code VALIDATION_FAILED} for another purpose
+     */
+    public void requireAttachableAsProfilePictureBy(UUID userId) {
+        if (!uploadedBy.equals(userId)) {
+            throw new DomainException(ErrorCode.PERMISSION_DENIED,
+                    "Only the member who uploaded this file can use it.");
+        }
+        if (status != MediaStatus.READY) {
+            throw new DomainException(ErrorCode.MEDIA_NOT_READY, "This file is not ready to be used.");
+        }
+        if (purpose != MediaPurpose.PROFILE_PICTURE) {
+            throw new FieldValidationException("profileMediaAssetId", "NOT_SUPPORTED",
+                    "This file is not a profile picture.");
+        }
+    }
+
+    /**
+     * The Person photo was replaced or removed (OQ-040): the asset serves no URL any more. Its
+     * objects are kept, as the rest of the soft lifecycle.
+     */
+    public MediaAsset archive(Instant now) {
+        requireStatus(MediaStatus.READY);
+        return new MediaAsset(id, familyId, purpose, MediaStatus.ARCHIVED, uploadStorageKey, originalFilename,
+                uploadMimeType, uploadSizeBytes, uploadedBy, createdAt, widthPx, heightPx, failureReason, readyAt,
+                Objects.requireNonNull(now, "now"));
     }
 
     private void requireStatus(MediaStatus expected) {
@@ -220,6 +255,11 @@ public final class MediaAsset {
 
     public Instant readyAt() {
         return readyAt;
+    }
+
+    /** Set once the asset is ARCHIVED. */
+    public Instant archivedAt() {
+        return archivedAt;
     }
 
     /** Never shows the storage key. */

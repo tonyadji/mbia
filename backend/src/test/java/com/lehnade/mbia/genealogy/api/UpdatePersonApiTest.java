@@ -20,7 +20,7 @@ import org.springframework.test.web.servlet.assertj.MvcTestResult;
 /**
  * PR-18: {@code PATCH /families/{familyId}/persons/{personId}} (openapi {@code updatePerson};
  * mvp.md §6; person-relationships-collaboration.md §2, §11; technical-specification.md §13;
- * OQ-005, OQ-008). PR-19: linked-Person protection (mvp.md §7, OQ-009).
+ * OQ-008). PR-37: {@code profileMediaAssetId} is no longer ignored (OQ-005 ended). PR-19: linked-Person protection (mvp.md §7, OQ-009).
  */
 class UpdatePersonApiTest extends ApiTestSupport {
 
@@ -183,15 +183,14 @@ class UpdatePersonApiTest extends ApiTestSupport {
                 .hasStatusOk().bodyJson().extractingPath("$.isDeceased").isEqualTo(false);
     }
 
-    // --- A request that changes nothing keeps the version (OQ-005, OQ-008) ---
+    // --- A request that changes nothing keeps the version (OQ-008) ---
 
+    /** PR-37 replaces OQ-005: the value is used; the photo rules are in PersonPhotoApiTest. */
     @Test
-    void profileMediaAssetIdIsIgnoredAndChangesNothing() {
-        MvcTestResult result = persons.update(family.admin(), family.familyId(), marie, "\"0\"",
-                "{\"profileMediaAssetId\": \"" + UUID.randomUUID() + "\"}");
-
-        assertThat(result).hasStatusOk().hasHeader(HttpHeaders.ETAG, "\"0\"")
-                .bodyJson().extractingPath("$.profilePictureUrl").isNull();
+    void anUnknownProfileMediaAssetIdIsRefusedAndChangesNothing() {
+        assertThat(persons.update(family.admin(), family.familyId(), marie, "\"0\"",
+                "{\"lastName\": \"Ndongo\", \"profileMediaAssetId\": \"" + UUID.randomUUID() + "\"}"))
+                .hasStatus(HttpStatus.NOT_FOUND).bodyJson().extractingPath("$.code").isEqualTo("MEDIA_NOT_FOUND");
         assertUnchanged();
     }
 

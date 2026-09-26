@@ -683,7 +683,9 @@ paths:
         non-empty; source values fill empty target fields (an absent text, `gender`
         `UNKNOWN`, a date of precision `UNKNOWN`); the target is deceased when either
         Person is. Relationships and memories are transferred and deduplicated
-        atomically; the source's linked user moves to a target linked to nobody.
+        atomically; the source's linked user moves to a target linked to nobody. The
+        target keeps its photo, or takes the source's when it has none; the source keeps
+        no photo, and its photo becomes ARCHIVED when the target already had one (OQ-047).
         Refusals: 409 `PERSON_MERGE_CONFLICT` with `details.reason`
         `DIFFERENT_LINKED_USERS`, `SELF_RELATIONSHIP` (the two Persons are linked by an
         ACTIVE relationship) or `PARENTAL_CYCLE`; 404 `PERSON_NOT_FOUND` for a MERGED
@@ -1761,6 +1763,11 @@ components:
         profileMediaAssetId:
           type: [string, 'null']
           format: uuid
+          description: |
+            A READY `PROFILE_PICTURE` asset, uploaded by the caller and not yet used, that
+            becomes the Person's photo (OQ-040). Otherwise 409 `MEDIA_NOT_READY` or
+            `MEDIA_ALREADY_USED`, 403 for another member's asset, or 404 `MEDIA_NOT_FOUND`
+            (OQ-036).
         linkToCurrentUser:
           type: boolean
           default: false
@@ -1807,7 +1814,8 @@ components:
           description: |
             A READY `PROFILE_PICTURE` asset, uploaded by the caller and not yet used, that
             replaces the current photo (OQ-040). Otherwise 409 `MEDIA_NOT_READY` or
-            `MEDIA_ALREADY_USED`, or 403 for another member's asset (OQ-036).
+            `MEDIA_ALREADY_USED`, 403 for another member's asset, or 404 `MEDIA_NOT_FOUND`
+            (OQ-036).
         removeProfilePicture:
           type: boolean
           description: |

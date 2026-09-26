@@ -7,11 +7,23 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
 import java.util.TreeSet;
+import java.util.UUID;
 
 /** The audited values of a Person's identity and profile (data-model.md §17), field by field. */
 public final class PersonAuditValues {
 
+    /**
+     * The photo of the Person (OQ-046): its value is the media asset id, never a storage key; the
+     * Person history shows the field without values.
+     */
+    public static final String PROFILE_PICTURE = "profilePicture";
+
     private PersonAuditValues() {}
+
+    /** The photo field as a one-entry map, or an empty map when there is no photo. */
+    public static Map<String, Object> profilePicture(UUID mediaAssetId) {
+        return mediaAssetId == null ? Map.of() : Map.of(PROFILE_PICTURE, mediaAssetId);
+    }
 
     /** Every field that has a value; an absent key means "no value". */
     public static Map<String, Object> of(PersonDetails details) {

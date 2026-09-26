@@ -26,9 +26,11 @@ import org.springframework.transaction.annotation.Transactional;
 public class RelatedPersons {
 
     private final PersonRepository persons;
+    private final ProfilePictureUrls profilePictureUrls;
 
-    public RelatedPersons(PersonRepository persons) {
+    public RelatedPersons(PersonRepository persons, ProfilePictureUrls profilePictureUrls) {
         this.persons = persons;
+        this.profilePictureUrls = profilePictureUrls;
     }
 
     /**
@@ -67,19 +69,19 @@ public class RelatedPersons {
         if (!newOnesActive) {
             throw new DomainException(ErrorCode.PERSON_NOT_ACTIVE, "An archived person cannot be linked.");
         }
-        return found.stream().map(RelatedPersons::toRelated).toList();
+        return found.stream().map(this::toRelated).toList();
     }
 
     /** @return these Persons of the Family, whatever their status, by id; another Family's are absent */
     @Transactional(readOnly = true)
     public Map<UUID, RelatedPerson> describe(UUID familyId, Collection<UUID> personIds) {
         return persons.findAllInFamily(familyId, personIds.stream().map(PersonId::new).toList()).stream()
-                .map(RelatedPersons::toRelated)
+                .map(this::toRelated)
                 .collect(Collectors.toMap(RelatedPerson::id, Function.identity()));
     }
 
-    private static RelatedPerson toRelated(Person person) {
+    private RelatedPerson toRelated(Person person) {
         return new RelatedPerson(person.id().value(), person.details().displayName(),
-                RelatedPerson.Status.valueOf(person.status().name()));
+                RelatedPerson.Status.valueOf(person.status().name()), profilePictureUrls.of(person));
     }
 }

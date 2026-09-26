@@ -12,7 +12,8 @@ import org.junit.jupiter.api.Test;
  * claim or a release changes only the link and authorship (person-relationships-collaboration.md §2).
  * PR-26: an archive or a restore changes only the status, its date and authorship (§5). PR-27: a
  * merge marks the duplicate MERGED into the kept Person, which keeps its known values and takes the
- * missing ones (§4.2, data-model.md §19, OQ-028).
+ * missing ones (§4.2, data-model.md §19, OQ-028). PR-37: the photo is kept by every other
+ * change, and a merge keeps one photo (OQ-040, OQ-047).
  */
 class PersonTest {
 
@@ -212,6 +213,54 @@ class PersonTest {
                 .contains(duplicateUser);
         assertThat(person(PersonStatus.ACTIVE).claim(keptUser, keptUser, CREATED)
                 .absorb(person(PersonStatus.ACTIVE), keptUser, UPDATED).linkedUserId()).contains(keptUser);
+    }
+
+    // --- PR-37: the photo (OQ-040, OQ-047) ---
+
+    @Test
+    void aPersonIsCreatedWithOrWithoutAPhoto() {
+        UUID creator = UUID.randomUUID();
+        UUID photo = UUID.randomUUID();
+
+        assertThat(Person.create(PersonId.newId(), UUID.randomUUID(), details("Marie"), photo, null, creator,
+                CREATED).profileMediaAssetId()).contains(photo);
+        assertThat(Person.create(PersonId.newId(), UUID.randomUUID(), details("Marie"), null, creator, CREATED)
+                .profileMediaAssetId()).isEmpty();
+    }
+
+    @Test
+    void aPhotoChangeKeepsEverythingElseAndOtherChangesKeepThePhoto() {
+        UUID editor = UUID.randomUUID();
+        UUID photo = UUID.randomUUID();
+        Person person = person(PersonStatus.ACTIVE);
+
+        Person withPhoto = person.changeProfilePicture(photo, editor, UPDATED);
+
+        assertThat(withPhoto.profileMediaAssetId()).contains(photo);
+        assertThat(withPhoto.details()).isEqualTo(person.details());
+        assertThat(withPhoto.updatedBy()).isEqualTo(editor);
+        assertThat(withPhoto.updatedAt()).isEqualTo(UPDATED);
+        assertThat(withPhoto.version()).isEqualTo(person.version());
+        assertThat(withPhoto.update(details("Maria"), editor, UPDATED).profileMediaAssetId()).contains(photo);
+        assertThat(withPhoto.claim(editor, editor, UPDATED).profileMediaAssetId()).contains(photo);
+        assertThat(withPhoto.archive(editor, UPDATED).profileMediaAssetId()).contains(photo);
+        assertThat(withPhoto.archive(editor, UPDATED).unarchive(editor, UPDATED).profileMediaAssetId())
+                .contains(photo);
+        assertThat(withPhoto.changeProfilePicture(null, editor, UPDATED).profileMediaAssetId()).isEmpty();
+    }
+
+    @Test
+    void theKeptPersonKeepsItsPhotoOrTakesTheDuplicatesAndTheDuplicateKeepsNone() {
+        UUID admin = UUID.randomUUID();
+        UUID keptPhoto = UUID.randomUUID();
+        UUID duplicatePhoto = UUID.randomUUID();
+        Person duplicate = person(PersonStatus.ACTIVE).changeProfilePicture(duplicatePhoto, admin, CREATED);
+
+        assertThat(person(PersonStatus.ACTIVE).absorb(duplicate, admin, UPDATED).profileMediaAssetId())
+                .contains(duplicatePhoto);
+        assertThat(person(PersonStatus.ACTIVE).changeProfilePicture(keptPhoto, admin, CREATED)
+                .absorb(duplicate, admin, UPDATED).profileMediaAssetId()).contains(keptPhoto);
+        assertThat(duplicate.mergeInto(PersonId.newId(), admin, UPDATED).profileMediaAssetId()).isEmpty();
     }
 
     private static Person withDetails(PersonDetails details) {

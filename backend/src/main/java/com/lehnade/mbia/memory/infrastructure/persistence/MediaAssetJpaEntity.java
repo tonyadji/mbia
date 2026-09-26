@@ -67,6 +67,9 @@ class MediaAssetJpaEntity implements Persistable<UUID> {
     @Column(name = "ready_at")
     private Instant readyAt;
 
+    @Column(name = "archived_at")
+    private Instant archivedAt;
+
     /** A row built by the application is inserted; a loaded or saved one is updated. */
     @Transient
     private boolean isNew = true;
@@ -89,7 +92,7 @@ class MediaAssetJpaEntity implements Persistable<UUID> {
     }
 
     void change(String status, String displayStorageKey, String thumbnailStorageKey, Integer widthPx,
-            Integer heightPx, String failureReason, Instant readyAt) {
+            Integer heightPx, String failureReason, Instant readyAt, Instant archivedAt) {
         this.status = status;
         this.displayStorageKey = displayStorageKey;
         this.thumbnailStorageKey = thumbnailStorageKey;
@@ -97,6 +100,7 @@ class MediaAssetJpaEntity implements Persistable<UUID> {
         this.heightPx = heightPx;
         this.failureReason = failureReason;
         this.readyAt = readyAt;
+        this.archivedAt = archivedAt;
     }
 
     @PostLoad
@@ -161,5 +165,9 @@ class MediaAssetJpaEntity implements Persistable<UUID> {
 
     Instant readyAt() {
         return readyAt;
+    }
+
+    Instant archivedAt() {
+        return archivedAt;
     }
 }

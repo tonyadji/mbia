@@ -10,6 +10,8 @@ import java.net.URI;
 import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
+import java.sql.Timestamp;
+import java.time.Instant;
 import java.util.Map;
 import java.util.UUID;
 import org.springframework.http.HttpHeaders;
@@ -70,6 +72,50 @@ public final class MediaFixtures {
         Slot slot = createSlot(token, familyId, mimeType, content.length);
         assertThat(put(slot, content).statusCode()).isEqualTo(200);
         return slot;
+    }
+
+    /**
+     * A READY photo uploaded and completed by {@code token} through the API, as the browser does
+     * (a JPEG fixture): its derivatives exist in storage.
+     */
+    public UUID readyPhoto(TestJwts.Token token, UUID familyId) {
+        Slot slot = uploaded(token, familyId, "image/jpeg", MediaImages.fixture(MediaImages.JPEG_ORIENTATION_6));
+        assertThat(complete(token, familyId, slot.mediaAssetId())).hasStatusOk();
+        return slot.mediaAssetId();
+    }
+
+    /**
+     * A PROFILE_PICTURE row with this status written straight to the database, without objects in
+     * storage: signing its URLs needs none.
+     */
+    public UUID row(UUID familyId, UUID uploadedBy, String status) {
+        return insertRow(jdbc, familyId, uploadedBy, status);
+    }
+
+    /** @see #row(UUID, UUID, String) */
+    public static UUID insertRow(JdbcClient jdbc, UUID familyId, UUID uploadedBy, String status) {
+        UUID id = UUID.randomUUID();
+        boolean processed = status.equals("READY") || status.equals("ARCHIVED");
+        Timestamp now = Timestamp.from(Instant.now());
+        jdbc.sql("""
+                INSERT INTO media_assets (id, family_id, purpose, status, upload_storage_key, display_storage_key,
+                                          thumbnail_storage_key, original_filename, upload_mime_type,
+                                          upload_size_bytes, width_px, height_px, uploaded_by, created_at, ready_at,
+                                          archived_at)
+                VALUES (?, ?, 'PROFILE_PICTURE', ?, ?, ?, ?, 'photo.jpg', 'image/jpeg', 1000, ?, ?, ?, now(), ?, ?)
+                """)
+                .params(id, familyId, status, key(familyId, id, "upload"),
+                        processed ? key(familyId, id, "display") : null,
+                        processed ? key(familyId, id, "thumbnail") : null, processed ? 800 : null,
+                        processed ? 600 : null, uploadedBy, processed ? now : null,
+                        status.equals("ARCHIVED") ? now : null)
+                .update();
+        return id;
+    }
+
+    public String status(UUID mediaAssetId) {
+        return jdbc.sql("SELECT status FROM media_assets WHERE id = ?").param(mediaAssetId).query(String.class)
+                .single();
     }
 
     /** The direct upload of the browser: a PUT to the pre-signed URL with the required headers. */

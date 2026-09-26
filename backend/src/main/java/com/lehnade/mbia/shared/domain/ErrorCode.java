@@ -29,6 +29,7 @@ public enum ErrorCode {
     USER_ALREADY_LINKED(409, "User already linked"),
     PERSON_NOT_ACTIVE(409, "Person not active"),
     MEDIA_NOT_READY(409, "Media not ready"),
+    MEDIA_ALREADY_USED(409, "Media already used"),
     PERSON_MERGE_CONFLICT(409, "Person merge conflict"),
     RELATIONSHIP_ALREADY_EXISTS(409, "Relationship already exists"),
     RELATIONSHIP_CREATES_CYCLE(409, "Relationship creates a cycle"),

@@ -11,6 +11,7 @@ import com.lehnade.mbia.api.generated.model.RelationshipStatus;
 import com.lehnade.mbia.api.generated.model.RelationshipType;
 import com.lehnade.mbia.api.generated.model.RelationshipWarning;
 import com.lehnade.mbia.api.generated.model.RelationshipWarningCode;
+import com.lehnade.mbia.genealogy.application.ProfilePictureUrls;
 import com.lehnade.mbia.genealogy.application.archiverelationship.ArchiveRelationshipCommand;
 import com.lehnade.mbia.genealogy.application.archiverelationship.ArchiveRelationshipUseCase;
 import com.lehnade.mbia.genealogy.application.createrelationship.CreateRelationshipCommand;
@@ -41,14 +42,17 @@ class RelationshipsController implements RelationshipsApi {
     private final ArchiveRelationshipUseCase archiveRelationship;
     private final RestoreRelationshipUseCase restoreRelationship;
     private final ListArchivedPersonRelationshipsUseCase listArchivedPersonRelationships;
+    private final ProfilePictureUrls profilePictureUrls;
 
     RelationshipsController(CreateRelationshipUseCase createRelationship,
             ArchiveRelationshipUseCase archiveRelationship, RestoreRelationshipUseCase restoreRelationship,
-            ListArchivedPersonRelationshipsUseCase listArchivedPersonRelationships) {
+            ListArchivedPersonRelationshipsUseCase listArchivedPersonRelationships,
+            ProfilePictureUrls profilePictureUrls) {
         this.createRelationship = createRelationship;
         this.archiveRelationship = archiveRelationship;
         this.restoreRelationship = restoreRelationship;
         this.listArchivedPersonRelationships = listArchivedPersonRelationships;
+        this.profilePictureUrls = profilePictureUrls;
     }
 
     @Override
@@ -85,7 +89,7 @@ class RelationshipsController implements RelationshipsApi {
     public ResponseEntity<List<ArchivedRelationshipResponse>> listArchivedPersonRelationships(UUID familyId,
             UUID personId) {
         return ResponseEntity.ok(listArchivedPersonRelationships.list(familyId, personId).stream()
-                .map(RelationshipsController::toResponse)
+                .map(this::toResponse)
                 .toList());
     }
 
@@ -102,7 +106,7 @@ class RelationshipsController implements RelationshipsApi {
                 warnings, relationship.version(), relationship.createdAt().atOffset(ZoneOffset.UTC));
     }
 
-    private static ArchivedRelationshipResponse toResponse(ArchivedRelationship archived) {
+    private ArchivedRelationshipResponse toResponse(ArchivedRelationship archived) {
         FamilyRelationship relationship = archived.relationship();
         return new ArchivedRelationshipResponse(relationship.id().value(),
                 RelationshipType.fromValue(relationship.type().name()), relationship.source().value(),
@@ -110,8 +114,7 @@ class RelationshipsController implements RelationshipsApi {
                 relationship.archivedAt().atOffset(ZoneOffset.UTC), toSummary(archived.relatedPerson()));
     }
 
-    /** No photo in this phase: {@code profilePictureUrl} is always null (Phase 2 plan §3.1). */
-    private static PersonSummary toSummary(Person person) {
+    private PersonSummary toSummary(Person person) {
         PersonDetails details = person.details();
         return new PersonSummary(person.id().value(), person.familyId(), details.firstName(),
                 Gender.fromValue(details.gender().name()), PersonApiMapping.toApi(details.birth()),
@@ -121,7 +124,7 @@ class RelationshipsController implements RelationshipsApi {
                 .lastName(details.lastName())
                 .preferredName(details.preferredName())
                 .displayName(details.displayName())
-                .profilePictureUrl(null)
+                .profilePictureUrl(profilePictureUrls.of(person))
                 .linkedUserId(person.linkedUserId().orElse(null));
     }
 }

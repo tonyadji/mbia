@@ -134,7 +134,8 @@ class MemoriesController implements MemoriesApi {
                 MemoryStatus.valueOf(memory.status().name()),
                 view.relatedPersons().stream()
                         .map(person -> new RelatedPersonReference(person.id(), person.displayName(),
-                                PersonStatus.valueOf(person.status().name())))
+                                PersonStatus.valueOf(person.status().name()))
+                                .profilePictureUrl(person.profilePictureUrl()))
                         .toList(),
                 new ActivityActor(view.createdBy().userId(), view.createdBy().displayName(),
                         view.createdBy().deleted()),

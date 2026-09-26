@@ -2,8 +2,10 @@ package com.lehnade.mbia.genealogy.api;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
+import com.jayway.jsonpath.JsonPath;
 import com.lehnade.mbia.ApiTestSupport;
 import com.lehnade.mbia.TestJwts;
+import com.lehnade.mbia.family.FamilyFixtures;
 import com.lehnade.mbia.genealogy.GraphRows;
 import jakarta.persistence.EntityManagerFactory;
 import java.util.ArrayList;
@@ -16,11 +18,13 @@ import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpHeaders;
 import org.springframework.test.context.TestPropertySource;
+import org.springframework.test.web.servlet.assertj.MvcTestResult;
 
 /**
  * PR-22, genealogy.md §10 and §15: a tree request runs a bounded number of SQL statements,
  * independent of the Family size (no query per node, no per-card kinship resolution). The same
- * local shape is read in a small Family and in a Family of 250 Persons.
+ * local shape is read in a small Family and in a Family of 250 Persons. PR-37: every Person has a
+ * photo, whose URL is signed without any extra query (data-model.md §13).
  */
 @TestPropertySource(properties = "spring.jpa.properties.hibernate.generate_statistics=true")
 class GetFamilyTreeQueryCountTest extends ApiTestSupport {
@@ -55,8 +59,12 @@ class GetFamilyTreeQueryCountTest extends ApiTestSupport {
         String uri = "/api/v1/families/" + family.id() + "/tree" + query.formatted(family.parent());
         Statistics statistics = entityManagerFactory.unwrap(SessionFactory.class).getStatistics();
         statistics.clear();
-        assertThat(mvc.get().uri(uri).header(HttpHeaders.AUTHORIZATION, token.bearer()).exchange()).hasStatusOk();
-        return statistics.getPrepareStatementCount();
+        MvcTestResult result = mvc.get().uri(uri).header(HttpHeaders.AUTHORIZATION, token.bearer()).exchange();
+        long statements = statistics.getPrepareStatementCount();
+        assertThat(result).hasStatusOk();
+        assertThat(JsonPath.<List<String>>read(FamilyFixtures.body(result), "$.nodes[*].profilePictureUrl"))
+                .isNotEmpty().allSatisfy(url -> assertThat(url).contains("/thumbnail"));
+        return statements;
     }
 
     /**
@@ -104,6 +112,7 @@ class GetFamilyTreeQueryCountTest extends ApiTestSupport {
             descendants.add(person);
             all.add(person);
         }
+        all.forEach(rows::photo);
         // Warm up: the first request of a token provisions its User.
         for (TestJwts.Token token : new TestJwts.Token[] {admin, viewer}) {
             mvc.get().uri("/api/v1/families/" + familyId + "/tree").header(HttpHeaders.AUTHORIZATION, token.bearer())

@@ -10,6 +10,7 @@ import com.lehnade.mbia.api.generated.model.RelationshipType;
 import com.lehnade.mbia.api.generated.model.TreeEdge;
 import com.lehnade.mbia.api.generated.model.TreeNode;
 import com.lehnade.mbia.api.generated.model.TreeResponse;
+import com.lehnade.mbia.genealogy.application.ProfilePictureUrls;
 import com.lehnade.mbia.genealogy.application.getfamilytree.FamilyTreeView;
 import com.lehnade.mbia.genealogy.application.getfamilytree.GetFamilyTreeUseCase;
 import com.lehnade.mbia.genealogy.application.resolvekinship.ResolveKinshipUseCase;
@@ -28,10 +29,13 @@ class TreeController implements TreeApi {
 
     private final ResolveKinshipUseCase resolveKinship;
     private final GetFamilyTreeUseCase getFamilyTree;
+    private final ProfilePictureUrls profilePictureUrls;
 
-    TreeController(ResolveKinshipUseCase resolveKinship, GetFamilyTreeUseCase getFamilyTree) {
+    TreeController(ResolveKinshipUseCase resolveKinship, GetFamilyTreeUseCase getFamilyTree,
+            ProfilePictureUrls profilePictureUrls) {
         this.resolveKinship = resolveKinship;
         this.getFamilyTree = getFamilyTree;
+        this.profilePictureUrls = profilePictureUrls;
     }
 
     @Override
@@ -54,8 +58,7 @@ class TreeController implements TreeApi {
                 .orElseGet(() -> new TreeResponse(null, List.of(), List.of())));
     }
 
-    /** No photo in this phase: {@code profilePictureUrl} is always null (Phase 2 plan §3.1). */
-    private static TreeNode toApi(FamilyTree.Node node, FamilyTreeView view) {
+    private TreeNode toApi(FamilyTree.Node node, FamilyTreeView view) {
         Person person = node.person();
         PersonDetails details = person.details();
         com.lehnade.mbia.genealogy.domain.KinshipCode relationship =
@@ -69,7 +72,7 @@ class TreeController implements TreeApi {
                 .lastName(details.lastName())
                 .preferredName(details.preferredName())
                 .displayName(details.displayName())
-                .profilePictureUrl(null)
+                .profilePictureUrl(profilePictureUrls.of(person))
                 .linkedUserId(person.linkedUserId().orElse(null))
                 .relationshipToCurrentUser(relationship == null ? null : KinshipCode.fromValue(relationship.name()));
     }

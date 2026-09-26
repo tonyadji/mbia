@@ -41,7 +41,8 @@ class JpaPersonRepository implements PersonRepository {
                     details.middleNames(), details.lastName(), details.preferredName(), details.gender().name(),
                     details.birth().date(), year(details.birth()), details.birth().precision().name(),
                     details.deceased(), details.death().date(), year(details.death()),
-                    details.death().precision().name(), details.biography(), person.linkedUserId().orElse(null),
+                    details.death().precision().name(), details.biography(),
+                    person.profileMediaAssetId().orElse(null), person.linkedUserId().orElse(null),
                     person.status().name(), person.createdBy(), person.updatedBy(), person.createdAt(),
                     person.updatedAt()));
         } catch (DataIntegrityViolationException e) {
@@ -94,6 +95,7 @@ class JpaPersonRepository implements PersonRepository {
                 details.birth().precision().name(), details.deceased(), details.death().date(),
                 year(details.death()), details.death().precision().name(), details.biography(),
                 person.updatedBy(), person.updatedAt());
+        entity.changeProfilePicture(person.profileMediaAssetId().orElse(null));
         entity.changeLinkedUser(person.linkedUserId().orElse(null));
         entity.changeStatus(person.status().name(), person.archivedAt().orElse(null),
                 person.mergedIntoPersonId().map(PersonId::value).orElse(null));
@@ -121,7 +123,8 @@ class JpaPersonRepository implements PersonRepository {
                 partialDate(entity.birthDatePrecision(), entity.birthDate(), entity.birthYear()), entity.deceased(),
                 partialDate(entity.deathDatePrecision(), entity.deathDate(), entity.deathYear()),
                 entity.biography());
-        return Person.restore(new PersonId(entity.id()), entity.familyId(), details, entity.linkedUserId(),
+        return Person.restore(new PersonId(entity.id()), entity.familyId(), details, entity.profileMediaAssetId(),
+                entity.linkedUserId(),
                 PersonStatus.valueOf(entity.status()), entity.createdBy(), entity.updatedBy(), entity.createdAt(),
                 entity.updatedAt(), entity.archivedAt(),
                 entity.mergedIntoPersonId() == null ? null : new PersonId(entity.mergedIntoPersonId()),

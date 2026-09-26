@@ -22,7 +22,8 @@ import org.springframework.test.web.servlet.assertj.MvcTestResult;
 /**
  * PR-31 (phase-3-family-memories.md), data-model.md §23.3: listing a Person's Memories runs a
  * bounded number of SQL statements, whatever the number of Memories, of their Persons and of their
- * authors. The same request is made for a Person with 1 Memory and for a Person with 200.
+ * authors. The same request is made for a Person with 1 Memory and for a Person with 200. PR-37:
+ * the Persons have photos, whose URLs are signed without any extra query.
  */
 @TestPropertySource(properties = "spring.jpa.properties.hibernate.generate_statistics=true")
 class ListPersonMemoriesQueryCountTest extends ApiTestSupport {
@@ -52,8 +53,12 @@ class ListPersonMemoriesQueryCountTest extends ApiTestSupport {
         MvcTestResult result = new MemoryFixtures(mvc, jdbc).listForPerson(family.viewer(), family.id(),
                 family.grandmother(), query);
         assertThat(result).hasStatusOk();
+        long statements = statistics.getPrepareStatementCount();
         assertThat(JsonPath.<List<Object>>read(FamilyFixtures.body(result), "$.items")).isNotEmpty();
-        return statistics.getPrepareStatementCount();
+        assertThat(JsonPath.<List<String>>read(FamilyFixtures.body(result),
+                "$.items[*].relatedPersons[*].profilePictureUrl"))
+                .isNotEmpty().allSatisfy(url -> assertThat(url).contains("/thumbnail"));
+        return statements;
     }
 
     /**
@@ -73,6 +78,8 @@ class ListPersonMemoriesQueryCountTest extends ApiTestSupport {
         UUID grandmother = rows.person("Awa");
         List<UUID> others = List.of(rows.person("Éloïse"), rows.person("Alice"), rows.person("Paul"));
         rows.archivePerson(others.getLast());
+        rows.photo(grandmother);
+        others.forEach(rows::photo);
 
         MemoryFixtures memories = new MemoryFixtures(mvc, jdbc);
         Instant start = Instant.parse("2026-01-01T00:00:00Z");

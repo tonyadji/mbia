@@ -16,6 +16,7 @@ import com.lehnade.mbia.api.generated.model.PersonStatus;
 import com.lehnade.mbia.api.generated.model.PersonSummary;
 import com.lehnade.mbia.api.generated.model.UpdatePersonRequest;
 import com.lehnade.mbia.genealogy.application.PersonView;
+import com.lehnade.mbia.genealogy.application.ProfilePictureUrls;
 import com.lehnade.mbia.genealogy.application.archiveperson.ArchivePersonCommand;
 import com.lehnade.mbia.genealogy.application.archiveperson.ArchivePersonUseCase;
 import com.lehnade.mbia.genealogy.application.claimperson.ClaimPersonCommand;
@@ -70,12 +71,13 @@ class PersonsController implements PersonsApi {
     private final RestorePersonUseCase restorePerson;
     private final MergePersonsUseCase mergePersons;
     private final GetPersonHistoryUseCase getPersonHistory;
+    private final ProfilePictureUrls profilePictureUrls;
 
     PersonsController(CreatePersonUseCase createPerson, GetPersonUseCase getPerson,
             UpdatePersonUseCase updatePerson, ClaimPersonUseCase claimPerson, UnclaimPersonUseCase unclaimPerson,
             SearchPersonsUseCase searchPersons, ArchivePersonUseCase archivePerson,
             RestorePersonUseCase restorePerson, MergePersonsUseCase mergePersons,
-            GetPersonHistoryUseCase getPersonHistory) {
+            GetPersonHistoryUseCase getPersonHistory, ProfilePictureUrls profilePictureUrls) {
         this.createPerson = createPerson;
         this.getPerson = getPerson;
         this.updatePerson = updatePerson;
@@ -86,9 +88,9 @@ class PersonsController implements PersonsApi {
         this.restorePerson = restorePerson;
         this.mergePersons = mergePersons;
         this.getPersonHistory = getPersonHistory;
+        this.profilePictureUrls = profilePictureUrls;
     }
 
-    /** {@code profileMediaAssetId} is ignored: Persons have no photo in Phase 2 (OQ-005). */
     @Override
     public ResponseEntity<PersonResponse> createPerson(UUID familyId, CreatePersonRequest request) {
         PersonDetails details = new PersonDetails(request.getFirstName(), request.getMiddleNames(),
@@ -96,7 +98,7 @@ class PersonsController implements PersonsApi {
                 toDomain(request.getBirth()), Boolean.TRUE.equals(request.getIsDeceased()),
                 toDomain(request.getDeath()), request.getBiography());
         PersonView person = createPerson.create(new CreatePersonCommand(familyId, details,
-                Boolean.TRUE.equals(request.getLinkToCurrentUser()),
+                Optional.ofNullable(request.getProfileMediaAssetId()), Boolean.TRUE.equals(request.getLinkToCurrentUser()),
                 Boolean.TRUE.equals(request.getConfirmPossibleDuplicate())));
         return ResponseEntity.status(HttpStatus.CREATED)
                 .eTag(ETags.of(person.person().version()))
@@ -114,13 +116,13 @@ class PersonsController implements PersonsApi {
             Integer size) {
         PersonSearchView result = searchPersons.search(new SearchPersonsCommand(familyId, toSearchStatus(status),
                 search, page, size));
-        return ResponseEntity.ok(new PersonPage(result.items().stream().map(PersonsController::toSummary).toList(),
+        return ResponseEntity.ok(new PersonPage(result.items().stream().map(this::toSummary).toList(),
                 new PageMeta(result.page(), result.size(), result.totalElements(), result.totalPages())));
     }
 
     /**
-     * An absent or {@code null} field is left unchanged; {@code profileMediaAssetId} is ignored
-     * (OQ-005, OQ-008).
+     * An absent or {@code null} field is left unchanged (OQ-008); {@code removeProfilePicture: true}
+     * removes the photo (OQ-040).
      */
     @Override
     public ResponseEntity<PersonResponse> updatePerson(String ifMatch, UUID familyId, UUID personId,
@@ -130,7 +132,9 @@ class PersonsController implements PersonsApi {
                 Optional.ofNullable(request.getMiddleNames()), Optional.ofNullable(request.getLastName()),
                 Optional.ofNullable(request.getPreferredName()), Optional.ofNullable(toDomain(request.getGender())),
                 Optional.ofNullable(toDomain(request.getBirth())), Optional.ofNullable(request.getIsDeceased()),
-                Optional.ofNullable(toDomain(request.getDeath())), Optional.ofNullable(request.getBiography())));
+                Optional.ofNullable(toDomain(request.getDeath())), Optional.ofNullable(request.getBiography()),
+                Optional.ofNullable(request.getProfileMediaAssetId()),
+                Boolean.TRUE.equals(request.getRemoveProfilePicture())));
         return ResponseEntity.ok().eTag(ETags.of(person.person().version())).body(toResponse(person));
     }
 
@@ -199,8 +203,7 @@ class PersonsController implements PersonsApi {
         throw new DomainException(ErrorCode.VALIDATION_FAILED, "status must be ACTIVE or ARCHIVED.");
     }
 
-    /** No photo in this phase: {@code profilePictureUrl} is always null (Phase 2 plan §3.1). */
-    private static PersonSummary toSummary(PersonView view) {
+    private PersonSummary toSummary(PersonView view) {
         Person person = view.person();
         PersonDetails details = person.details();
         return new PersonSummary(person.id().value(), person.familyId(), details.firstName(),
@@ -210,12 +213,12 @@ class PersonsController implements PersonsApi {
                 .lastName(details.lastName())
                 .preferredName(details.preferredName())
                 .displayName(details.displayName())
-                .profilePictureUrl(null)
+                .profilePictureUrl(profilePictureUrls.of(person))
                 .linkedUserId(person.linkedUserId().orElse(null))
                 .relationshipToCurrentUser(view.relationshipToCurrentUser().map(KinshipCode::fromValue).orElse(null));
     }
 
-    private static PersonResponse toResponse(PersonView view) {
+    private PersonResponse toResponse(PersonView view) {
         Person person = view.person();
         PersonDetails details = person.details();
         return new PersonResponse(person.id().value(), person.familyId(), details.firstName(),
@@ -226,7 +229,7 @@ class PersonsController implements PersonsApi {
                 .lastName(details.lastName())
                 .preferredName(details.preferredName())
                 .displayName(details.displayName())
-                .profilePictureUrl(null)
+                .profilePictureUrl(profilePictureUrls.of(person))
                 .linkedUserId(person.linkedUserId().orElse(null))
                 .relationshipToCurrentUser(view.relationshipToCurrentUser().map(KinshipCode::fromValue).orElse(null))
                 .mergedIntoPersonId(person.mergedIntoPersonId().map(PersonId::value).orElse(null));

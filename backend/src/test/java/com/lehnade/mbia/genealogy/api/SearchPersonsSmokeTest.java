@@ -21,7 +21,8 @@ import org.springframework.test.web.servlet.assertj.MvcTestResult;
 /**
  * PR-25 smoke test: search in a Family of 250 connected Persons (mvp.md §19; genealogy.md §11,
  * §15). Pages are complete and ordered, and a search runs the same bounded number of SQL
- * statements as in a small Family (no query or kinship resolution per result).
+ * statements as in a small Family (no query or kinship resolution per result). PR-37: every Person
+ * has a photo, whose URL is signed without any extra query (data-model.md §13).
  */
 @TestPropertySource(properties = "spring.jpa.properties.hibernate.generate_statistics=true")
 class SearchPersonsSmokeTest extends ApiTestSupport {
@@ -50,6 +51,8 @@ class SearchPersonsSmokeTest extends ApiTestSupport {
                     "$.items[*].id"));
         }
         assertThat(all).hasSize(250).doesNotHaveDuplicates();
+        assertThat(JsonPath.<List<String>>read(firstPage, "$.items[*].profilePictureUrl")).hasSize(100)
+                .allSatisfy(url -> assertThat(url).contains("/thumbnail").contains("X-Amz-Signature"));
 
         String filtered = FamilyFixtures.body(search(large, "search", "elodie 12"));
         assertThat(JsonPath.<List<String>>read(filtered, "$.items[*].firstName"))
@@ -86,6 +89,7 @@ class SearchPersonsSmokeTest extends ApiTestSupport {
             } else {
                 rows.parentOf(persons.get((i - 1) / 2), person);
             }
+            rows.photo(person);
             persons.add(person);
         }
         // Warm up: the first request of a token provisions its User.

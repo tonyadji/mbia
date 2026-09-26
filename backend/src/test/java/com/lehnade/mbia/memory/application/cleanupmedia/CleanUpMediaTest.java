@@ -99,12 +99,9 @@ class CleanUpMediaTest extends ApiTestSupport {
 
     @Test
     void anAttachedPhotoIsNeverTouched() {
-        UUID grandmother = new PersonFixtures(mvc, jdbc).createId(family.admin(), family.familyId(),
-                "{\"firstName\": \"Awa\"}");
         Slot photo = completed();
-        // Attaching a photo arrives with PR-37: the row carries it already.
-        jdbc.sql("UPDATE persons SET profile_media_asset_id = ? WHERE id = ?")
-                .params(photo.mediaAssetId(), grandmother).update();
+        new PersonFixtures(mvc, jdbc).createId(family.contributor(), family.familyId(),
+                "{\"firstName\": \"Awa\", \"profileMediaAssetId\": \"" + photo.mediaAssetId() + "\"}");
         backdate("created_at", photo.mediaAssetId(), Duration.ofDays(30));
         backdate("ready_at", photo.mediaAssetId(), Duration.ofDays(30));
 
