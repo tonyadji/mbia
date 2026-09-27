@@ -12,9 +12,10 @@ public interface MemoryRepository {
     void insert(Memory memory);
 
     /**
-     * Writes the changes of a Memory read at {@code memory.version()}: its story, status and
-     * Person associations. A commit by another transaction since it was read fails instead of
-     * being overwritten (technical-specification.md §13).
+     * Writes the changes of a Memory read at {@code memory.version()}: its story, status, Person
+     * associations and photos (removed, described, added; positions unchanged). A commit by
+     * another transaction since it was read fails instead of being overwritten
+     * (technical-specification.md §13).
      *
      * @return the Memory as stored, with its incremented version
      */

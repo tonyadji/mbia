@@ -5,6 +5,7 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import com.lehnade.mbia.shared.domain.DomainException;
 import com.lehnade.mbia.shared.domain.ErrorCode;
+import com.lehnade.mbia.shared.domain.FieldValidationException;
 import java.time.Instant;
 import java.util.List;
 import java.util.Optional;
@@ -92,8 +93,7 @@ class MemoryTest {
         Memory memory = story("Titre", "Texte", List.of(PERSON));
         UUID other = UUID.randomUUID();
 
-        Memory edited = memory.updateStory(Optional.of("  Nouveau  "), Optional.empty(),
-                Optional.of(List.of(other)), EDITOR, LATER);
+        Memory edited = edit(memory, Optional.of("  Nouveau  "), Optional.empty(), Optional.of(List.of(other)));
 
         assertThat(edited.title()).isEqualTo("Nouveau");
         assertThat(edited.content()).isEqualTo("Texte");
@@ -108,23 +108,20 @@ class MemoryTest {
     void anEditThatChangesNothingReturnsTheSameMemory() {
         Memory memory = story("Titre", "Texte", List.of(PERSON));
 
-        assertThat(memory.updateStory(Optional.empty(), Optional.empty(), Optional.empty(), EDITOR, LATER))
+        assertThat(edit(memory, Optional.empty(), Optional.empty(), Optional.empty()))
                 .isSameAs(memory);
-        assertThat(memory.updateStory(Optional.of(" Titre "), Optional.of("Texte"), Optional.of(List.of(PERSON)),
-                EDITOR, LATER)).isSameAs(memory);
+        assertThat(edit(memory, Optional.of(" Titre "), Optional.of("Texte"), Optional.of(List.of(PERSON))))
+                .isSameAs(memory);
     }
 
     @Test
     void anEditKeepsTheRulesOfAStory() {
         Memory memory = story("Titre", "Texte", List.of(PERSON));
 
-        assertInvalid(() -> memory.updateStory(Optional.of(" "), Optional.empty(), Optional.empty(), EDITOR, LATER));
-        assertInvalid(() -> memory.updateStory(Optional.of("x".repeat(251)), Optional.empty(), Optional.empty(),
-                EDITOR, LATER));
-        assertInvalid(() -> memory.updateStory(Optional.empty(), Optional.of("\n"), Optional.empty(), EDITOR,
-                LATER));
-        assertInvalid(() -> memory.updateStory(Optional.empty(), Optional.empty(), Optional.of(List.of()), EDITOR,
-                LATER));
+        assertInvalid(() -> edit(memory, Optional.of(" "), Optional.empty(), Optional.empty()));
+        assertInvalid(() -> edit(memory, Optional.of("x".repeat(251)), Optional.empty(), Optional.empty()));
+        assertInvalid(() -> edit(memory, Optional.empty(), Optional.of("\n"), Optional.empty()));
+        assertInvalid(() -> edit(memory, Optional.empty(), Optional.empty(), Optional.of(List.of())));
     }
 
     @Test
@@ -198,13 +195,95 @@ class MemoryTest {
     void aTitleEditOfAStoryWithoutTextKeepsItWithoutText() {
         Memory memory = withPhotos("Titre", null, List.of(photo(null)));
 
-        Memory changed = memory.updateStory(Optional.of("Nouveau"), Optional.empty(), Optional.empty(), EDITOR,
-                LATER);
+        Memory changed = edit(memory, Optional.of("Nouveau"), Optional.empty(), Optional.empty());
 
         assertThat(changed.content()).isNull();
         assertThat(changed.photos()).isEqualTo(memory.photos());
-        assertThat(memory.updateStory(Optional.of("Titre"), Optional.empty(), Optional.empty(), EDITOR, LATER))
+        assertThat(edit(memory, Optional.of("Titre"), Optional.empty(), Optional.empty()))
                 .isSameAs(memory);
+    }
+
+    // --- PR-42: editing the photos (mvp.md §17, data-model.md §14bis, OQ-042) ---
+
+    @Test
+    void keptPhotosKeepTheirPositionWhateverTheOrderAndNewOnesFollow() {
+        Memory memory = withPhotos("Titre", "Texte", List.of(photo(null), photo(null), photo(null)));
+        MemoryPhoto first = memory.photos().get(0);
+        MemoryPhoto second = memory.photos().get(1);
+        MemoryPhoto third = memory.photos().get(2);
+        MemoryPhoto.New added = photo("Nouvelle");
+
+        Memory edited = editPhotos(memory, Optional.empty(), added, same(third, null, null), same(first, null, null));
+
+        assertThat(edited.photos()).extracting(MemoryPhoto::mediaAssetId)
+                .containsExactly(first.mediaAssetId(), third.mediaAssetId(), added.mediaAssetId());
+        // No renumbering: the gap of the removed second photo stays, the new one comes after all.
+        assertThat(edited.photos()).extracting(MemoryPhoto::position).containsExactly(1, 3, 4);
+        assertThat(edited.photos()).extracting(MemoryPhoto::mediaAssetId).doesNotContain(second.mediaAssetId());
+    }
+
+    @Test
+    void newPhotosAreAddedInListOrder() {
+        Memory memory = story("Titre", "Texte", List.of(PERSON));
+        MemoryPhoto.New a = photo(null);
+        MemoryPhoto.New b = photo(null);
+
+        Memory edited = editPhotos(memory, Optional.empty(), a, b);
+
+        assertThat(edited.photos()).extracting(MemoryPhoto::mediaAssetId)
+                .containsExactly(a.mediaAssetId(), b.mediaAssetId());
+        assertThat(edited.photos()).extracting(MemoryPhoto::position).containsExactly(1, 2);
+    }
+
+    @Test
+    void theCaptionAndTakenDateOfAKeptPhotoAreReplaced() {
+        Memory memory = withPhotos("Titre", "Texte", List.of(photo("Avant")));
+        TakenDate year = TakenDate.of(TakenDate.Precision.YEAR_ONLY, null, 1980);
+
+        Memory edited = editPhotos(memory, Optional.empty(), same(memory.photos().getFirst(), "  ", year));
+
+        assertThat(edited.photos().getFirst().caption()).isNull();
+        assertThat(edited.photos().getFirst().takenAt()).isEqualTo(year);
+        assertThat(edited.photos().getFirst().position()).isEqualTo(1);
+    }
+
+    @Test
+    void theSameListWithTheSameDetailsChangesNothing() {
+        Memory memory = withPhotos("Titre", "Texte", List.of(photo("Légende"), photo(null)));
+        MemoryPhoto first = memory.photos().get(0);
+        MemoryPhoto second = memory.photos().get(1);
+
+        assertThat(editPhotos(memory, Optional.empty(), same(second, "", null), same(first, "Légende", null)))
+                .isSameAs(memory);
+    }
+
+    @Test
+    void aBlankTextEmptiesItOnlyWhileAPhotoRemains() {
+        Memory withPhoto = withPhotos("Titre", "Texte", List.of(photo(null)));
+        Memory withoutPhoto = story("Titre", "Texte", List.of(PERSON));
+
+        assertThat(edit(withPhoto, Optional.empty(), Optional.of(""), Optional.empty()).content()).isNull();
+        assertInvalidField(() -> edit(withoutPhoto, Optional.empty(), Optional.of(" "), Optional.empty()), "content");
+        assertInvalidField(() -> editPhotos(withPhoto, Optional.of("")), "content");
+    }
+
+    @Test
+    void theLastPhotoIsRemovedOnlyWhileATextRemains() {
+        Memory withText = withPhotos("Titre", "Texte", List.of(photo(null)));
+        Memory withoutText = withPhotos("Titre", null, List.of(photo(null)));
+
+        assertThat(editPhotos(withText, Optional.empty()).photos()).isEmpty();
+        assertInvalidField(() -> editPhotos(withoutText, Optional.empty()), "photos");
+        assertThat(editPhotos(withoutText, Optional.of("Une histoire")).content()).isEqualTo("Une histoire");
+    }
+
+    @Test
+    void anEditedListFollowsTheRulesOfNewPhotos() {
+        Memory memory = withPhotos("Titre", "Texte", List.of(photo(null)));
+        MemoryPhoto.New kept = same(memory.photos().getFirst(), null, null);
+
+        assertInvalid(() -> editPhotos(memory, Optional.empty(), kept, kept));
+        assertInvalid(() -> editPhotos(memory, Optional.empty(), photo("x".repeat(5001))));
     }
 
     @Test
@@ -213,6 +292,20 @@ class MemoryTest {
 
         assertThat(memory.isCreatedBy(USER)).isTrue();
         assertThat(memory.isCreatedBy(EDITOR)).isFalse();
+    }
+
+    private static Memory edit(Memory memory, Optional<String> title, Optional<String> content,
+            Optional<List<UUID>> persons) {
+        return memory.updateStory(title, content, persons, Optional.empty(), EDITOR, LATER);
+    }
+
+    private static Memory editPhotos(Memory memory, Optional<String> content, MemoryPhoto.New... photos) {
+        return memory.updateStory(Optional.empty(), content, Optional.empty(), Optional.of(List.of(photos)), EDITOR,
+                LATER);
+    }
+
+    private static MemoryPhoto.New same(MemoryPhoto photo, String caption, TakenDate takenAt) {
+        return new MemoryPhoto.New(photo.mediaAssetId(), caption, takenAt);
     }
 
     private static Memory story(String title, String content, List<UUID> persons) {
@@ -225,6 +318,12 @@ class MemoryTest {
 
     private static MemoryPhoto.New photo(String caption) {
         return new MemoryPhoto.New(MediaAssetId.newId(), caption, null);
+    }
+
+    private static void assertInvalidField(Runnable change, String field) {
+        assertThatThrownBy(change::run)
+                .isInstanceOfSatisfying(FieldValidationException.class,
+                        e -> assertThat(e.field()).isEqualTo(field));
     }
 
     private static void assertInvalid(Runnable creation) {
