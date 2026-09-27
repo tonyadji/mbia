@@ -28,6 +28,7 @@ public final class Invitation {
     private final String locale;
     private final InvitationRole role;
     private final UUID personId;
+    private final EmailDelivery emailDelivery;
     private final String tokenHash;
     private final InvitationStatus status;
     private final UUID invitedBy;
@@ -42,9 +43,9 @@ public final class Invitation {
     private final long version;
 
     private Invitation(InvitationId id, UUID familyId, InvitationChannel channel, String email, String locale,
-            InvitationRole role, UUID personId, String tokenHash, InvitationStatus status, UUID invitedBy,
-            UUID acceptedBy, UUID revokedBy, Instant expiresAt, Instant acceptedAt, Instant revokedAt,
-            Instant renewedAt, Instant createdAt, Instant updatedAt, long version) {
+            InvitationRole role, UUID personId, EmailDelivery emailDelivery, String tokenHash, InvitationStatus status,
+            UUID invitedBy, UUID acceptedBy, UUID revokedBy, Instant expiresAt, Instant acceptedAt,
+            Instant revokedAt, Instant renewedAt, Instant createdAt, Instant updatedAt, long version) {
         this.id = Objects.requireNonNull(id, "id");
         this.familyId = Objects.requireNonNull(familyId, "familyId");
         this.channel = Objects.requireNonNull(channel, "channel");
@@ -52,6 +53,13 @@ public final class Invitation {
         this.locale = Objects.requireNonNull(locale, "locale");
         this.role = Objects.requireNonNull(role, "role");
         this.personId = personId;
+        if ((channel == InvitationChannel.EMAIL) != (emailDelivery != null)) {
+            throw new IllegalArgumentException("Only an EMAIL invitation has an email delivery.");
+        }
+        if (channel == InvitationChannel.EMAIL && email == null) {
+            throw new IllegalArgumentException("An EMAIL invitation has an email.");
+        }
+        this.emailDelivery = emailDelivery;
         this.tokenHash = Objects.requireNonNull(tokenHash, "tokenHash");
         this.status = Objects.requireNonNull(status, "status");
         this.invitedBy = Objects.requireNonNull(invitedBy, "invitedBy");
@@ -75,22 +83,52 @@ public final class Invitation {
     public static Invitation createLink(InvitationId id, UUID familyId, String email, String locale,
             InvitationRole role, UUID personId, String tokenHash, UUID invitedBy, Instant now) {
         String validEmail = email == null || email.isBlank() ? null : email.strip();
-        return new Invitation(id, familyId, InvitationChannel.LINK, validEmail, locale, role, personId, tokenHash,
-                InvitationStatus.PENDING, invitedBy, null, null, now.plus(VALIDITY), null, null, null, now, now, 0);
+        return new Invitation(id, familyId, InvitationChannel.LINK, validEmail, locale, role, personId, null,
+                tokenHash, InvitationStatus.PENDING, invitedBy, null, null, now.plus(VALIDITY), null, null, null, now,
+                now, 0);
+    }
+
+    /**
+     * A new PENDING invitation whose link Mbia sends to this email address, in {@code locale}
+     * (mvp.md §18), expiring 14 days from {@code now}. Its email is PENDING until the mail provider
+     * answers (OQ-055).
+     *
+     * @param personId the Person it is sent for, or {@code null}
+     */
+    public static Invitation createEmail(InvitationId id, UUID familyId, String email, String locale,
+            InvitationRole role, UUID personId, String tokenHash, UUID invitedBy, Instant now) {
+        return new Invitation(id, familyId, InvitationChannel.EMAIL, Objects.requireNonNull(email, "email").strip(),
+                locale, role, personId, EmailDelivery.PENDING, tokenHash, InvitationStatus.PENDING, invitedBy, null,
+                null, now.plus(VALIDITY), null, null, null, now, now, 0);
     }
 
     /**
      * This invitation with a new link and a new expiry, PENDING again: the previous link stops
-     * working (mvp.md §18). The version is the one read: the repository increments it when writing.
+     * working (mvp.md §18). The email of an EMAIL invitation is to be sent again: PENDING (OQ-055).
+     * The version is the one read: the repository increments it when writing.
      *
      * @throws DomainException 410 {@code INVITATION_ALREADY_USED} or {@code INVITATION_REVOKED}
      *     when the invitation is ACCEPTED or REVOKED (OQ-057)
      */
     public Invitation renew(String newTokenHash, Instant now) {
         requireNotFinal();
-        return new Invitation(id, familyId, channel, email, locale, role, personId, newTokenHash,
+        return new Invitation(id, familyId, channel, email, locale, role, personId,
+                channel == InvitationChannel.EMAIL ? EmailDelivery.PENDING : null, newTokenHash,
                 InvitationStatus.PENDING, invitedBy, acceptedBy, revokedBy, now.plus(VALIDITY), acceptedAt, revokedAt,
                 now, createdAt, now, version);
+    }
+
+    /**
+     * This EMAIL invitation once the mail provider has answered: SENT or FAILED (OQ-055). Nothing
+     * else changes, its link neither.
+     */
+    public Invitation withEmailDelivery(EmailDelivery delivery, Instant now) {
+        if (channel != InvitationChannel.EMAIL || delivery == EmailDelivery.PENDING) {
+            throw new IllegalArgumentException("Only the email of an EMAIL invitation is sent or failed.");
+        }
+        return new Invitation(id, familyId, channel, email, locale, role, personId, delivery, tokenHash, status,
+                invitedBy, acceptedBy, revokedBy, expiresAt, acceptedAt, revokedAt, renewedAt, createdAt, now,
+                version);
     }
 
     /**
@@ -101,7 +139,7 @@ public final class Invitation {
      */
     public Invitation revoke(UUID by, Instant now) {
         requireNotFinal();
-        return new Invitation(id, familyId, channel, email, locale, role, personId, tokenHash,
+        return new Invitation(id, familyId, channel, email, locale, role, personId, emailDelivery, tokenHash,
                 InvitationStatus.REVOKED, invitedBy, acceptedBy, by, expiresAt, acceptedAt, now, renewedAt, createdAt,
                 now, version);
     }
@@ -127,7 +165,7 @@ public final class Invitation {
      */
     public Invitation accept(UUID by, Instant now) {
         requireAcceptable(now);
-        return new Invitation(id, familyId, channel, email, locale, role, personId, tokenHash,
+        return new Invitation(id, familyId, channel, email, locale, role, personId, emailDelivery, tokenHash,
                 InvitationStatus.ACCEPTED, invitedBy, by, revokedBy, expiresAt, now, revokedAt, renewedAt, createdAt,
                 now, version);
     }
@@ -146,11 +184,13 @@ public final class Invitation {
 
     /** Rebuilds a stored invitation. */
     public static Invitation restore(InvitationId id, UUID familyId, InvitationChannel channel, String email,
-            String locale, InvitationRole role, UUID personId, String tokenHash, InvitationStatus status,
-            UUID invitedBy, UUID acceptedBy, UUID revokedBy, Instant expiresAt, Instant acceptedAt,
-            Instant revokedAt, Instant renewedAt, Instant createdAt, Instant updatedAt, long version) {
-        return new Invitation(id, familyId, channel, email, locale, role, personId, tokenHash, status, invitedBy,
-                acceptedBy, revokedBy, expiresAt, acceptedAt, revokedAt, renewedAt, createdAt, updatedAt, version);
+            String locale, InvitationRole role, UUID personId, EmailDelivery emailDelivery, String tokenHash,
+            InvitationStatus status, UUID invitedBy, UUID acceptedBy, UUID revokedBy, Instant expiresAt,
+            Instant acceptedAt, Instant revokedAt, Instant renewedAt, Instant createdAt, Instant updatedAt,
+            long version) {
+        return new Invitation(id, familyId, channel, email, locale, role, personId, emailDelivery, tokenHash, status,
+                invitedBy, acceptedBy, revokedBy, expiresAt, acceptedAt, revokedAt, renewedAt, createdAt, updatedAt,
+                version);
     }
 
     public InvitationId id() {
@@ -179,6 +219,11 @@ public final class Invitation {
 
     public Optional<UUID> personId() {
         return Optional.ofNullable(personId);
+    }
+
+    /** @return empty for a LINK invitation */
+    public Optional<EmailDelivery> emailDelivery() {
+        return Optional.ofNullable(emailDelivery);
     }
 
     public String tokenHash() {

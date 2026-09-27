@@ -8,6 +8,25 @@ spring:
   flyway:
     enabled: true
     locations: classpath:db/migration
+  # Emails rendered server-side from localized bundles (technical-specification.md §16bis).
+  messages:
+    basename: i18n/emails
+    encoding: UTF-8
+    fallback-to-system-locale: false
+  # Transactional email provider (stack.md). No host outside local and test: sending fails and the
+  # invitation's email is FAILED (OQ-055). Short timeouts: the email is sent before the response.
+  mail:
+    host: ${MBIA_SMTP_HOST:}
+    port: ${MBIA_SMTP_PORT:587}
+    username: ${MBIA_SMTP_USERNAME:}
+    password: ${MBIA_SMTP_PASSWORD:}
+    properties:
+      "[mail.smtp.auth]": ${MBIA_SMTP_AUTH:true}
+      "[mail.smtp.starttls.enable]": ${MBIA_SMTP_STARTTLS:true}
+      "[mail.smtp.starttls.required]": ${MBIA_SMTP_STARTTLS:true}
+      "[mail.smtp.connectiontimeout]": 5000
+      "[mail.smtp.timeout]": 10000
+      "[mail.smtp.writetimeout]": 10000
 
 server:
   error:
@@ -21,6 +40,10 @@ management:
     web:
       exposure:
         include: health
+  health:
+    # The API does not depend on the mail provider (OQ-055).
+    mail:
+      enabled: false
 
 mbia:
   problems:
@@ -58,6 +81,10 @@ mbia:
     # Address of the frontend, where an invitation link opens (`<base-url>/invitations/<token>`, SCREEN-010).
     # No default outside local and test: startup fails without it.
     base-url: ${MBIA_APP_BASE_URL:}
+  mail:
+    # Sender of Mbia's emails, for example `Mbia <no-reply@mbia.example.com>`.
+    # No default outside local and test: startup fails without it.
+    from: ${MBIA_MAIL_FROM:}
 
 ---
 # Structured JSON logs everywhere except local development (technical-specification.md §19).
@@ -84,6 +111,14 @@ spring:
     url: jdbc:postgresql://localhost:${POSTGRES_PORT:5432}/${MBIA_DB_NAME:mbia}
     username: ${MBIA_DB_USER:mbia}
     password: ${MBIA_DB_PASSWORD:mbia-local}
+  # Mailpit catches every email: http://localhost:8025
+  mail:
+    host: ${MBIA_SMTP_HOST:localhost}
+    port: ${MBIA_SMTP_PORT:${MAILPIT_SMTP_PORT:1025}}
+    properties:
+      "[mail.smtp.auth]": ${MBIA_SMTP_AUTH:false}
+      "[mail.smtp.starttls.enable]": ${MBIA_SMTP_STARTTLS:false}
+      "[mail.smtp.starttls.required]": ${MBIA_SMTP_STARTTLS:false}
 
 mbia:
   security:
@@ -99,6 +134,8 @@ mbia:
     secret-key: ${S3_SECRET_KEY:mbia-local-secret}
   invitations:
     base-url: ${MBIA_APP_BASE_URL:http://localhost:5173}
+  mail:
+    from: ${MBIA_MAIL_FROM:Mbia <no-reply@mbia.localhost>}
 
 logging:
   pattern:
@@ -116,6 +153,12 @@ spring:
   config:
     activate:
       on-profile: test
+  # spring.mail.host and port come from the Mailpit container of TestcontainersConfiguration.
+  mail:
+    properties:
+      "[mail.smtp.auth]": false
+      "[mail.smtp.starttls.enable]": false
+      "[mail.smtp.starttls.required]": false
 
 management:
   endpoint:
@@ -130,6 +173,8 @@ mbia:
       allowed-origins: http://localhost:5173
   invitations:
     base-url: http://localhost:5173
+  mail:
+    from: Mbia <no-reply@mbia.test>
   # mbia.storage.* comes from the RustFS container of TestcontainersConfiguration.
   # Tests run the scheduled tasks themselves.
   scheduling:

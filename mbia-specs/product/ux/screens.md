@@ -305,7 +305,7 @@ Show only when permission rules allow them:
 
 - `Edit` (SCREEN-012);
 - `This is me` when the Person can be claimed;
-- ADMIN: `Invite {firstName}` (SCREEN-009 with this Person) when the Person is living and linked to no User; when an invitation for this Person is already pending, `Invitation pending` with `Renew` instead (OQ-050);
+- ADMIN: `Invite {firstName}` (SCREEN-009 with this Person) when the Person is living and linked to no User; when an invitation for this Person is already pending, `Invitation pending` with `Renew` instead (OQ-050); for an email invitation whose email could not be sent, "The email could not be sent" (OQ-055, OQ-060); `Renew` of an email invitation sends the email again and shows the result as SCREEN-009 does, instead of the link;
 - unlink from the current User's own linked Person;
 - ADMIN: archive / restore, merge a duplicate (SCREEN-COMPONENT-004), from the duplicate's profile (OQ-029).
 
@@ -537,11 +537,13 @@ Can contribute -> CONTRIBUTOR
 Read only -> VIEWER
 ```
 
-On success, "Send by email":
+On success, "Send by email" (the email is sent in the inviter's current language before the screen answers, OQ-060):
 
 ```text
 Invitation sent
 ```
+
+or, when the mail provider refused or could not be reached, "The email could not be sent": the invitation is saved all the same and `Renew` sends the email again (OQ-055).
 
 On success, "Share a link":
 

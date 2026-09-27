@@ -9,7 +9,10 @@ import { Button } from '../components/Button';
 import { ErrorState } from '../components/ErrorState';
 import { Select } from '../components/Select';
 import { Skeleton } from '../components/Skeleton';
+import { TextField } from '../components/TextField';
 import { useFamily } from '../families/useFamily';
+import { isSupportedLanguage, DEFAULT_LANGUAGE } from '../i18n/language';
+import { InvitationEmailResult } from '../invitations/InvitationEmailResult';
 import { InvitationLinkShare } from '../invitations/InvitationLinkShare';
 import { inviteBlocker, type InviteBlocker } from '../invitations/invitable';
 import { useCreateInvitation } from '../invitations/useCreateInvitation';
@@ -22,8 +25,19 @@ import { displayNameOf, personPath } from './PersonProfilePage';
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
 type InvitationRole = components['schemas']['InvitationRole'];
+type InvitationChannel = components['schemas']['InvitationChannel'];
 
 const ROLES = ['CONTRIBUTOR', 'VIEWER'] as const satisfies readonly InvitationRole[];
+
+/** A deliberately loose check: the mail provider is the judge of an address. */
+const EMAIL = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
+/** `Share a link` first on a phone (SCREEN-009), `Send by email` first on a larger screen. */
+function channelsInOrder(): InvitationChannel[] {
+  const largeScreen =
+    typeof window.matchMedia === 'function' && window.matchMedia('(min-width: 768px)').matches;
+  return largeScreen ? ['EMAIL', 'LINK'] : ['LINK', 'EMAIL'];
+}
 
 /** SCREEN-009, for a Person of the tree (`personId`, from their profile) or for anyone. */
 export function invitePath(familyId: string, { personId }: { personId?: string } = {}) {
@@ -31,8 +45,8 @@ export function invitePath(familyId: string, { personId }: { personId?: string }
 }
 
 /**
- * SCREEN-009 — Invite Member, ADMIN only (OQ-051), channel `Share a link` (the email channel
- * comes with PR-51). From a profile, the invitation carries the Person, named in the title (OQ-050).
+ * SCREEN-009 — Invite Member, ADMIN only (OQ-051), by `Send by email` or `Share a link`. From a
+ * profile, the invitation carries the Person, named in the title (OQ-050).
  */
 export function InviteMemberPage() {
   const { t } = useTranslation(['invitation', 'settings']);
@@ -104,8 +118,12 @@ function InviteForm({
   const navigate = useNavigate();
   const create = useCreateInvitation(familyId);
   const [created, setCreated] = useState<CreatedInvitation | null>(null);
-  const form = useForm<{ role: InvitationRole }>({ defaultValues: { role: 'CONTRIBUTOR' } });
+  const [channels] = useState(channelsInOrder);
+  const form = useForm<{ channel: InvitationChannel; email: string; role: InvitationRole }>({
+    defaultValues: { channel: channels[0], email: '', role: 'CONTRIBUTOR' },
+  });
   const role = useWatch({ control: form.control, name: 'role' });
+  const channel = useWatch({ control: form.control, name: 'channel' });
   const roleHelpId = useId();
   const name = person ? displayNameOf(person) : '';
   const blocker = person ? inviteBlocker(person) : null;
@@ -113,7 +131,11 @@ function InviteForm({
   if (created) {
     return (
       <div className="flex flex-col gap-6">
-        <InvitationLinkShare invitation={created} familyName={familyName} />
+        {created.channel === 'EMAIL' ? (
+          <InvitationEmailResult invitation={created} />
+        ) : (
+          <InvitationLinkShare invitation={created} familyName={familyName} />
+        )}
         <Button
           variant="secondary"
           onClick={() => {
@@ -141,20 +163,67 @@ function InviteForm({
   }
 
   const refusal = person ? refusalOf(create.error) : null;
+  // A refused address is shown on its field.
+  const emailRefused = isEmailRefused(create.error);
   return (
     <form
       noValidate
       className="flex flex-col gap-6"
       onSubmit={(event) => {
         void form.handleSubmit((values) => {
+          const personId = person?.id ?? null;
           create.mutate(
-            { role: values.role, personId: person?.id ?? null },
-            { onSuccess: setCreated },
+            values.channel === 'EMAIL'
+              ? {
+                  channel: 'EMAIL',
+                  role: values.role,
+                  personId,
+                  email: values.email.trim(),
+                  // The email is written in the inviter's current language (mvp.md §18).
+                  locale: isSupportedLanguage(i18n.resolvedLanguage)
+                    ? i18n.resolvedLanguage
+                    : DEFAULT_LANGUAGE,
+                }
+              : { channel: 'LINK', role: values.role, personId },
+            {
+              onSuccess: setCreated,
+              onError: (error) => {
+                if (isEmailRefused(error)) {
+                  form.setError('email', { message: t('invite.emailInvalid') });
+                }
+              },
+            },
           );
         })(event);
       }}
     >
-      <p className="text-body text-text-muted">{t('invite.intro')}</p>
+      <Select
+        label={t('invite.channel')}
+        options={channels.map((value) => ({ value, label: t(`invite.channels.${value}`) }))}
+        disabled={create.isPending}
+        {...form.register('channel')}
+      />
+      <p className="text-body text-text-muted">
+        {channel === 'EMAIL' ? t('invite.introEmail') : t('invite.intro')}
+      </p>
+      {channel === 'EMAIL' && (
+        <TextField
+          label={t('invite.email')}
+          type="email"
+          inputMode="email"
+          autoComplete="off"
+          disabled={create.isPending}
+          error={form.formState.errors.email?.message}
+          {...form.register('email', {
+            shouldUnregister: true,
+            validate: (value) => {
+              const email = value.trim();
+              if (email === '') return t('invite.emailRequired');
+              return EMAIL.test(email) || t('invite.emailInvalid');
+            },
+          })}
+        />
+      )}
       <div className="flex flex-col gap-1">
         <Select
           label={t('invite.role')}
@@ -167,7 +236,7 @@ function InviteForm({
           {t(`invite.roleHelp.${role}`)}
         </p>
       </div>
-      {create.isError && (
+      {create.isError && !emailRefused && (
         <div className="flex flex-col gap-2">
           <p role="alert" className="text-body text-text">
             {refusal ? t(`invite.cannot.${refusal}`, { name }) : errorMessage(i18n, create.error)}
@@ -176,15 +245,24 @@ function InviteForm({
         </div>
       )}
       <Button type="submit" disabled={create.isPending}>
-        {t('invite.submit')}
+        {channel === 'EMAIL' ? t('invite.submitEmail') : t('invite.submit')}
       </Button>
     </form>
   );
 }
 
+/** The server refused the email address (`VALIDATION_FAILED` on `email`). */
+function isEmailRefused(error: unknown) {
+  return (
+    error instanceof ApiError &&
+    error.code === 'VALIDATION_FAILED' &&
+    error.fieldErrors.some((fieldError) => fieldError.field === 'email')
+  );
+}
+
 /** The refusals of an invitation for a Person, explained with the Person's name. */
 function refusalOf(error: unknown): InviteBlocker | 'pending' | null {
-  if (!(error instanceof ApiError)) return null;
+  if (!(error instanceof ApiError) || isEmailRefused(error)) return null;
   switch (error.code) {
     case 'INVITATION_ALREADY_PENDING':
       return 'pending';

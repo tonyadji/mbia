@@ -261,16 +261,16 @@ No analytics event (`family_invitation_sent`, `family_invitation_accepted` arriv
 
 - Channel `EMAIL` of `inviteFamilyMember` and the resend on `renewInvitation` (§3.5), with `emailDelivery` (OQ-055).
 - FR and EN templates; the email in the inviter's current language.
-- SCREEN-009 `Send by email`, `Invitation sent`; SCREEN-008 "The email could not be sent" on a `FAILED` invitation.
+- SCREEN-009 `Send by email`, `Invitation sent`; "The email could not be sent" on a `FAILED` invitation, on SCREEN-005 `Invitation pending` until SCREEN-008 exists (PR-53, OQ-060).
 - `AGENTS.md` §4 and `.env.example` for the SMTP settings.
 
-**Specs:** `product/mvp.md` §18; OQ-055; `technical/technical-specification.md` §16bis; `product/ux/screens.md` SCREEN-009.
+**Specs:** `product/mvp.md` §18; OQ-055, OQ-060; `technical/technical-specification.md` §16bis; `product/ux/screens.md` SCREEN-005, SCREEN-009.
 
 **Acceptance criteria**
 
 - The email arrives in Mailpit with the Family, the inviter, the role, a working link and the expiry, in FR and in EN; it never names the suggested Person.
 - A renewal sends a new email whose link works, and the old one stops working.
-- The mail provider down: the invitation exists with `emailDelivery` `FAILED`, SCREEN-008 says so, and a renewal once the provider is back sends the email and sets `SENT` (tested).
+- The mail provider down: the invitation exists with `emailDelivery` `FAILED`, SCREEN-009 and SCREEN-005 say so (SCREEN-008 in PR-53, OQ-060), and a renewal once the provider is back sends the email and sets `SENT` (tested).
 - No email address or link in the logs.
 
 **Human check:** invite yourself by email in FR and EN, and open both emails on a phone.
@@ -305,7 +305,7 @@ No analytics event (`family_invitation_sent`, `family_invitation_accepted` arriv
 
 **Scope**
 
-- SCREEN-008 in the primary navigation (`family-tree-ux.md` §4): members with kinship or linked Person, role, `Invite a relative` (SCREEN-009), pending invitations with their Person, `Renew`, `Revoke`; ADMIN actions with confirmations; `Leave this family`; the sentence for the only ADMIN.
+- SCREEN-008 in the primary navigation (`family-tree-ux.md` §4): members with kinship or linked Person, role, `Invite a relative` (SCREEN-009), pending invitations with their Person, "The email could not be sent" on a `FAILED` email invitation (OQ-055), `Renew`, `Revoke`; ADMIN actions with confirmations; `Leave this family`; the sentence for the only ADMIN.
 - After leaving, the User lands on their other Family or on Family creation.
 
 **Specs:** `product/ux/screens.md` SCREEN-008, SCREEN-009; `product/ux/family-tree-ux.md` §4; `product/mvp.md` §5.

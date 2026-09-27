@@ -34,6 +34,9 @@ class InvitationJpaEntity {
     @Column(name = "person_id", updatable = false)
     private UUID personId;
 
+    @Column(name = "email_delivery")
+    private String emailDelivery;
+
     @Column(name = "token_hash", nullable = false)
     private String tokenHash;
 
@@ -86,8 +89,9 @@ class InvitationJpaEntity {
         this.createdAt = createdAt;
     }
 
-    void changeState(String tokenHash, String status, Instant expiresAt, UUID acceptedBy, Instant acceptedAt,
-            UUID revokedBy, Instant revokedAt, Instant renewedAt, Instant updatedAt) {
+    void changeState(String emailDelivery, String tokenHash, String status, Instant expiresAt, UUID acceptedBy,
+            Instant acceptedAt, UUID revokedBy, Instant revokedAt, Instant renewedAt, Instant updatedAt) {
+        this.emailDelivery = emailDelivery;
         this.tokenHash = tokenHash;
         this.status = status;
         this.expiresAt = expiresAt;
@@ -125,6 +129,10 @@ class InvitationJpaEntity {
 
     UUID personId() {
         return personId;
+    }
+
+    String emailDelivery() {
+        return emailDelivery;
     }
 
     String tokenHash() {

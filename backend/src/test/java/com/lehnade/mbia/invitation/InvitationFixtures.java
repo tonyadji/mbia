@@ -49,6 +49,14 @@ public final class InvitationFixtures {
                 : "{\"channel\": \"LINK\", \"role\": \"%s\", \"personId\": \"%s\"}".formatted(role, personId));
     }
 
+    /** An email invitation in this locale ({@code null}: the inviter's), for a Person when not null. */
+    public MvcTestResult inviteByEmail(TestJwts.Token token, UUID familyId, String email, String role, UUID personId,
+            String locale) {
+        return invite(token, familyId, "{\"channel\": \"EMAIL\", \"email\": \"%s\", \"role\": \"%s\"%s%s}".formatted(
+                email, role, personId == null ? "" : ", \"personId\": \"" + personId + "\"",
+                locale == null ? "" : ", \"locale\": \"" + locale + "\""));
+    }
+
     /** @return the id of a new link invitation */
     public UUID inviteLinkId(TestJwts.Token token, UUID familyId, String role, UUID personId) {
         MvcTestResult result = inviteLink(token, familyId, role, personId);
@@ -83,7 +91,8 @@ public final class InvitationFixtures {
     /** @return the row, with {@code expires_at}, {@code renewed_at} and {@code revoked_at} as text */
     public Map<String, Object> row(UUID invitationId) {
         return jdbc.sql("""
-                SELECT status, role, channel, locale, email, person_id, token_hash, version, invited_by, revoked_by,
+                SELECT status, role, channel, locale, email, email_delivery, person_id, token_hash, version, invited_by,
+                       revoked_by,
                        accepted_by, accepted_at::text AS accepted_at,
                        expires_at::text AS expires_at, created_at::text AS created_at,
                        renewed_at::text AS renewed_at, revoked_at::text AS revoked_at

@@ -7,7 +7,27 @@ interface SearchResult {
 }
 
 interface Message {
+  Subject: string;
   Text: string;
+}
+
+/** The last email sent to `email`, read through the Mailpit API. */
+export async function lastEmailTo(request: APIRequestContext, email: string): Promise<Message> {
+  let messageId: string | undefined;
+  await expect
+    .poll(
+      async () => {
+        const response = await request.get(`${MAILPIT_URL}/api/v1/search`, {
+          params: { query: `to:"${email}"` },
+        });
+        messageId = ((await response.json()) as SearchResult).messages[0]?.ID;
+        return messageId;
+      },
+      { message: `email to ${email}`, timeout: 15_000 },
+    )
+    .toBeDefined();
+  const response = await request.get(`${MAILPIT_URL}/api/v1/message/${String(messageId)}`);
+  return (await response.json()) as Message;
 }
 
 /** The email verification link Keycloak sent to `email`, read through the Mailpit API. */

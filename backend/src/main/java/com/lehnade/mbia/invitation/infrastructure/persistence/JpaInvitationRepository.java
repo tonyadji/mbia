@@ -1,6 +1,7 @@
 package com.lehnade.mbia.invitation.infrastructure.persistence;
 
 import com.lehnade.mbia.invitation.application.InvitationErrors;
+import com.lehnade.mbia.invitation.domain.EmailDelivery;
 import com.lehnade.mbia.invitation.domain.Invitation;
 import com.lehnade.mbia.invitation.domain.InvitationChannel;
 import com.lehnade.mbia.invitation.domain.InvitationId;
@@ -84,7 +85,8 @@ class JpaInvitationRepository implements InvitationRepository {
     }
 
     private static void changeState(InvitationJpaEntity entity, Invitation invitation) {
-        entity.changeState(invitation.tokenHash(), invitation.status().name(), invitation.expiresAt(),
+        entity.changeState(invitation.emailDelivery().map(Enum::name).orElse(null), invitation.tokenHash(),
+                invitation.status().name(), invitation.expiresAt(),
                 invitation.acceptedBy().orElse(null), invitation.acceptedAt().orElse(null),
                 invitation.revokedBy().orElse(null), invitation.revokedAt().orElse(null),
                 invitation.renewedAt().orElse(null), invitation.updatedAt());
@@ -105,7 +107,9 @@ class JpaInvitationRepository implements InvitationRepository {
     private static Invitation toDomain(InvitationJpaEntity entity) {
         return Invitation.restore(new InvitationId(entity.id()), entity.familyId(),
                 InvitationChannel.valueOf(entity.channel()), entity.email(), entity.locale(),
-                InvitationRole.valueOf(entity.role()), entity.personId(), entity.tokenHash(),
+                InvitationRole.valueOf(entity.role()), entity.personId(),
+                entity.emailDelivery() == null ? null : EmailDelivery.valueOf(entity.emailDelivery()),
+                entity.tokenHash(),
                 InvitationStatus.valueOf(entity.status()), entity.invitedBy(), entity.acceptedBy(),
                 entity.revokedBy(), entity.expiresAt(), entity.acceptedAt(), entity.revokedAt(), entity.renewedAt(),
                 entity.createdAt(), entity.updatedAt(), entity.version());

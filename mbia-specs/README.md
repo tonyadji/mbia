@@ -71,6 +71,10 @@ The visual mockup is a design reference. Product rules and screen behavior are d
 
 ## Changelog
 
+### 0.6.4 — 2026-09-27
+
+- Invitation emails (OQ-060): the email is sent right after the invitation is saved, before the response, which carries `emailDelivery` SENT or FAILED; SCREEN-009 shows `Invitation sent` or "The email could not be sent"; until the Members screen (PR-53), the failure is shown on `Invitation pending` of the Person's profile (SCREEN-005); a renewal sends the email again in the invitation's stored language. `screens.md` SCREEN-005, SCREEN-009; `data-model.md` §8; `openapi.yaml` `inviteFamilyMember`, `renewInvitation` (descriptions only).
+
 ### 0.6.3 — 2026-09-27
 
 - "Are you already in this tree?" (SCREEN-010, `mvp.md` §18): new operation `listClaimablePersons`, the ACTIVE Persons linked to no user, each with one parent, the first in the order of the tree (OQ-015), or null; choosing a Person asks "Are you {displayName}?" before linking (`openapi.yaml`, additive; `screens.md` SCREEN-010; `data-model.md` §23.1; plan phase 5 §3.2).
