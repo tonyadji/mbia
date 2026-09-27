@@ -151,6 +151,7 @@ interface PersonJpaRepository extends JpaRepository<PersonJpaEntity, UUID> {
             SELECT p.*
             FROM persons p
             WHERE p.family_id = :familyId AND p.status = :status
+              AND (:unlinkedOnly = false OR p.linked_user_id IS NULL)
               AND (""" + MATCHES + """
                   )
             ORDER BY lower(unaccent(coalesce(p.preferred_name,
@@ -158,7 +159,8 @@ interface PersonJpaRepository extends JpaRepository<PersonJpaEntity, UUID> {
                      p.created_at, p.id
             LIMIT :limit OFFSET :offset
             """)
-    List<PersonJpaEntity> search(UUID familyId, String status, String pattern, int limit, long offset);
+    List<PersonJpaEntity> search(UUID familyId, String status, boolean unlinkedOnly, String pattern, int limit,
+            long offset);
 
     /**
      * The possible duplicate candidates of person-relationships-collaboration.md §4.1 among the
@@ -192,10 +194,28 @@ interface PersonJpaRepository extends JpaRepository<PersonJpaEntity, UUID> {
             SELECT count(*)
             FROM persons p
             WHERE p.family_id = :familyId AND p.status = :status
+              AND (:unlinkedOnly = false OR p.linked_user_id IS NULL)
               AND (""" + MATCHES + """
                   )
             """)
-    long countSearch(UUID familyId, String status, String pattern);
+    long countSearch(UUID familyId, String status, boolean unlinkedOnly, String pattern);
+
+    /**
+     * For each of {@code children}, its first ACTIVE parent through an ACTIVE {@code PARENT_OF}
+     * relationship, in the order of the tree (OQ-015): birth (a year-only date as the start of that
+     * year, unknown last), creation, id. Each row is {@code [childId, parentId]}.
+     */
+    @Query(nativeQuery = true, value = """
+            SELECT DISTINCT ON (r.target_person_id) r.target_person_id, r.source_person_id
+            FROM family_relationships r
+            JOIN persons parent ON parent.id = r.source_person_id AND parent.status = 'ACTIVE'
+            WHERE r.family_id = :familyId AND r.target_person_id IN :children
+              AND r.type = 'PARENT_OF' AND r.status = 'ACTIVE'
+            ORDER BY r.target_person_id,
+                     coalesce(parent.birth_date, make_date(parent.birth_year, 1, 1)) NULLS LAST,
+                     parent.created_at, parent.id
+            """)
+    List<Object[]> findFirstParents(UUID familyId, Collection<UUID> children);
 
     String MATCHES = """
             lower(unaccent(p.first_name)) LIKE lower(unaccent(CAST(:pattern AS text))) ESCAPE '\\'

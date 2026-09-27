@@ -71,6 +71,10 @@ The visual mockup is a design reference. Product rules and screen behavior are d
 
 ## Changelog
 
+### 0.6.3 — 2026-09-27
+
+- "Are you already in this tree?" (SCREEN-010, `mvp.md` §18): new operation `listClaimablePersons`, the ACTIVE Persons linked to no user, each with one parent, the first in the order of the tree (OQ-015), or null; choosing a Person asks "Are you {displayName}?" before linking (`openapi.yaml`, additive; `screens.md` SCREEN-010; `data-model.md` §23.1; plan phase 5 §3.2).
+
 ### 0.6.2 — 2026-09-27
 
 - The previous link of a renewed invitation answers 404 `INVITATION_NOT_FOUND`, like an unknown token (OQ-058); an ACTIVE member accepting an expired, revoked or used link of their Family gets 410, the invitation's state being checked first (OQ-059). `data-model.md` §8; `openapi.yaml` `previewInvitation`, `acceptInvitation` (descriptions only).

@@ -58,3 +58,14 @@ export function kinshipPathSentences(
     });
   });
 }
+
+/**
+ * A Person told apart by one parent, with the path sentence of the CHILD step gendered by that
+ * Person (localization-and-kinship-labels.md §4): "Awa Ngo is Marie Ngo's daughter" (OQ-050).
+ */
+export function parentSentence(t: TFunction<'person'>, person: PathPerson, parentName: string) {
+  return t(`kinship.step.CHILD.${genderForm(person.gender)}`, {
+    from: parentName,
+    to: person.displayName,
+  });
+}

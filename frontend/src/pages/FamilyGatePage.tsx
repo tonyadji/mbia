@@ -6,13 +6,20 @@ import { ErrorState } from '../components/ErrorState';
 import { Logo } from '../components/Logo';
 import { Skeleton } from '../components/Skeleton';
 import { useMyFamilies } from '../families/useMyFamilies';
+import { invitationPath, pendingInvitation } from '../invitations/pendingInvitation';
 import { familyHomePath } from './FamilyHomePage';
 
 /**
  * Where a signed-in User lands (`HOME_PATH`): no Family → Family creation; one → its home; several →
- * a simple chooser.
+ * a simple chooser. An invitation pending in this browser comes first (mvp.md §18, OQ-050).
  */
 export function FamilyGatePage() {
+  const invitation = pendingInvitation();
+  if (invitation !== null) return <Navigate to={invitationPath(invitation)} replace />;
+  return <FamilyGate />;
+}
+
+function FamilyGate() {
   const { t } = useTranslation('family');
   const families = useMyFamilies();
 

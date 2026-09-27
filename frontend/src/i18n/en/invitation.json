@@ -48,5 +48,33 @@
       "INVITATION_REVOKED": "This invitation was revoked.",
       "CONCURRENT_MODIFICATION": "This invitation changed in the meantime. Check it and try again."
     }
+  },
+  "join": {
+    "title": "Join the {{family}} family",
+    "invitedBy": "{{name}} invites you to join the family on Mbia.",
+    "permission": "Your permission",
+    "expires": "This invitation expires on {{date}}.",
+    "submit": "Join the family",
+    "invalid": {
+      "INVITATION_EXPIRED": "This invitation has expired",
+      "INVITATION_REVOKED": "This invitation was cancelled",
+      "INVITATION_ALREADY_USED": "This invitation has already been used",
+      "INVITATION_NOT_FOUND": "This link no longer works",
+      "askAgain": "Ask the family's administrator to send you a new link."
+    }
+  },
+  "onboarding": {
+    "areYou": "Are you {{name}}?",
+    "yes": "Yes, it's me",
+    "no": "No",
+    "later": "Later",
+    "inTreeTitle": "Are you already in this tree?",
+    "inTreeBody": "Someone may have already added you. Choose yourself in the list to be linked to your profile.",
+    "searchLabel": "Find yourself",
+    "notInTree": "I'm not in the tree",
+    "viewerTitle": "A contributor can add you",
+    "viewerBody": "With read-only access, you cannot add people. Ask a contributor of the family to add you, then choose yourself from your profile.",
+    "suggestionGone": "The profile prepared for you is no longer available. Look for yourself in the tree.",
+    "claimGone": "{{name}} can no longer be chosen: they may have been linked to someone else in the meantime."
   }
 }

@@ -48,5 +48,33 @@
       "INVITATION_REVOKED": "Cette invitation a été révoquée.",
       "CONCURRENT_MODIFICATION": "Cette invitation a changé entre-temps. Vérifiez-la et réessayez."
     }
+  },
+  "join": {
+    "title": "Rejoindre la famille {{family}}",
+    "invitedBy": "{{name}} vous invite à rejoindre la famille sur Mbia.",
+    "permission": "Votre permission",
+    "expires": "Cette invitation expire le {{date}}.",
+    "submit": "Rejoindre la famille",
+    "invalid": {
+      "INVITATION_EXPIRED": "Cette invitation a expiré",
+      "INVITATION_REVOKED": "Cette invitation a été annulée",
+      "INVITATION_ALREADY_USED": "Cette invitation a déjà été utilisée",
+      "INVITATION_NOT_FOUND": "Ce lien ne fonctionne plus",
+      "askAgain": "Demandez un nouveau lien à l'administrateur de la famille."
+    }
+  },
+  "onboarding": {
+    "areYou": "Êtes-vous {{name}} ?",
+    "yes": "Oui, c'est moi",
+    "no": "Non",
+    "later": "Plus tard",
+    "inTreeTitle": "Êtes-vous déjà dans cet arbre ?",
+    "inTreeBody": "Quelqu'un vous a peut-être déjà ajouté. Choisissez-vous dans la liste pour être relié à votre profil.",
+    "searchLabel": "Vous retrouver",
+    "notInTree": "Je ne suis pas dans l'arbre",
+    "viewerTitle": "Un contributeur peut vous ajouter",
+    "viewerBody": "En lecture seule, vous ne pouvez pas ajouter de personnes. Demandez à un contributeur de la famille de vous ajouter, puis choisissez-vous depuis votre profil.",
+    "suggestionGone": "Le profil préparé pour vous n'est plus disponible. Cherchez-vous dans l'arbre.",
+    "claimGone": "{{name}} ne peut plus être choisi : cette personne a peut-être été reliée à quelqu'un d'autre entre-temps."
   }
 }

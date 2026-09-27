@@ -7,6 +7,7 @@ import { lifeYears } from '../components/PersonCard';
 import { Skeleton } from '../components/Skeleton';
 import { TextField } from '../components/TextField';
 import { kinshipLabel } from './kinship';
+import { useClaimablePersons } from './useClaimablePersons';
 import { useDebouncedValue } from './useDebouncedValue';
 import {
   searchTerm,
@@ -24,6 +25,8 @@ const DEBOUNCE_MS = 250;
  * below that, the first page of the Family is listed when `listWhenEmpty`. What a result does is
  * up to the entry point (`onSelect`). `status="ARCHIVED"` is the ADMIN "Archived people" view.
  * `excludedMessage` replaces the "no result" message when every Person found is excluded.
+ * `claimable` lists only the Persons the User can claim, with their parent (mvp.md §18); `describe`
+ * then replaces the years under each name.
  */
 export function PersonSearch({
   familyId,
@@ -34,6 +37,8 @@ export function PersonSearch({
   autoFocus = false,
   status = 'ACTIVE',
   excludedMessage,
+  claimable = false,
+  describe = lifeYears,
 }: {
   familyId: string;
   label: string;
@@ -43,12 +48,16 @@ export function PersonSearch({
   autoFocus?: boolean;
   status?: SearchStatus;
   excludedMessage?: string;
+  claimable?: boolean;
+  describe?: (person: PersonSummary) => string | null;
 }) {
   const { t } = useTranslation('person');
   const [text, setText] = useState('');
   const term = searchTerm(useDebouncedValue(text, DEBOUNCE_MS));
   const enabled = listWhenEmpty || term !== '';
-  const search = usePersonSearch(familyId, term, { enabled, status });
+  const people = usePersonSearch(familyId, term, { enabled: enabled && !claimable, status });
+  const claimables = useClaimablePersons(familyId, term, { enabled: enabled && claimable });
+  const search: typeof people = claimable ? claimables : people;
   const found = search.data?.pages.flatMap((page) => page.items) ?? [];
   const persons = found.filter((person) => !excludeIds.includes(person.id));
 
@@ -89,6 +98,7 @@ export function PersonSearch({
             <li key={person.id}>
               <SearchResult
                 person={person}
+                detail={describe(person)}
                 onSelect={() => {
                   onSelect(person);
                 }}
@@ -130,10 +140,17 @@ export function PersonSearch({
 }
 
 /** A result card (SCREEN-007): avatar, display name, years when known, relationship to the User. */
-function SearchResult({ person, onSelect }: { person: PersonSummary; onSelect: () => void }) {
+function SearchResult({
+  person,
+  detail,
+  onSelect,
+}: {
+  person: PersonSummary;
+  detail: string | null;
+  onSelect: () => void;
+}) {
   const { t } = useTranslation('person');
   const name = person.displayName ?? person.firstName;
-  const years = lifeYears(person);
   const code = person.relationshipToCurrentUser;
   const relationship = code == null ? null : kinshipLabel(t, code, person.gender);
 
@@ -146,7 +163,7 @@ function SearchResult({ person, onSelect }: { person: PersonSummary; onSelect: (
       <Avatar displayName={name} photoUrl={person.profilePictureUrl} />
       <span className="flex min-w-0 flex-1 flex-col">
         <span className="text-body font-semibold break-words text-text">{name}</span>
-        {years && <span className="text-caption text-text-muted">{years}</span>}
+        {detail && <span className="text-caption text-text-muted">{detail}</span>}
         {relationship && (
           <span className="self-start rounded-full bg-background px-3 text-caption font-semibold text-primary">
             {relationship}

@@ -591,7 +591,7 @@ The browser remembers the invitation from the first visit until it is accepted o
 
 "Are you {displayName}?" shows the Person's name, one parent or birth year, and three actions: `Yes, it's me` (links the User to the Person), `No`, `Later`.
 
-"Are you already in this tree?" lists the Persons that can be claimed, searchable, each with one parent when known (the path sentence of `localization-and-kinship-labels.md` §4, for example "Awa Ngo is the daughter of Marie Ngo"), otherwise the birth year.
+"Are you already in this tree?" lists the Persons that can be claimed, searchable, each with one parent when known (the path sentence of `localization-and-kinship-labels.md` §4, for example "Awa Ngo is the daughter of Marie Ngo"), otherwise the birth year (`listClaimablePersons`). The parent shown is the first in the order of the tree (OQ-015: the eldest known). Choosing a Person asks "Are you {displayName}?" again before linking, and `No` there goes back to the list.
 
 States:
 

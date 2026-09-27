@@ -32,7 +32,12 @@
       "someoneElse": "Quelqu'un d'autre"
     },
     "addMemory": "Ajouter un souvenir",
-    "search": "Rechercher dans la famille…"
+    "search": "Rechercher dans la famille…",
+    "welcome": {
+      "title": "Bienvenue dans la famille {{name}}",
+      "viewTree": "Voir l'arbre de la famille",
+      "close": "Fermer le message de bienvenue"
+    }
   },
   "chooser": {
     "title": "Vos familles"

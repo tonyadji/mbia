@@ -32,7 +32,12 @@
       "someoneElse": "Someone else"
     },
     "addMemory": "Add a memory",
-    "search": "Search the family…"
+    "search": "Search the family…",
+    "welcome": {
+      "title": "Welcome to the {{name}} family",
+      "viewTree": "View the family tree",
+      "close": "Close the welcome message"
+    }
   },
   "chooser": {
     "title": "Your families"

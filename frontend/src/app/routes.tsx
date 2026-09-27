@@ -1,6 +1,7 @@
 import type { RouteObject } from 'react-router';
 import { CREATE_FAMILY_PATH } from '../auth/AuthProvider';
 import { ProtectedRoute } from '../auth/ProtectedRoute';
+import { AcceptInvitationPage } from '../pages/AcceptInvitationPage';
 import { AccountSettingsPage, SETTINGS_PATH } from '../pages/AccountSettingsPage';
 import { AddMemoryPage } from '../pages/AddMemoryPage';
 import { AddPersonPage } from '../pages/AddPersonPage';
@@ -13,6 +14,7 @@ import { FamilyHomePage } from '../pages/FamilyHomePage';
 import { FamilyMemoriesPage } from '../pages/FamilyMemoriesPage';
 import { FamilyTreePage } from '../pages/FamilyTreePage';
 import { InviteMemberPage } from '../pages/InviteMemberPage';
+import { JoinFamilyPage } from '../pages/JoinFamilyPage';
 import { MemoryPage } from '../pages/MemoryPage';
 import { PersonProfilePage } from '../pages/PersonProfilePage';
 import { SearchPage } from '../pages/SearchPage';
@@ -26,6 +28,7 @@ export const routes: RouteObject[] = [
     children: [
       { index: true, element: <WelcomePage /> },
       { path: 'auth/callback', element: <SignInCallbackPage /> },
+      { path: 'invitations/:token', element: <AcceptInvitationPage /> },
       {
         element: <ProtectedRoute />,
         children: [
@@ -36,6 +39,7 @@ export const routes: RouteObject[] = [
           { path: 'families/:familyId/search', element: <SearchPage /> },
           { path: 'families/:familyId/archived', element: <ArchivedPeoplePage /> },
           { path: 'families/:familyId/invitations/new', element: <InviteMemberPage /> },
+          { path: 'families/:familyId/join', element: <JoinFamilyPage /> },
           { path: 'families/:familyId/persons/new', element: <AddPersonPage /> },
           { path: 'families/:familyId/persons/:personId', element: <PersonProfilePage /> },
           { path: 'families/:familyId/persons/:personId/edit', element: <EditPersonPage /> },

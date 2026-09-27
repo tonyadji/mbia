@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { useForm, useWatch } from 'react-hook-form';
 import { useTranslation } from 'react-i18next';
-import { Link, useNavigate, useParams, useSearchParams } from 'react-router';
+import { Link, useLocation, useNavigate, useParams, useSearchParams } from 'react-router';
 import { ApiError } from '../api/client';
 import { errorMessage } from '../api/errorMessage';
 import { Avatar } from '../components/Avatar';
@@ -129,6 +129,8 @@ function AddPersonForm({
 }) {
   const { t } = useTranslation(['person', 'settings']);
   const navigate = useNavigate();
+  // Coming from joining the Family (SCREEN-010, `No`): Family Home then welcomes the new member.
+  const joined = (useLocation().state as FamilyHomeState | null)?.joined === true;
   const createPerson = useCreatePerson(familyId);
   const createRelationship = useCreateRelationship(familyId);
   // The Person created by a first attempt whose link was refused: a new attempt updates them.
@@ -177,6 +179,7 @@ function AddPersonForm({
       return;
     }
     const state: FamilyHomeState = {
+      joined,
       personAdded: {
         id: person.id,
         name,
