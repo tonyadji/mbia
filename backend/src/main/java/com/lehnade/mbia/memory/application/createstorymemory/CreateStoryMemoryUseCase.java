@@ -1,5 +1,7 @@
 package com.lehnade.mbia.memory.application.createstorymemory;
 
+import com.lehnade.mbia.activity.application.Activity;
+import com.lehnade.mbia.activity.application.ActivityLog;
 import com.lehnade.mbia.family.application.FamilyAccess;
 import com.lehnade.mbia.family.application.FamilyRole;
 import com.lehnade.mbia.genealogy.application.RelatedPerson;
@@ -48,11 +50,13 @@ public class CreateStoryMemoryUseCase {
     private final MemoryPhotoViews photoViews;
     private final MemorySettings settings;
     private final AuditLog auditLog;
+    private final ActivityLog activityLog;
     private final Clock clock;
 
     public CreateStoryMemoryUseCase(CurrentUserAccessor currentUserAccessor, FamilyAccess familyAccess,
             RelatedPersons relatedPersons, MemoryRepository memories, MemoryPhotos memoryPhotos,
-            MemoryPhotoViews photoViews, MemorySettings settings, AuditLog auditLog, Clock clock) {
+            MemoryPhotoViews photoViews, MemorySettings settings, AuditLog auditLog, ActivityLog activityLog,
+            Clock clock) {
         this.currentUserAccessor = currentUserAccessor;
         this.familyAccess = familyAccess;
         this.relatedPersons = relatedPersons;
@@ -61,6 +65,7 @@ public class CreateStoryMemoryUseCase {
         this.photoViews = photoViews;
         this.settings = settings;
         this.auditLog = auditLog;
+        this.activityLog = activityLog;
         this.clock = clock;
     }
 
@@ -86,6 +91,8 @@ public class CreateStoryMemoryUseCase {
                         "relatedPersonIds", persons.stream().map(RelatedPerson::id).toList(),
                         "photos", photoIds),
                 now));
+        activityLog.record(Activity.memoryCreated(memory.familyId(), caller.id(), memory.id().value(),
+                memory.title(), now));
         return MemoryView.of(memory, persons, new MemoryAuthors.Author(caller.id(), caller.displayName(), false),
                 photoViews.of(memory));
     }

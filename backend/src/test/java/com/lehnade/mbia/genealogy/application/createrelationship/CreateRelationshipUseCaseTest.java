@@ -11,6 +11,7 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 
+import com.lehnade.mbia.activity.application.ActivityLog;
 import com.lehnade.mbia.family.application.FamilyAccess;
 import com.lehnade.mbia.family.application.FamilyRole;
 import com.lehnade.mbia.genealogy.domain.FamilyGraphLock;
@@ -63,6 +64,7 @@ class CreateRelationshipUseCaseTest {
     private final ParentalCycleCheck cycleCheck = mock(ParentalCycleCheck.class);
     private final FamilyGraphLock graphLock = mock(FamilyGraphLock.class);
     private final AuditLog auditLog = mock(AuditLog.class);
+    private final ActivityLog activityLog = mock(ActivityLog.class);
     private CreateRelationshipUseCase useCase;
 
     private final PersonId marie = PersonId.newId();
@@ -72,7 +74,7 @@ class CreateRelationshipUseCaseTest {
     void setUp() {
         CurrentUserAccessor currentUser = () -> new CurrentUser(CALLER, "caller@example.com", null, "fr");
         useCase = new CreateRelationshipUseCase(currentUser, familyAccess, persons, relationships, cycleCheck,
-                graphLock, auditLog, Clock.fixed(NOW, ZoneOffset.UTC));
+                graphLock, auditLog, activityLog, Clock.fixed(NOW, ZoneOffset.UTC));
         given(marie, PersonStatus.ACTIVE, PartialDate.UNKNOWN);
         given(paul, PersonStatus.ACTIVE, PartialDate.UNKNOWN);
     }
@@ -209,7 +211,7 @@ class CreateRelationshipUseCaseTest {
 
     private void assertNothingWritten() {
         verify(relationships, never()).insert(any());
-        verifyNoInteractions(auditLog);
+        verifyNoInteractions(auditLog, activityLog);
     }
 
     private void given(PersonId id, PersonStatus status, PartialDate birth) {

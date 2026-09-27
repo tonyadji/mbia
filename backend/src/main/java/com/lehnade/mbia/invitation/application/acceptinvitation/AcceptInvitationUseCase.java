@@ -1,5 +1,8 @@
 package com.lehnade.mbia.invitation.application.acceptinvitation;
 
+import com.lehnade.mbia.activity.application.Activity;
+import com.lehnade.mbia.activity.application.ActivityLog;
+import com.lehnade.mbia.activity.application.ActivityType;
 import com.lehnade.mbia.family.application.FamilyRole;
 import com.lehnade.mbia.family.application.InvitationFamilies;
 import com.lehnade.mbia.family.application.InvitationFamilies.Joining;
@@ -33,7 +36,8 @@ import org.springframework.transaction.annotation.Transactional;
  * <p>The invitation's state is checked first (410, OQ-059); then an ACTIVE member is only told so,
  * the invitation staying PENDING. Accepting never links the User to a Person: the Person the
  * invitation was sent for is suggested while it is ACTIVE and linked to no User (OQ-050). Audited as
- * {@code INVITATION_ACCEPTED}, without token, link or email.
+ * {@code INVITATION_ACCEPTED}, without token, link or email, and recorded in the Family's activity
+ * (data-model.md §16) with the member's display name.
  */
 @Service
 public class AcceptInvitationUseCase {
@@ -43,15 +47,18 @@ public class AcceptInvitationUseCase {
     private final InvitationFamilies families;
     private final InvitablePersons persons;
     private final AuditLog auditLog;
+    private final ActivityLog activityLog;
     private final Clock clock;
 
     public AcceptInvitationUseCase(CurrentUserAccessor currentUserAccessor, InvitationRepository invitations,
-            InvitationFamilies families, InvitablePersons persons, AuditLog auditLog, Clock clock) {
+            InvitationFamilies families, InvitablePersons persons, AuditLog auditLog, ActivityLog activityLog,
+            Clock clock) {
         this.currentUserAccessor = currentUserAccessor;
         this.invitations = invitations;
         this.families = families;
         this.persons = persons;
         this.auditLog = auditLog;
+        this.activityLog = activityLog;
         this.clock = clock;
     }
 
@@ -74,6 +81,8 @@ public class AcceptInvitationUseCase {
                             "membershipId", joining.member().id().toString(),
                             "rejoined", joining.outcome() == Outcome.REJOINED),
                     now));
+            activityLog.record(Activity.member(ActivityType.INVITATION_ACCEPTED, accepted.familyId(), caller.id(),
+                    joining.member().id(), caller.displayName(), now));
             suggestedPerson = accepted.personId()
                     .flatMap(personId -> persons.suggestion(accepted.familyId(), personId));
         }

@@ -1,5 +1,8 @@
 package com.lehnade.mbia.genealogy.application.restoreperson;
 
+import com.lehnade.mbia.activity.application.Activity;
+import com.lehnade.mbia.activity.application.ActivityLog;
+import com.lehnade.mbia.activity.application.ActivityType;
 import com.lehnade.mbia.family.application.FamilyAccess;
 import com.lehnade.mbia.family.application.FamilyRole;
 import com.lehnade.mbia.genealogy.application.PersonNotFound;
@@ -34,16 +37,18 @@ public class RestorePersonUseCase {
     private final PersonRepository persons;
     private final RelationshipToCurrentUser relationshipToCurrentUser;
     private final AuditLog auditLog;
+    private final ActivityLog activityLog;
     private final Clock clock;
 
     public RestorePersonUseCase(CurrentUserAccessor currentUserAccessor, FamilyAccess familyAccess,
             PersonRepository persons, RelationshipToCurrentUser relationshipToCurrentUser, AuditLog auditLog,
-            Clock clock) {
+            ActivityLog activityLog, Clock clock) {
         this.currentUserAccessor = currentUserAccessor;
         this.familyAccess = familyAccess;
         this.persons = persons;
         this.relationshipToCurrentUser = relationshipToCurrentUser;
         this.auditLog = auditLog;
+        this.activityLog = activityLog;
         this.clock = clock;
     }
 
@@ -64,6 +69,8 @@ public class RestorePersonUseCase {
         auditLog.append(new AuditEntry(restored.familyId(), callerId, "PERSON_RESTORED", AuditEntry.PERSON,
                 restored.id().value(), Map.of("status", PersonStatus.ARCHIVED.name()),
                 Map.of("status", PersonStatus.ACTIVE.name()), now));
+        activityLog.record(Activity.person(ActivityType.PERSON_RESTORED, restored.familyId(), callerId,
+                restored.id().value(), restored.details().displayName(), now));
         return new PersonView(restored, relationshipToCurrentUser.of(restored, callerId));
     }
 }

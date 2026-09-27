@@ -1,5 +1,8 @@
 package com.lehnade.mbia.genealogy.application.createperson;
 
+import com.lehnade.mbia.activity.application.Activity;
+import com.lehnade.mbia.activity.application.ActivityLog;
+import com.lehnade.mbia.activity.application.ActivityType;
 import com.lehnade.mbia.family.application.FamilyAccess;
 import com.lehnade.mbia.family.application.FamilyRole;
 import com.lehnade.mbia.genealogy.application.PersonSummaries;
@@ -43,12 +46,13 @@ public class CreatePersonUseCase {
     private final ProfilePictureUrls profilePictureUrls;
     private final RelationshipToCurrentUser relationshipToCurrentUser;
     private final AuditLog auditLog;
+    private final ActivityLog activityLog;
     private final Clock clock;
 
     public CreatePersonUseCase(CurrentUserAccessor currentUserAccessor, FamilyAccess familyAccess,
             PersonRepository persons, PossibleDuplicates possibleDuplicates, ProfilePictures profilePictures,
             ProfilePictureUrls profilePictureUrls, RelationshipToCurrentUser relationshipToCurrentUser,
-            AuditLog auditLog, Clock clock) {
+            AuditLog auditLog, ActivityLog activityLog, Clock clock) {
         this.currentUserAccessor = currentUserAccessor;
         this.familyAccess = familyAccess;
         this.persons = persons;
@@ -57,6 +61,7 @@ public class CreatePersonUseCase {
         this.profilePictureUrls = profilePictureUrls;
         this.relationshipToCurrentUser = relationshipToCurrentUser;
         this.auditLog = auditLog;
+        this.activityLog = activityLog;
         this.clock = clock;
     }
 
@@ -92,6 +97,8 @@ public class CreatePersonUseCase {
         created.putAll(PersonAuditValues.profilePicture(person.profileMediaAssetId().orElse(null)));
         auditLog.append(new AuditEntry(person.familyId(), callerId, "PERSON_CREATED", AuditEntry.PERSON,
                 person.id().value(), Map.of(), created, now));
+        activityLog.record(Activity.person(ActivityType.PERSON_CREATED, person.familyId(), callerId,
+                person.id().value(), person.details().displayName(), now));
         if (linkedUserId != null) {
             auditLog.append(new AuditEntry(person.familyId(), callerId, "PERSON_CLAIMED", AuditEntry.PERSON,
                     person.id().value(), Map.of(), Map.of("linkedUserId", linkedUserId), now));
