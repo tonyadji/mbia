@@ -688,3 +688,13 @@ When a question is answered, update the relevant spec, then move the entry to **
 - **Recommendation:** A, A, A: no screen needs the email or the removed members, and relatives' addresses stay private; the existing generic code needs no contract change.
 - **Blocking:** PR-52.
 - **Answer:** A, A, A (human, 2026-09-27). Documented in `openapi.yaml` (`listFamilyMembers`, `updateMemberRole`, `removeFamilyMember`, `MemberResponse.email`; descriptions only); `data-model.md` §7; plan phase 5 PR-52.
+
+### OQ-062 — The role label of the ADMIN, and a cousin's label on the Members screen
+
+- **Raised by / date:** coding agent (PR-53), 2026-09-27
+- **Context:** SCREEN-008 shows a "User-facing role label" for each member, but only `Can contribute` and `Read only` are defined (SCREEN-009); the ADMIN has none. The member list (`MemberResponse`) carries `relationshipToCurrentUser` but not the linked Person's gender, which only `FIRST_COUSIN` needs (`localization-and-kinship-labels.md` §3).
+- **Question:** which label for the ADMIN role; which form of `FIRST_COUSIN` on the Members screen?
+- **Options:** ADMIN — A: FR "Administrateur de la famille", EN "Family administrator" / B: "Administrateur", "Administrator" / C: "Gère la famille", "Manages the family". Cousin — A: the neutral form, with no extra request / B: read each cousin's Person for its gender.
+- **Recommendation:** A, A: the existing texts already say "the family's administrator", and the neutral form is a label of the table.
+- **Blocking:** PR-53.
+- **Answer:** A, A (human, 2026-09-27). Documented in `screens.md` SCREEN-008.

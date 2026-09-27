@@ -51,6 +51,49 @@
     "label": "Family navigation",
     "home": "Home",
     "tree": "Tree",
-    "memories": "Memories"
+    "memories": "Memories",
+    "members": "Members"
+  },
+  "members": {
+    "title": "Members",
+    "invite": "Invite a relative",
+    "unnamed": "Member without a name",
+    "linkedTo": "Profile: {{name}}",
+    "roles": {
+      "ADMIN": "Family administrator"
+    },
+    "roleOf": "Permission of {{name}}",
+    "remove": "Remove",
+    "removeName": "Remove {{name}} from the family",
+    "removeConfirm": "Remove {{name}} from the family?",
+    "contributionsStay": "The people, links and memories {{name}} added stay in the family. Their profile stays in the tree, no longer linked to them. They can come back only with a new invitation.",
+    "removeConfirmAction": "Remove from the family",
+    "cancel": "Cancel",
+    "close": "Close",
+    "leave": "Leave this family",
+    "leaveConfirm": "Leave this family?",
+    "leaveHelp": "The people, links and memories you added stay in the family. Your profile stays in the tree, no longer linked to you. To come back, you will need a new invitation.",
+    "leaveAction": "Leave the family",
+    "onlyAdmin": "A family always keeps its administrator, so you cannot leave it. To hand this role over to someone else, contact Mbia support.",
+    "refused": {
+      "CONCURRENT_MODIFICATION": "{{name}}'s membership changed in the meantime. The list is up to date: try again.",
+      "RESOURCE_NOT_FOUND": "{{name}} is no longer a member of the family."
+    },
+    "invitations": {
+      "title": "Pending invitations",
+      "for": "For {{name}}",
+      "sharedLink": "Shared link",
+      "renewFor": "Renew the invitation: {{target}}",
+      "revoke": "Revoke",
+      "revokeFor": "Revoke the invitation: {{target}}",
+      "revokeConfirm": "Revoke the invitation? {{target}}",
+      "revokeHelp": "Its link will stop working at once. This cannot be undone: to invite this relative again, create a new invitation.",
+      "revokeAction": "Revoke the invitation",
+      "refused": {
+        "CONCURRENT_MODIFICATION": "This invitation changed in the meantime. The list is up to date: try again.",
+        "INVITATION_ALREADY_USED": "This invitation has just been used: the relative has probably joined the family.",
+        "INVITATION_REVOKED": "This invitation was already revoked."
+      }
+    }
   }
 }

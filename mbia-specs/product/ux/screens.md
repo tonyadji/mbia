@@ -494,13 +494,13 @@ result -> used as the Person of the pending relationship
 ## Display
 
 - member name;
-- User-facing role label;
+- User-facing role label: `Family administrator` (FR "Administrateur de la famille"), `Can contribute`, `Read only` (OQ-062);
 - membership status when relevant;
 - the linked Person, when any.
 
 ADMIN sees `Invite a relative`.
 
-For each member, their kinship to the current User when both have a linked Person ("Awa · your mother"), otherwise the name of their linked Person (OQ-050).
+For each member, their kinship to the current User when both have a linked Person ("Awa · your mother"), otherwise the name of their linked Person (OQ-050). The member list does not carry the Person's gender: `FIRST_COUSIN` takes its neutral form (OQ-062).
 
 ADMIN also sees a "Pending invitations" section:
 

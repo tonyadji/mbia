@@ -71,6 +71,10 @@ The visual mockup is a design reference. Product rules and screen behavior are d
 
 ## Changelog
 
+### 0.6.6 — 2026-09-27
+
+- Members screen (OQ-062): the ADMIN's role label is `Family administrator` (FR "Administrateur de la famille"); on SCREEN-008, `FIRST_COUSIN` takes its neutral form, the member list carrying no gender. `screens.md` SCREEN-008.
+
 ### 0.6.5 — 2026-09-27
 
 - Members (OQ-061): `listFamilyMembers` returns the ACTIVE members only, never their email; an unknown, other-Family or REMOVED membership answers 404 `RESOURCE_NOT_FOUND` on `updateMemberRole` and `removeFamilyMember`; role changes, removals and departures are audited `MEMBERSHIP_ROLE_CHANGED`, `MEMBERSHIP_REMOVED` and `MEMBERSHIP_LEFT`. `data-model.md` §7, §17; `openapi.yaml` `listFamilyMembers`, `updateMemberRole`, `removeFamilyMember`, `MemberResponse` (descriptions only).

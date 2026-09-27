@@ -2,8 +2,8 @@ import { useTranslation } from 'react-i18next';
 import { NavLink } from 'react-router';
 
 /**
- * Primary navigation inside a Family (family-tree-ux.md §4, design-guidelines.md §7): Home, Tree
- * and Memories; Members arrives with its feature.
+ * Primary navigation inside a Family (family-tree-ux.md §4, design-guidelines.md §7): Home, Tree,
+ * Memories and Members.
  */
 export function NavigationBar({ familyId }: { familyId: string }) {
   const { t } = useTranslation('family');
@@ -43,6 +43,16 @@ export function NavigationBar({ familyId }: { familyId: string }) {
             {t('navigation.memories')}
           </NavLink>
         </li>
+        <li>
+          <NavLink
+            to={`/families/${familyId}/members`}
+            end
+            className="flex min-h-16 min-w-16 flex-col items-center justify-center gap-1 text-caption text-text-muted focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary aria-[current=page]:font-semibold aria-[current=page]:text-primary"
+          >
+            <MembersIcon />
+            {t('navigation.members')}
+          </NavLink>
+        </li>
       </ul>
     </nav>
   );
@@ -68,6 +78,14 @@ function MemoriesIcon() {
   return (
     <svg aria-hidden="true" viewBox="0 0 24 24" className="size-6" fill="currentColor">
       <path d="M6 2a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V4a2 2 0 0 0-2-2H6Zm2 4h8a1 1 0 1 1 0 2H8a1 1 0 0 1 0-2Zm0 4h8a1 1 0 1 1 0 2H8a1 1 0 1 1 0-2Zm0 4h5a1 1 0 1 1 0 2H8a1 1 0 1 1 0-2Z" />
+    </svg>
+  );
+}
+
+function MembersIcon() {
+  return (
+    <svg aria-hidden="true" viewBox="0 0 24 24" className="size-6" fill="currentColor">
+      <path d="M9 4a4 4 0 1 0 0 8 4 4 0 0 0 0-8Zm8 2a3 3 0 1 0 0 6 3 3 0 0 0 0-6ZM9 14c-3.9 0-7 2.2-7 5v1a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1v-1c0-2.8-3.1-5-7-5Zm8 0c-.5 0-1 0-1.5.1A6.3 6.3 0 0 1 18 19v2h3a1 1 0 0 0 1-1v-1c0-2.7-2.2-5-5-5Z" />
     </svg>
   );
 }

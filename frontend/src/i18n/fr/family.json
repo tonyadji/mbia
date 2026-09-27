@@ -51,6 +51,49 @@
     "label": "Navigation de la famille",
     "home": "Accueil",
     "tree": "Arbre",
-    "memories": "Souvenirs"
+    "memories": "Souvenirs",
+    "members": "Membres"
+  },
+  "members": {
+    "title": "Membres",
+    "invite": "Inviter un proche",
+    "unnamed": "Membre sans nom",
+    "linkedTo": "Profil : {{name}}",
+    "roles": {
+      "ADMIN": "Administrateur de la famille"
+    },
+    "roleOf": "Permission de {{name}}",
+    "remove": "Retirer",
+    "removeName": "Retirer {{name}} de la famille",
+    "removeConfirm": "Retirer {{name}} de la famille ?",
+    "contributionsStay": "Les personnes, les liens et les souvenirs ajoutés par {{name}} restent dans la famille. Son profil reste dans l'arbre, sans être relié à son compte. {{name}} ne pourra revenir qu'avec une nouvelle invitation.",
+    "removeConfirmAction": "Retirer de la famille",
+    "cancel": "Annuler",
+    "close": "Fermer",
+    "leave": "Quitter cette famille",
+    "leaveConfirm": "Quitter cette famille ?",
+    "leaveHelp": "Les personnes, les liens et les souvenirs que vous avez ajoutés restent dans la famille. Votre profil reste dans l'arbre, sans être relié à votre compte. Pour revenir, il vous faudra une nouvelle invitation.",
+    "leaveAction": "Quitter la famille",
+    "onlyAdmin": "Une famille garde toujours son administrateur : vous ne pouvez donc pas la quitter. Pour confier ce rôle à quelqu'un d'autre, contactez le support de Mbia.",
+    "refused": {
+      "CONCURRENT_MODIFICATION": "L'adhésion de {{name}} a changé entre-temps. La liste est à jour : réessayez.",
+      "RESOURCE_NOT_FOUND": "{{name}} ne fait plus partie de la famille."
+    },
+    "invitations": {
+      "title": "Invitations en attente",
+      "for": "Pour {{name}}",
+      "sharedLink": "Lien partagé",
+      "renewFor": "Renouveler l'invitation : {{target}}",
+      "revoke": "Révoquer",
+      "revokeFor": "Révoquer l'invitation : {{target}}",
+      "revokeConfirm": "Révoquer l'invitation ? {{target}}",
+      "revokeHelp": "Son lien cessera aussitôt de fonctionner. C'est définitif : pour inviter à nouveau ce proche, créez une nouvelle invitation.",
+      "revokeAction": "Révoquer l'invitation",
+      "refused": {
+        "CONCURRENT_MODIFICATION": "Cette invitation a changé entre-temps. La liste est à jour : réessayez.",
+        "INVITATION_ALREADY_USED": "Cette invitation vient d'être utilisée : le proche a sans doute rejoint la famille.",
+        "INVITATION_REVOKED": "Cette invitation était déjà révoquée."
+      }
+    }
   }
 }

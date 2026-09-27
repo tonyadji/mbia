@@ -275,7 +275,7 @@ describe('Family screens', () => {
       expect(screen.getByText('250 memories')).toBeInTheDocument();
     });
 
-    it('has a navigation bar with Home, Tree and Memories, and opens settings from the avatar', async () => {
+    it('has a navigation bar with Home, Tree, Memories and Members, and opens settings from the avatar', async () => {
       fakeApi({ [`GET /families/${ADJI_ID}`]: () => jsonResponse(family(ADJI_ID, 'ADJI')) });
       const { router } = renderApp(`/families/${ADJI_ID}`);
       await screen.findByRole('heading', { level: 1, name: 'ADJI' });
@@ -284,13 +284,15 @@ describe('Family screens', () => {
         name: 'Navigation de la famille',
       });
       const tabs = within(navigation).getAllByRole('link');
-      expect(tabs).toHaveLength(3);
+      expect(tabs).toHaveLength(4);
       expect(tabs[0]).toHaveAccessibleName('Accueil');
       expect(tabs[0]).toHaveAttribute('aria-current', 'page');
       expect(tabs[1]).toHaveAccessibleName('Arbre');
       expect(tabs[1]).toHaveAttribute('href', `/families/${ADJI_ID}/tree`);
       expect(tabs[2]).toHaveAccessibleName('Souvenirs');
       expect(tabs[2]).toHaveAttribute('href', `/families/${ADJI_ID}/memories`);
+      expect(tabs[3]).toHaveAccessibleName('Membres');
+      expect(tabs[3]).toHaveAttribute('href', `/families/${ADJI_ID}/members`);
 
       fireEvent.click(screen.getByRole('link', { name: 'Paramètres du compte' }));
 
