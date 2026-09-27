@@ -1,88 +1,86 @@
+import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import type { components } from '../api/generated/schema';
 import type { Language } from '../i18n/language';
 import { useFreshImageUrl } from '../media/useFreshImageUrl';
-import { formatPartialDate } from '../persons/formatPartialDate';
+import { MemoryPhotoViewer } from './MemoryPhotoViewer';
+import { usePhotoAlt } from './photoAlt';
 
 type MemoryPhoto = components['schemas']['MemoryPhotoResponse'];
 
 /**
- * SCREEN-013 photos, in the order they were added: the display version of each at full width,
- * stacked, with its caption and when it was taken if known. The alternative text is the caption,
- * otherwise "Photo {n} of {count}". Provisional layout until the human has seen it (OQ-048).
+ * SCREEN-013 photos, in the order they were added: a grid of square thumbnails without text, each
+ * a button named by the photo's alternative text, opening the photo viewer on it. Provisional
+ * layout until the human has confirmed it (OQ-048, option B).
  */
 export function MemoryPhotos({ photos, language }: { photos: MemoryPhoto[]; language: Language }) {
   const { t } = useTranslation('memory');
+  const altOf = usePhotoAlt();
+  const [open, setOpen] = useState<number | null>(null);
   if (photos.length === 0) return null;
   return (
-    <ol aria-label={t('screen.photos.label')} className="flex min-w-0 flex-col gap-6">
-      {photos.map((photo, index) => (
-        <li key={photo.mediaAssetId} className="min-w-0">
-          <MemoryPhotoFigure
-            photo={photo}
-            alt={
-              photo.caption?.trim()
-                ? photo.caption
-                : t('screen.photos.alt', { n: index + 1, total: photos.length })
-            }
-            language={language}
-          />
-        </li>
-      ))}
-    </ol>
+    <>
+      <ul aria-label={t('screen.photos.label')} className="grid grid-cols-2 gap-2 sm:grid-cols-3">
+        {photos.map((photo, index) => (
+          <li key={photo.mediaAssetId} className="min-w-0">
+            <MemoryPhotoThumbnail
+              photo={photo}
+              alt={altOf(photo, index, photos.length)}
+              onOpen={() => {
+                setOpen(index);
+              }}
+            />
+          </li>
+        ))}
+      </ul>
+      {open !== null && (
+        <MemoryPhotoViewer
+          photos={photos}
+          index={Math.min(open, photos.length - 1)}
+          language={language}
+          onChange={setOpen}
+          onClose={() => {
+            setOpen(null);
+          }}
+        />
+      )}
+    </>
   );
 }
 
-function MemoryPhotoFigure({
+function MemoryPhotoThumbnail({
   photo,
   alt,
-  language,
+  onOpen,
 }: {
   photo: MemoryPhoto;
   alt: string;
-  language: Language;
+  onOpen: () => void;
 }) {
   const { t } = useTranslation('memory');
-  const image = useFreshImageUrl(photo.url);
-  const caption = photo.caption?.trim() ? photo.caption : null;
-  const takenAt = photo.takenAt ? formatPartialDate(photo.takenAt, language) : null;
+  const image = useFreshImageUrl(photo.thumbnailUrl);
   return (
-    <figure className="flex min-w-0 flex-col gap-2">
+    <button
+      type="button"
+      aria-label={alt}
+      onClick={onOpen}
+      className="block aspect-square w-full overflow-hidden rounded-xl bg-border focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary"
+    >
       {image.show ? (
         <img
-          src={photo.url}
+          src={photo.thumbnailUrl}
           alt={alt}
           loading="lazy"
           decoding="async"
-          // The display size reserves the place of the image before it loads.
-          width={photo.widthPx ?? undefined}
-          height={photo.heightPx ?? undefined}
           onError={image.onError}
           onLoad={image.onLoad}
-          className="block h-auto w-full rounded-xl bg-border"
+          className="size-full object-cover"
         />
       ) : (
-        <div
-          role="img"
-          aria-label={alt}
-          className="flex min-h-40 items-center justify-center rounded-xl border border-border bg-surface px-4 py-6 text-center text-caption text-text-muted"
-        >
+        <span className="flex size-full items-center justify-center border border-border bg-surface p-2 text-center text-caption text-text-muted">
           {t('screen.photos.unavailable')}
-        </div>
+        </span>
       )}
-      {(caption !== null || takenAt !== null) && (
-        <figcaption className="flex flex-col gap-1">
-          {/* Plain text: rendered as a text node, never as HTML or Markdown (OQ-032). */}
-          {caption !== null && (
-            <span className="text-body break-words whitespace-pre-wrap text-text">{caption}</span>
-          )}
-          {takenAt !== null && (
-            <span className="text-caption text-text-muted">
-              {t('screen.photos.takenAt', { date: takenAt })}
-            </span>
-          )}
-        </figcaption>
-      )}
-    </figure>
+    </button>
   );
 }

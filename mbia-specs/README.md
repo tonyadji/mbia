@@ -70,6 +70,10 @@ The visual mockup is a design reference. Product rules and screen behavior are d
 
 ## Changelog
 
+### 0.5.1 — 2026-09-27
+
+- OQ-048, still open: the stacked photo layout of SCREEN-013, rendered in PR-44, was not satisfactory. SCREEN-013 now shows a grid of thumbnails and a photo viewer (option B), provisional until the human has inspected it (`screens.md` SCREEN-013; `delivery/phase-4-memory-photos.md` §3.7, PR-45b).
+
 ### 0.5 — 2026-09-26
 
 Photos in Memories, from the answer to OQ-042:

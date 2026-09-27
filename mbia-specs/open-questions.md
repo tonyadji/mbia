@@ -54,6 +54,7 @@ When a question is answered, update the relevant spec, then move the entry to **
 - **Options:** A — the `display` versions stacked at full width, one under the other, each with its caption and taken date, no viewer (provisional choice) / B — a grid of thumbnails, a tap opening the photo large with swipe between photos / C — another layout proposed after the review.
 - **Recommendation:** A for the first delivery; propose B or another layout only if the rendering does not work for real family photos (portrait and landscape mixed, captions of several lines).
 - **Blocking:** nothing. SCREEN-013 ships A in Phase 4 (PR-44). The human confirms or reopens it at the human check of PR-44; a change becomes its own PR of the phase.
+- **Status (human, 2026-09-27):** option A, rendered in PR-44, was **not satisfactory**. The human chose to try option B: a grid of thumbnails without text (2 columns on a phone, 3 from tablet width); a tap opens a viewer with the photo large, its caption, its taken date and its position, `Previous photo` / `Next photo` / `Close`, swipe between photos, arrows and Escape on a keyboard. B ships in PR-45b and stays provisional: the question remains open until the human has inspected B's rendering and confirms it or proposes another layout.
 
 ## Resolved
 

@@ -94,7 +94,9 @@
       "label": "Photos",
       "alt": "Photo {{n}} sur {{total}}",
       "takenAt": "Prise : {{date}}",
-      "unavailable": "Cette photo ne peut pas être affichée pour le moment."
+      "unavailable": "Cette photo ne peut pas être affichée pour le moment.",
+      "previous": "Photo précédente",
+      "next": "Photo suivante"
     }
   },
   "saved": "Vos modifications de « {{title}} » ont été enregistrées.",
