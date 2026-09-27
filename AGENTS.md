@@ -77,7 +77,7 @@ cd frontend && npm run dev                # http://localhost:5173
 
 Local services: Keycloak admin http://localhost:8081, Mailpit http://localhost:8025, RustFS console http://localhost:9001/rustfs/console/. Test users are defined in `infrastructure/keycloak/realm-mbia.json`.
 
-Application settings are environment variables documented in `.env.example` (for example `MBIA_MEMORY_MAX_PHOTOS`, the photos per Memory, 1–10, default 3: the backend refuses to start outside).
+Application settings are environment variables documented in `.env.example` (for example `MBIA_MEMORY_MAX_PHOTOS`, the photos per Memory, 1–10, default 3: the backend refuses to start outside; `MBIA_APP_BASE_URL`, the frontend address used in invitation links, required outside the `local` and `test` profiles).
 
 A change is done only when `./mvnw verify` and all frontend checks pass. CI (`.github/workflows/ci.yml`) runs the same checks on every pull request to `develop` and `main`.
 

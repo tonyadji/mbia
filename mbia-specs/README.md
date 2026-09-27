@@ -71,6 +71,10 @@ The visual mockup is a design reference. Product rules and screen behavior are d
 
 ## Changelog
 
+### 0.6.1 — 2026-09-27
+
+- Renewing or revoking an ACCEPTED or REVOKED invitation answers 410 (`INVITATION_ALREADY_USED`, `INVITATION_REVOKED`); an EXPIRED invitation can be revoked (OQ-057; `data-model.md` §8; `openapi.yaml` `renewInvitation`, `revokeInvitation`, additive).
+
 ### 0.6 — 2026-09-27
 
 Family collaboration (Phase 5), from the Phase 5 review with the human (OQ-050 to OQ-056):

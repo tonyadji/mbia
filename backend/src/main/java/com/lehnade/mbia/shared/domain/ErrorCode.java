@@ -21,6 +21,7 @@ public enum ErrorCode {
     PERSON_NOT_FOUND(404, "Person not found"),
     MEMORY_NOT_FOUND(404, "Memory not found"),
     MEDIA_NOT_FOUND(404, "Media not found"),
+    INVITATION_NOT_FOUND(404, "Invitation not found"),
     METHOD_NOT_ALLOWED(405, "Method not allowed"),
     NOT_ACCEPTABLE(406, "Not acceptable"),
     CONCURRENT_MODIFICATION(409, "Concurrent modification"),
@@ -34,6 +35,9 @@ public enum ErrorCode {
     MEMORY_PHOTO_LIMIT_REACHED(409, "Memory photo limit reached"),
     RELATIONSHIP_ALREADY_EXISTS(409, "Relationship already exists"),
     RELATIONSHIP_CREATES_CYCLE(409, "Relationship creates a cycle"),
+    INVITATION_ALREADY_PENDING(409, "Invitation already pending"),
+    INVITATION_REVOKED(410, "Invitation revoked"),
+    INVITATION_ALREADY_USED(410, "Invitation already used"),
     UNSUPPORTED_MEDIA_TYPE(415, "Unsupported media type"),
     RELATIONSHIP_WARNING_CONFIRMATION_REQUIRED(422, "Relationship warning confirmation required"),
     INTERNAL_ERROR(500, "Internal error");
