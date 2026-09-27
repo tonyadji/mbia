@@ -63,4 +63,45 @@ class FamilyMembershipTest {
         assertThatThrownBy(() -> rejoined.rejoin(MembershipRole.VIEWER, now))
                 .isInstanceOf(IllegalStateException.class);
     }
+
+    /** mvp.md §5: the ADMIN changes a member's role between CONTRIBUTOR and VIEWER, never to ADMIN. */
+    @Test
+    void anActiveMembershipChangesBetweenContributorAndViewerOnly() {
+        Instant joinedAt = Instant.parse("2026-09-20T10:00:00Z");
+        Instant now = Instant.parse("2026-09-27T10:00:00Z");
+        FamilyMembership contributor = FamilyMembership.invited(FamilyId.newId(), UUID.randomUUID(),
+                MembershipRole.CONTRIBUTOR, joinedAt);
+
+        FamilyMembership viewer = contributor.changeRole(MembershipRole.VIEWER, now);
+
+        assertThat(viewer.id()).isEqualTo(contributor.id());
+        assertThat(viewer.role()).isEqualTo(MembershipRole.VIEWER);
+        assertThat(viewer.status()).isEqualTo(MembershipStatus.ACTIVE);
+        assertThat(viewer.joinedAt()).isEqualTo(joinedAt);
+        assertThat(viewer.updatedAt()).isEqualTo(now);
+        assertThat(viewer.version()).isEqualTo(contributor.version());
+        assertThatThrownBy(() -> viewer.changeRole(MembershipRole.ADMIN, now))
+                .isInstanceOf(IllegalArgumentException.class);
+        assertThatThrownBy(() -> viewer.remove(now).changeRole(MembershipRole.CONTRIBUTOR, now))
+                .isInstanceOf(IllegalStateException.class);
+    }
+
+    /** mvp.md §5, data-model.md §7: removal is logical; the row stays with its role. */
+    @Test
+    void aRemovedMembershipKeepsItsRowAndRecordsWhenItWasRemoved() {
+        Instant joinedAt = Instant.parse("2026-09-20T10:00:00Z");
+        Instant now = Instant.parse("2026-09-27T10:00:00Z");
+        FamilyMembership viewer = FamilyMembership.invited(FamilyId.newId(), UUID.randomUUID(), MembershipRole.VIEWER,
+                joinedAt);
+
+        FamilyMembership removed = viewer.remove(now);
+
+        assertThat(removed.id()).isEqualTo(viewer.id());
+        assertThat(removed.status()).isEqualTo(MembershipStatus.REMOVED);
+        assertThat(removed.isActive()).isFalse();
+        assertThat(removed.role()).isEqualTo(MembershipRole.VIEWER);
+        assertThat(removed.removedAt()).isEqualTo(now);
+        assertThat(removed.joinedAt()).isEqualTo(joinedAt);
+        assertThatThrownBy(() -> removed.remove(now)).isInstanceOf(IllegalStateException.class);
+    }
 }

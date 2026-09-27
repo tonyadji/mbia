@@ -283,11 +283,11 @@ No analytics event (`family_invitation_sent`, `family_invitation_accepted` arriv
 
 **Scope**
 
-- `listFamilyMembers` with `linkedPersonDisplayName` and `relationshipToCurrentUser` (kinship computed, never stored).
+- `listFamilyMembers` with `linkedPersonDisplayName` and `relationshipToCurrentUser` (kinship computed, never stored); ACTIVE members only, never their email (OQ-061).
 - `updateMemberRole` (CONTRIBUTOR ↔ VIEWER), `removeFamilyMember` (remove, or leave on oneself) with `If-Match`; the linked Person released in the same transaction; `LAST_ADMIN_REQUIRED` with the ADMIN memberships locked.
 - Audit of role changes, removals and departures.
 
-**Specs:** `product/mvp.md` §4, §5; `product/domain/person-relationships-collaboration.md` §2; `technical/data-model.md` §7, §17; `openapi.yaml` `listFamilyMembers`, `updateMemberRole`, `removeFamilyMember`.
+**Specs:** `product/mvp.md` §4, §5; `product/domain/person-relationships-collaboration.md` §2; OQ-061; `technical/data-model.md` §7, §17; `openapi.yaml` `listFamilyMembers`, `updateMemberRole`, `removeFamilyMember`.
 
 **Acceptance criteria**
 

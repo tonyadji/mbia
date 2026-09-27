@@ -36,6 +36,7 @@ public enum ErrorCode {
     RELATIONSHIP_ALREADY_EXISTS(409, "Relationship already exists"),
     RELATIONSHIP_CREATES_CYCLE(409, "Relationship creates a cycle"),
     INVITATION_ALREADY_PENDING(409, "Invitation already pending"),
+    LAST_ADMIN_REQUIRED(409, "Last admin required"),
     INVITATION_EXPIRED(410, "Invitation expired"),
     INVITATION_REVOKED(410, "Invitation revoked"),
     INVITATION_ALREADY_USED(410, "Invitation already used"),

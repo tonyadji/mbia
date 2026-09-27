@@ -678,3 +678,13 @@ When a question is answered, update the relevant spec, then move the entry to **
 - **Recommendation:** A, A, A.
 - **Blocking:** PR-51.
 - **Answer:** A, A, A (human, 2026-09-27). Documented in `screens.md` SCREEN-005, SCREEN-009; `data-model.md` §8; `openapi.yaml` (`inviteFamilyMember`, `renewInvitation`, descriptions only); plan phase 5 PR-51, PR-53.
+
+### OQ-061 — What the member list shows, and a member that is not found
+
+- **Raised by / date:** coding agent (PR-52), 2026-09-27
+- **Context:** `openapi.yaml` `MemberResponse` has an optional `email`, and `listFamilyMembers` was summarized "List active and removed family memberships", but SCREEN-008 shows neither an email nor removed members, and every member of any role may list the members. `updateMemberRole` and `removeFamilyMember` did not say what an unknown, other-Family or already REMOVED `memberId` answers; `ProblemDetails` has no member-specific code.
+- **Question:** who sees a member's email; are REMOVED memberships listed; what does a membership that is not an ACTIVE member of the Family answer?
+- **Options:** email — A: never returned / B: to the ADMIN only / C: to every member. Removed — A: ACTIVE only / B: also REMOVED for the ADMIN / C: also REMOVED for everyone. Not found — A: 404 `RESOURCE_NOT_FOUND` / B: a new 404 `MEMBER_NOT_FOUND` / C: `removeFamilyMember` idempotent (204) on a REMOVED membership.
+- **Recommendation:** A, A, A: no screen needs the email or the removed members, and relatives' addresses stay private; the existing generic code needs no contract change.
+- **Blocking:** PR-52.
+- **Answer:** A, A, A (human, 2026-09-27). Documented in `openapi.yaml` (`listFamilyMembers`, `updateMemberRole`, `removeFamilyMember`, `MemberResponse.email`; descriptions only); `data-model.md` §7; plan phase 5 PR-52.
