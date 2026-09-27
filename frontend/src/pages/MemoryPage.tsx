@@ -68,6 +68,8 @@ export function MemoryRoute({
     memory: Memory;
     role: Role | undefined;
     myUserId: string | undefined;
+    /** `FamilyResponse.limits.maxPhotosPerMemory`, never a constant (Phase 4 plan §3.5). */
+    photoLimit: number | undefined;
     reload: () => Promise<Memory | undefined>;
   }) => ReactNode;
 }) {
@@ -102,6 +104,7 @@ export function MemoryRoute({
     memory: memory.data,
     role: family.data?.myRole,
     myUserId: me.data?.id,
+    photoLimit: family.data?.limits.maxPhotosPerMemory,
     reload: async () => (await memory.refetch()).data,
   });
 }

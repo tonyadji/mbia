@@ -42,6 +42,7 @@ function family(myRole: string) {
     myRole,
     myLinkedPersonId: null,
     stats: { personCount: 2, memoryCount: 1, activeMemberCount: 1 },
+    limits: { maxPhotosPerMemory: 3 },
     version: 0,
     createdAt: '2026-09-25T10:00:00Z',
     updatedAt: '2026-09-25T10:00:00Z',
@@ -243,10 +244,12 @@ describe('Edit & archive a Memory', () => {
       });
       const patch = api.sent('PATCH')[0];
       expect(patch?.headers.get('If-Match')).toBe('"0"');
-      // The Persons were not changed: they are not sent (OQ-008, OQ-043).
+      // The Persons were not changed: they are not sent (OQ-008, OQ-043). The photos are always
+      // the complete list, here empty (Phase 4 plan §3.2).
       expect(await patch?.json()).toEqual({
         title: 'Le marché central',
         content: 'Grand-mère vendait du plantain.',
+        photos: [],
       });
       expect(await screen.findByRole('status')).toHaveTextContent('ont été enregistrées');
     });

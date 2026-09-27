@@ -10,6 +10,8 @@
       "add": "Add a photo",
       "limit_one": "A memory can have only one photo.",
       "limit_other": "A memory can have up to {{count}} photos.",
+      "overLimit_one": "This memory has more photos than a memory can have now (only one). Its photos stay; remove some to add a new one.",
+      "overLimit_other": "This memory has more photos than a memory can have now (up to {{count}}). Its photos stay; remove some to add a new one.",
       "leftOut_one": "{{count}} photo was not added.",
       "leftOut_other": "{{count}} photos were not added.",
       "photo": "Photo {{position}}",
@@ -36,6 +38,7 @@
       }
     },
     "required": "This field is required.",
+    "contentOrPhoto": "Write a story, or keep a photo: a memory needs one or the other.",
     "tooLong": "This text cannot be longer than {{max, number}} characters.",
     "invalid": "Check this field.",
     "persons": "Who is this memory about?",
@@ -104,7 +107,12 @@
     "activePersonRequired": "Keep at least one person whose profile is not archived.",
     "errors": {
       "PERSON_NOT_ACTIVE": "One of the added people was archived or merged in the meantime. Remove them, then save again.",
-      "PERSON_NOT_FOUND": "One of the chosen people is no longer part of the family. Remove them, then save again."
+      "PERSON_NOT_FOUND": "One of the chosen people is no longer part of the family. Remove them, then save again.",
+      "MEMORY_PHOTO_LIMIT_REACHED_one": "A memory can have only one photo. Remove the extra photos, then save again.",
+      "MEMORY_PHOTO_LIMIT_REACHED_other": "A memory can have up to {{count}} photos. Remove the extra photos, then save again.",
+      "MEDIA_NOT_READY": "One of the added photos is not ready yet. Remove it and add it again, then save.",
+      "MEDIA_ALREADY_USED": "One of the added photos is already used elsewhere. Remove it and add it again, then save.",
+      "MEDIA_NOT_FOUND": "One of the added photos can no longer be found. Remove it and add it again, then save."
     }
   },
   "archive": {

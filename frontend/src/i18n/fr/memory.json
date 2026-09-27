@@ -10,6 +10,8 @@
       "add": "Ajouter une photo",
       "limit_one": "Un souvenir ne peut avoir qu'une seule photo.",
       "limit_other": "Un souvenir peut avoir jusqu'à {{count}} photos.",
+      "overLimit_one": "Ce souvenir a plus de photos qu'un souvenir ne peut en avoir désormais (une seule). Ses photos restent ; retirez-en pour en ajouter une nouvelle.",
+      "overLimit_other": "Ce souvenir a plus de photos qu'un souvenir ne peut en avoir désormais (jusqu'à {{count}}). Ses photos restent ; retirez-en pour en ajouter une nouvelle.",
       "leftOut_one": "{{count}} photo n'a pas été ajoutée.",
       "leftOut_other": "{{count}} photos n'ont pas été ajoutées.",
       "photo": "Photo {{position}}",
@@ -36,6 +38,7 @@
       }
     },
     "required": "Ce champ est obligatoire.",
+    "contentOrPhoto": "Écrivez une histoire, ou gardez une photo : un souvenir a besoin de l'une ou de l'autre.",
     "tooLong": "Ce texte ne peut pas dépasser {{max, number}} caractères.",
     "invalid": "Vérifiez ce champ.",
     "persons": "Qui concerne ce souvenir ?",
@@ -104,7 +107,12 @@
     "activePersonRequired": "Gardez au moins une personne dont le profil n'est pas archivé.",
     "errors": {
       "PERSON_NOT_ACTIVE": "Une des personnes ajoutées a été archivée ou fusionnée entre-temps. Retirez-la, puis enregistrez à nouveau.",
-      "PERSON_NOT_FOUND": "Une des personnes choisies ne fait plus partie de la famille. Retirez-la, puis enregistrez à nouveau."
+      "PERSON_NOT_FOUND": "Une des personnes choisies ne fait plus partie de la famille. Retirez-la, puis enregistrez à nouveau.",
+      "MEMORY_PHOTO_LIMIT_REACHED_one": "Un souvenir ne peut avoir qu'une seule photo. Retirez les photos en trop, puis enregistrez à nouveau.",
+      "MEMORY_PHOTO_LIMIT_REACHED_other": "Un souvenir peut avoir jusqu'à {{count}} photos. Retirez les photos en trop, puis enregistrez à nouveau.",
+      "MEDIA_NOT_READY": "Une des photos ajoutées n'est pas encore prête. Retirez-la et ajoutez-la de nouveau, puis enregistrez.",
+      "MEDIA_ALREADY_USED": "Une des photos ajoutées est déjà utilisée ailleurs. Retirez-la et ajoutez-la de nouveau, puis enregistrez.",
+      "MEDIA_NOT_FOUND": "Une des photos ajoutées est introuvable. Retirez-la et ajoutez-la de nouveau, puis enregistrez."
     }
   },
   "archive": {
