@@ -39,7 +39,8 @@ mbia-specs/
 │   ├── phase-1-walking-skeleton.md
 │   ├── phase-2-core-family-graph.md
 │   ├── phase-3-family-memories.md
-│   └── phase-4-memory-photos.md
+│   ├── phase-4-memory-photos.md
+│   └── phase-5-collaboration.md
 ├── product/
 │   ├── vision.md
 │   ├── mvp.md
@@ -69,6 +70,17 @@ mbia-specs/
 The visual mockup is a design reference. Product rules and screen behavior are defined in text and remain authoritative.
 
 ## Changelog
+
+### 0.6 — 2026-09-27
+
+Family collaboration (Phase 5), from the Phase 5 review with the human (OQ-050 to OQ-056):
+
+- inviting from a Person's profile: the invitation carries a suggested Person, never shown before sign-in; one pending invitation per Person (`INVITATION_ALREADY_PENDING`); the invitee confirms "Are you {name}?" with one tap; the pending invitation is remembered in the browser; Persons told apart by a parent or birth year; a welcome on the first arrival (OQ-050; `mvp.md` §18, `screens.md` SCREEN-002, SCREEN-005, SCREEN-008 to SCREEN-010, `data-model.md` §8);
+- only the ADMIN invites (OQ-051, unchanged);
+- recent activity: the types shown, grouping of consecutive actions, links while ACTIVE, names at the time, 10 lines on Family Home, starting empty (OQ-054; `mvp.md` §20, `screens.md` SCREEN-002, `data-model.md` §16);
+- `openapi.yaml` 0.4.0, additive: `CreateInvitationRequest.personId`, `InvitationPerson`, `InvitationResponse.person`, `AcceptInvitationResponse.suggestedPerson`, `MemberResponse.linkedPersonDisplayName` and `.relationshipToCurrentUser`, `ActivityResponse.count`, `.resourceIds`, `.resourceActive`, code `INVITATION_ALREADY_PENDING`;
+- open: a group invitation link, to decide before the end of Phase 5 (OQ-052); keeping the invitee inside Mbia with an access code (OQ-053); an invitation email that cannot be sent (OQ-055); an invitation whose Person is archived or merged (OQ-056);
+- delivery plan `delivery/phase-5-collaboration.md`.
 
 ### 0.5.1 — 2026-09-27
 

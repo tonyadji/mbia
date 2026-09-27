@@ -307,6 +307,7 @@ family_invitations (
     email              VARCHAR(320),
     locale             VARCHAR(5) NOT NULL,
     role               membership_role NOT NULL,
+    person_id          UUID,
     token_hash         VARCHAR(255) NOT NULL UNIQUE,
     status             invitation_status NOT NULL DEFAULT 'PENDING',
     invited_by         UUID NOT NULL REFERENCES users(id),
@@ -322,7 +323,8 @@ family_invitations (
 
     CHECK (channel <> 'EMAIL' OR email IS NOT NULL),
     CHECK (role <> 'ADMIN'),
-    CHECK (locale IN ('fr', 'en'))
+    CHECK (locale IN ('fr', 'en')),
+    FOREIGN KEY (person_id, family_id) REFERENCES persons(id, family_id)
 )
 ```
 
@@ -338,14 +340,20 @@ Rules:
 - revocation sets `status = REVOKED`, `revoked_at`, `revoked_by`;
 - `EXPIRED` is set lazily when an expired `PENDING` invitation is read or accepted, and may also be set by a scheduled task;
 - `role = ADMIN` is not allowed in MVP;
-- expired, revoked or accepted invitations cannot be accepted.
+- expired, revoked or accepted invitations cannot be accepted;
+- `person_id` is the Person the invitation was sent for, a suggestion only (OQ-050): an ACTIVE, living Person of the same Family linked to no User when the invitation is created; accepting never links it by itself;
+- a Person has at most one `PENDING` invitation (unique partial index below; `INVITATION_ALREADY_PENDING`); an expired one is marked `EXPIRED` before the check, so that a new invitation can be created.
 
-Recommended partial index:
+Recommended partial indexes:
 
 ```sql
 CREATE INDEX idx_invitations_family_pending
 ON family_invitations (family_id, lower(email))
 WHERE status = 'PENDING';
+
+CREATE UNIQUE INDEX uq_invitations_person_pending
+ON family_invitations (person_id)
+WHERE status = 'PENDING' AND person_id IS NOT NULL;
 ```
 
 ## 9. Partial-date representation
@@ -776,13 +784,13 @@ activities (
 )
 ```
 
-Examples of `activity_type`:
+`activity_type` (OQ-054):
 
 ```text
 PERSON_CREATED
-PERSON_UPDATED
 PERSON_ARCHIVED
 PERSON_RESTORED
+PERSON_MERGED
 RELATIONSHIP_CREATED
 RELATIONSHIP_ARCHIVED
 MEMORY_CREATED
@@ -792,6 +800,15 @@ MEMBER_REMOVED
 ```
 
 `payload` contains presentation-safe contextual data such as display names, never secrets.
+
+Rules (OQ-054):
+
+- activities are written in the transaction of the operation they record;
+- the types written and shown are `PERSON_CREATED`, `PERSON_ARCHIVED`, `PERSON_RESTORED`, `PERSON_MERGED`, `RELATIONSHIP_CREATED`, `RELATIONSHIP_ARCHIVED`, `MEMORY_CREATED`, `INVITATION_ACCEPTED`, `MEMBER_LEFT` and `MEMBER_REMOVED`; edits, role changes and invitations sent stay in `audit_entries` only;
+- `payload` holds the display names at the time of the activity (the Person, both Persons of a relationship, the Memory title, the member), never a story text, a caption, an email address, a token or a storage key;
+- `listFamilyActivities` groups consecutive activities of the Family (in `occurred_at DESC, id DESC` order) that have the same actor and type, each within one hour of the previous one; a group is returned as one item with its count and the resource ids of its activities;
+- each item links to its resource only while it is ACTIVE: the API returns whether it still is;
+- no activity is rebuilt from `audit_entries`: the feed starts empty when the table is created.
 
 Recommended index:
 

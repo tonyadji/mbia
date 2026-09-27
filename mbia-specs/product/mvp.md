@@ -386,6 +386,17 @@ LINK   -> Mbia shows the link; the ADMIN shares it (WhatsApp, SMS, …)
 
 For `LINK`, the email address is optional and only informative.
 
+### Inviting a Person of the tree
+
+Most relatives invited are already in the tree. An ADMIN may therefore invite **from a Person's profile** (`Invite {firstName}`), as well as from the Members screen (OQ-050):
+
+- the Person must be ACTIVE, living and linked to no User;
+- the invitation then carries this Person as a suggestion; it never binds the invitee to it (when that Person is archived or merged before acceptance: OQ-056);
+- a Person has at most one pending invitation (`INVITATION_ALREADY_PENDING`): the ADMIN renews it instead;
+- the Person is never shown before the invitee is signed in.
+
+Only the ADMIN invites (OQ-051). A link works once: a reusable group link is an open question (OQ-052).
+
 Rules:
 
 - one invitation = one link = one role; the link is **single-use**;
@@ -395,7 +406,9 @@ Rules:
 - ADMIN can see pending invitations, **revoke** one, or **renew** one (new link, new expiry; the previous link stops working; for `EMAIL`, the email is sent again);
 - the invitation email is sent in the inviter's current language;
 - an ACTIVE member who opens a link for their own Family is simply taken to the Family; the invitation stays pending;
-- expired, revoked or already used links show a clear message and suggest asking the ADMIN for a new link.
+- expired, revoked or already used links show a clear message and suggest asking the ADMIN for a new link;
+- the browser remembers a pending invitation until it is accepted or no longer valid, so that signing up, verifying the email or opening another tab always brings the invitee back to it (OQ-050);
+- when the email of an `EMAIL` invitation cannot be sent, see OQ-055.
 
 ### Acceptance flow
 
@@ -415,7 +428,17 @@ register
 → Family access
 ```
 
-After joining, ask:
+After joining, when the invitation carries a Person that is still ACTIVE and linked to no User, ask first (OQ-050):
+
+> Are you {displayName}?
+
+```text
+Yes, it's me -> the User is linked to this Person
+No           -> the question below
+Later
+```
+
+Otherwise, or after `No`, ask:
 
 > Are you already present in this tree?
 
@@ -427,7 +450,13 @@ No -> create Person
 Later
 ```
 
+In the list of Persons to select, each Person shows one of their parents when one is known, otherwise their birth year, so that two Persons with the same name can be told apart.
+
 A VIEWER cannot create Persons: for a VIEWER, `No` explains that a contributor can add them, and offers `Later`.
+
+Then Family Home welcomes the new member once, with `View the family tree` (centred on their Person when linked) and, for a CONTRIBUTOR, `Add a memory`.
+
+Keeping the invitee inside Mbia during sign-up (an access code sent by email instead of the Keycloak pages) is an open question (OQ-053).
 
 ## 19. Search
 
@@ -453,9 +482,20 @@ Show at minimum:
 - access to tree;
 - Person count;
 - Memory count;
-- recent activity;
+- recent activity (below);
 - add Person action;
 - add Memory action.
+
+### Recent activity
+
+A short, readable feed of what happened in the Family, for every member (OQ-054):
+
+- shown: a Person added, archived, restored or merged; a relationship added or removed; a Memory added; a member who joined, left or was removed. Edits, role changes and invitations are audited, not shown;
+- consecutive actions of the same member and type, each within one hour of the previous one, form one line ("Tony added 6 people");
+- each line leads to its Person or Memory while it is ACTIVE; an archived item is named without a link;
+- names are those at the time of the action;
+- Family Home shows the 10 most recent lines;
+- the feed starts when Phase 5 is deployed: earlier actions are not shown.
 
 ## 21. Authentication
 
