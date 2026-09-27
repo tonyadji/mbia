@@ -251,7 +251,10 @@ describe('Edit & archive a Memory', () => {
         content: 'Grand-mère vendait du plantain.',
         photos: [],
       });
-      expect(await screen.findByRole('status')).toHaveTextContent('ont été enregistrées');
+      // The form may still be on screen for a moment, with the empty status of its photos: wait
+      // for the Memory's own status.
+      expect(await screen.findByText(/ont été enregistrées/)).toHaveAttribute('role', 'status');
+      expect(screen.queryByRole('button', { name: 'Enregistrer' })).not.toBeInTheDocument();
     });
 
     it('explains a stale version and reloads the latest one without merging', async () => {
