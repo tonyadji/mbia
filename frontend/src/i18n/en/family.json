@@ -37,6 +37,37 @@
       "title": "Welcome to the {{name}} family",
       "viewTree": "View the family tree",
       "close": "Close the welcome message"
+    },
+    "activity": {
+      "title": "Recent activity",
+      "formerMember": "Former member",
+      "member": "A member",
+      "someone": "someone",
+      "lines": {
+        "PERSON_CREATED": "{{actor}} added {{name}}",
+        "PERSON_ARCHIVED": "{{actor}} archived {{name}}",
+        "PERSON_RESTORED": "{{actor}} restored {{name}}",
+        "PERSON_MERGED": "{{actor}} merged {{merged}} into {{name}}",
+        "RELATIONSHIP_CREATED": "{{actor}} linked {{source}} and {{target}}",
+        "RELATIONSHIP_ARCHIVED": "{{actor}} removed the link between {{source}} and {{target}}",
+        "MEMORY_CREATED": "{{actor}} added the memory “{{title}}”",
+        "MEMORY_CREATED_untitled": "{{actor}} added a memory",
+        "INVITATION_ACCEPTED": "{{member}} joined the family",
+        "MEMBER_LEFT": "{{member}} left the family",
+        "MEMBER_REMOVED": "{{actor}} removed {{member}} from the family"
+      },
+      "groups": {
+        "PERSON_CREATED": "{{actor}} added {{count}} people",
+        "PERSON_ARCHIVED": "{{actor}} archived {{count}} people",
+        "PERSON_RESTORED": "{{actor}} restored {{count}} people",
+        "PERSON_MERGED": "{{actor}} merged {{count}} duplicates",
+        "RELATIONSHIP_CREATED": "{{actor}} added {{count}} family links",
+        "RELATIONSHIP_ARCHIVED": "{{actor}} removed {{count}} family links",
+        "MEMORY_CREATED": "{{actor}} added {{count}} memories",
+        "INVITATION_ACCEPTED": "{{actor}} joined the family",
+        "MEMBER_LEFT": "{{actor}} left the family",
+        "MEMBER_REMOVED": "{{actor}} removed {{count}} members"
+      }
     }
   },
   "chooser": {

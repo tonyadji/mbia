@@ -97,4 +97,11 @@ interface FamilyRelationshipJpaRepository extends JpaRepository<FamilyRelationsh
             SELECT 1 FROM pg_advisory_xact_lock(hashtextextended(CAST(:familyId AS text), 0))
             """)
     Integer lockFamilyGraph(UUID familyId);
+
+    /** The ACTIVE relationships among {@code ids}, in the Family (OQ-054). */
+    @Query("""
+            SELECT r.id FROM FamilyRelationshipJpaEntity r
+            WHERE r.familyId = :familyId AND r.id IN :ids AND r.status = 'ACTIVE'
+            """)
+    List<UUID> findActiveIds(UUID familyId, Collection<UUID> ids);
 }

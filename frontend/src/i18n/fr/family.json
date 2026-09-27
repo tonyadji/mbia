@@ -37,6 +37,37 @@
       "title": "Bienvenue dans la famille {{name}}",
       "viewTree": "Voir l'arbre de la famille",
       "close": "Fermer le message de bienvenue"
+    },
+    "activity": {
+      "title": "Activité récente",
+      "formerMember": "Ancien membre",
+      "member": "Un membre",
+      "someone": "une personne",
+      "lines": {
+        "PERSON_CREATED": "{{actor}} a ajouté {{name}}",
+        "PERSON_ARCHIVED": "{{actor}} a archivé {{name}}",
+        "PERSON_RESTORED": "{{actor}} a restauré {{name}}",
+        "PERSON_MERGED": "{{actor}} a fusionné {{merged}} avec {{name}}",
+        "RELATIONSHIP_CREATED": "{{actor}} a relié {{source}} et {{target}}",
+        "RELATIONSHIP_ARCHIVED": "{{actor}} a retiré le lien entre {{source}} et {{target}}",
+        "MEMORY_CREATED": "{{actor}} a ajouté le souvenir « {{title}} »",
+        "MEMORY_CREATED_untitled": "{{actor}} a ajouté un souvenir",
+        "INVITATION_ACCEPTED": "{{member}} a rejoint la famille",
+        "MEMBER_LEFT": "{{member}} a quitté la famille",
+        "MEMBER_REMOVED": "{{actor}} a retiré {{member}} de la famille"
+      },
+      "groups": {
+        "PERSON_CREATED": "{{actor}} a ajouté {{count}} personnes",
+        "PERSON_ARCHIVED": "{{actor}} a archivé {{count}} personnes",
+        "PERSON_RESTORED": "{{actor}} a restauré {{count}} personnes",
+        "PERSON_MERGED": "{{actor}} a fusionné {{count}} doublons",
+        "RELATIONSHIP_CREATED": "{{actor}} a ajouté {{count}} liens familiaux",
+        "RELATIONSHIP_ARCHIVED": "{{actor}} a retiré {{count}} liens familiaux",
+        "MEMORY_CREATED": "{{actor}} a ajouté {{count}} souvenirs",
+        "INVITATION_ACCEPTED": "{{actor}} a rejoint la famille",
+        "MEMBER_LEFT": "{{actor}} a quitté la famille",
+        "MEMBER_REMOVED": "{{actor}} a retiré {{count}} membres"
+      }
     }
   },
   "chooser": {

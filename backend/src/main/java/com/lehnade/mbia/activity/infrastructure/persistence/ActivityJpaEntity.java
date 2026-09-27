@@ -55,4 +55,32 @@ class ActivityJpaEntity {
         this.payload = payload;
         this.occurredAt = occurredAt;
     }
+
+    UUID getId() {
+        return id;
+    }
+
+    UUID getActorUserId() {
+        return actorUserId;
+    }
+
+    String getActivityType() {
+        return activityType;
+    }
+
+    String getResourceType() {
+        return resourceType;
+    }
+
+    UUID getResourceId() {
+        return resourceId;
+    }
+
+    Map<String, Object> getPayload() {
+        return payload;
+    }
+
+    Instant getOccurredAt() {
+        return occurredAt;
+    }
 }

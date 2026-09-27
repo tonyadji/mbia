@@ -1345,7 +1345,8 @@ paths:
       operationId: listFamilyActivities
       summary: List recent presentation-safe family activity
       description: |
-        Any ACTIVE member, VIEWER included. Most recent first. Consecutive
+        Any ACTIVE member, VIEWER included; another Family answers 404
+        FAMILY_NOT_FOUND. Most recent first. Consecutive
         activities of the same actor and type, each within one hour of the
         previous one, are returned as one item with their `count` (OQ-054).
         Types: PERSON_CREATED, PERSON_ARCHIVED, PERSON_RESTORED, PERSON_MERGED,
@@ -1363,6 +1364,8 @@ paths:
                 $ref: '#/components/schemas/ActivityPage'
         '403':
           $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
 
 components:
   securitySchemes:

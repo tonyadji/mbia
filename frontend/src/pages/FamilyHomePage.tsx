@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link, useLocation, useNavigate, useParams } from 'react-router';
+import { RecentActivity } from '../activity/RecentActivity';
 import { ApiError } from '../api/client';
 import { AccountLink } from '../components/AccountLink';
 import { buttonClassName } from '../components/Button';
@@ -38,8 +39,8 @@ export interface FamilyHomeState {
 
 /**
  * SCREEN-002 — Family Home: the Person and Memory counts, the search entry (SCREEN-007),
- * `View family tree` as primary action, then `Add a relative` and `Add a memory`. No activity in
- * Phase 3 (phase-3-family-memories.md §3.2). The welcome after joining comes first (OQ-050).
+ * `View family tree` as primary action, then `Add a relative` and `Add a memory`, then the recent
+ * activity (mvp.md §20, OQ-054). The welcome after joining comes first (OQ-050).
  */
 export function FamilyHomePage() {
   const { familyId = '' } = useParams();
@@ -144,6 +145,7 @@ function FamilyContent({ family }: { family: Family }) {
           )}
         </>
       )}
+      <RecentActivity familyId={family.id} />
     </>
   );
 }

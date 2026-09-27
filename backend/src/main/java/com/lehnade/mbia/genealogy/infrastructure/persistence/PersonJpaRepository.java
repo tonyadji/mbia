@@ -227,4 +227,8 @@ interface PersonJpaRepository extends JpaRepository<PersonJpaEntity, UUID> {
                    OR lower(unaccent(p.first_name || ' ' || p.last_name))
                       LIKE lower(unaccent(CAST(:pattern AS text))) ESCAPE '\\'
             """;
+
+    /** The ACTIVE Persons among {@code ids}, in the Family (the recent activity links to them, OQ-054). */
+    @Query("SELECT p.id FROM PersonJpaEntity p WHERE p.familyId = :familyId AND p.id IN :ids AND p.status = 'ACTIVE'")
+    List<UUID> findActiveIds(UUID familyId, Collection<UUID> ids);
 }

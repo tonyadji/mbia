@@ -57,4 +57,8 @@ interface MemoryJpaRepository extends JpaRepository<MemoryJpaEntity, UUID> {
     @Query(nativeQuery = true,
             value = "SELECT media_asset_id FROM memory_photos WHERE media_asset_id IN (:mediaAssetIds)")
     List<UUID> findPhotosAmong(Collection<UUID> mediaAssetIds);
+
+    /** The ACTIVE Memories among {@code ids}, in the Family (OQ-054). */
+    @Query("SELECT m.id FROM MemoryJpaEntity m WHERE m.familyId = :familyId AND m.id IN :ids AND m.status = 'ACTIVE'")
+    List<UUID> findActiveIds(UUID familyId, Collection<UUID> ids);
 }
