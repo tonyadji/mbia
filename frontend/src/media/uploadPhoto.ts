@@ -3,6 +3,7 @@ import type { components } from '../api/generated/schema';
 import type { PhotoType } from './prepareImage';
 
 export type MediaAsset = components['schemas']['MediaAssetResponse'];
+export type MediaPurpose = components['schemas']['MediaPurpose'];
 
 /** The direct upload to object storage failed (network, expired or refused URL). */
 export class UploadFailedError extends Error {
@@ -13,7 +14,7 @@ export class UploadFailedError extends Error {
 }
 
 /**
- * Sends a prepared photo as a Person photo (`PROFILE_PICTURE`): an upload slot, the direct PUT to
+ * Sends a prepared photo for its `purpose` (a Person photo or a Memory photo): an upload slot, the direct PUT to
  * the pre-signed URL with its signed headers, then the completion, which returns the READY asset
  * (technical-specification.md §16, ADR-007). `onProgress` receives the uploaded share, 0 to 1;
  * `onProcessing` is called when the server starts checking the photo.
@@ -21,12 +22,16 @@ export class UploadFailedError extends Error {
 export async function uploadPhoto(
   familyId: string,
   photo: { file: Blob; fileName: string; mimeType: PhotoType },
-  { onProgress, onProcessing }: { onProgress: (share: number) => void; onProcessing: () => void },
+  {
+    purpose,
+    onProgress,
+    onProcessing,
+  }: { purpose: MediaPurpose; onProgress: (share: number) => void; onProcessing: () => void },
 ): Promise<MediaAsset> {
   const { data: slot } = await apiClient.POST('/families/{familyId}/media/uploads', {
     params: { path: { familyId } },
     body: {
-      purpose: 'PROFILE_PICTURE',
+      purpose,
       fileName: photo.fileName,
       mimeType: photo.mimeType,
       sizeBytes: photo.file.size,

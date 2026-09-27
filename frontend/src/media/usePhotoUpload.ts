@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { ApiError } from '../api/client';
 import { prepareImage, type PhotoRefusal } from './prepareImage';
-import { uploadPhoto, type MediaAsset } from './uploadPhoto';
+import { uploadPhoto, type MediaAsset, type MediaPurpose } from './uploadPhoto';
 
 /** Why a photo could not be used: refused before upload, not sent, or refused by the server. */
 export type PhotoErrorKind = PhotoRefusal | 'failed' | 'invalid';
@@ -23,29 +23,31 @@ function errorKind(error: unknown): PhotoErrorKind {
 }
 
 /**
- * Prepares and uploads a Person photo, with progress; after a failure, `retry` sends the same file
+ * Prepares and uploads a photo for its `purpose` (a Person or a Memory photo), with progress; after a failure, `retry` sends the same file
  * again through a new upload slot (family-tree-ux.md §13). Both resolve to the READY asset, or to
  * `null` when the photo was not usable or a later attempt replaced this one.
  */
-export function usePhotoUpload(familyId: string) {
+export function usePhotoUpload(familyId: string, purpose: MediaPurpose) {
   const [state, setState] = useState<PhotoUploadState>({ status: 'idle' });
   const file = useRef<File | null>(null);
   // Only the latest attempt may change the state.
   const attempt = useRef(0);
-
-  // An upload that ends after the field is gone changes nothing.
-  useEffect(
-    () => () => {
-      attempt.current++;
-    },
-    [],
-  );
+  // An upload that ends after the field is gone changes nothing. A flag rather than a new attempt:
+  // an upload started when the field mounts survives the remount of React's StrictMode.
+  const mounted = useRef(false);
+  useEffect(() => {
+    mounted.current = true;
+    return () => {
+      mounted.current = false;
+    };
+  }, []);
 
   const run = useCallback(
     async (picked: File): Promise<MediaAsset | null> => {
       const current = ++attempt.current;
+      const latest = () => mounted.current && attempt.current === current;
       const update = (next: PhotoUploadState) => {
-        if (attempt.current === current) setState(next);
+        if (latest()) setState(next);
       };
       file.current = picked;
       update({ status: 'preparing' });
@@ -56,6 +58,7 @@ export function usePhotoUpload(familyId: string) {
           return null;
         }
         const asset = await uploadPhoto(familyId, prepared, {
+          purpose,
           onProgress: (share) => {
             update({ status: 'uploading', percent: Math.round(share * 100) });
           },
@@ -64,13 +67,13 @@ export function usePhotoUpload(familyId: string) {
           },
         });
         update({ status: 'ready', asset });
-        return attempt.current === current ? asset : null;
+        return latest() ? asset : null;
       } catch (error) {
         update({ status: 'error', kind: errorKind(error) });
         return null;
       }
     },
-    [familyId],
+    [familyId, purpose],
   );
 
   const retry = useCallback(

@@ -15,8 +15,8 @@ const PERSON_LIMITS = {
   biography: 10000,
 } as const;
 
-const YEAR_MIN = 1;
-const YEAR_MAX = 9999;
+export const YEAR_MIN = 1;
+export const YEAR_MAX = 9999;
 
 type Gender = components['schemas']['Gender'];
 type Precision = components['schemas']['DatePrecision'];
@@ -91,7 +91,7 @@ export function toFormValues(person: Person): PersonFormValues {
   };
 }
 
-function partialDate(precision: Precision, date: string, year: string): PartialDate {
+export function partialDate(precision: Precision, date: string, year: string): PartialDate {
   if (precision === 'EXACT') return { precision, date };
   if (precision === 'YEAR_ONLY') return { precision, year: Number(year) };
   return { precision };
@@ -125,11 +125,12 @@ export function hasOptionalFieldError(invalid: FieldErrors<PersonFormValues>) {
 const maxLength = (max: number) => (value: string) =>
   value.trim().length <= max || ('tooLong' satisfies FieldErrorKey);
 
-const validYear = (value: string) =>
+export const validYear = (value: string) =>
   (/^\d{1,4}$/.test(value.trim()) && Number(value) >= YEAR_MIN && Number(value) <= YEAR_MAX) ||
   ('invalidYear' satisfies FieldErrorKey);
 
-const requiredDate = (value: string) => value !== '' || ('dateRequired' satisfies FieldErrorKey);
+export const requiredDate = (value: string) =>
+  value !== '' || ('dateRequired' satisfies FieldErrorKey);
 
 function useFieldMessage(form: PersonForm) {
   const { t } = useTranslation('person');
