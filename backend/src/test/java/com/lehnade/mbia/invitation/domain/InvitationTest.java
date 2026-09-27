@@ -12,7 +12,7 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.EnumSource;
 
-/** mvp.md §18, data-model.md §8, OQ-057: expiry, renewal and revocation of an invitation. */
+/** mvp.md §18, data-model.md §8, OQ-057: expiry, renewal, revocation and acceptance of an invitation. */
 class InvitationTest {
 
     private static final Instant NOW = Instant.parse("2026-09-27T10:00:00Z");
@@ -79,6 +79,34 @@ class InvitationTest {
         assertFinal(() -> accepted.revoke(ADMIN, NOW), ErrorCode.INVITATION_ALREADY_USED);
     }
 
+    @Test
+    void aPendingInvitationIsAcceptedOnceByTheUserWhoAcceptsIt() {
+        UUID invitee = UUID.randomUUID();
+        Invitation accepted = newInvitation().accept(invitee, NOW.plus(Duration.ofDays(1)));
+
+        assertThat(accepted.status()).isEqualTo(InvitationStatus.ACCEPTED);
+        assertThat(accepted.acceptedBy()).contains(invitee);
+        assertThat(accepted.acceptedAt()).contains(NOW.plus(Duration.ofDays(1)));
+        assertThat(accepted.personId()).isPresent();
+        assertFinal(() -> accepted.accept(UUID.randomUUID(), NOW), ErrorCode.INVITATION_ALREADY_USED);
+    }
+
+    @Test
+    void anInvitationThatIsNoLongerPendingCannotBeAccepted() {
+        assertFinal(() -> inStatus(InvitationStatus.REVOKED).accept(ADMIN, NOW), ErrorCode.INVITATION_REVOKED);
+        assertFinal(() -> inStatus(InvitationStatus.EXPIRED).accept(ADMIN, NOW), ErrorCode.INVITATION_EXPIRED);
+    }
+
+    @Test
+    void aPendingInvitationPastItsExpiryIsExpiredBeforeItsStatusIsUpdated() {
+        Invitation invitation = newInvitation();
+
+        invitation.requireAcceptable(invitation.expiresAt().minusSeconds(1));
+        assertFinal(() -> invitation.requireAcceptable(invitation.expiresAt()), ErrorCode.INVITATION_EXPIRED);
+        assertFinal(() -> invitation.accept(ADMIN, invitation.expiresAt().plusSeconds(1)),
+                ErrorCode.INVITATION_EXPIRED);
+    }
+
     private static void assertFinal(Runnable change, ErrorCode code) {
         assertThatThrownBy(change::run)
                 .isInstanceOf(DomainException.class)
@@ -97,6 +125,6 @@ class InvitationTest {
         Invitation invitation = newInvitation();
         return Invitation.restore(invitation.id(), invitation.familyId(), invitation.channel(), null,
                 invitation.locale(), invitation.role(), invitation.personId().orElseThrow(), invitation.tokenHash(),
-                status, ADMIN, null, invitation.expiresAt(), null, null, NOW, NOW, 3);
+                status, ADMIN, null, null, invitation.expiresAt(), null, null, null, NOW, NOW, 3);
     }
 }

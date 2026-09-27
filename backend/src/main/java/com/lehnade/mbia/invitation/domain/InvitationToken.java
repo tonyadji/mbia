@@ -30,6 +30,11 @@ public final class InvitationToken {
         return new InvitationToken(Base64.getUrlEncoder().withoutPadding().encodeToString(bytes));
     }
 
+    /** A token received in a link, to find its invitation by {@link #hash()}. */
+    public static InvitationToken of(String value) {
+        return new InvitationToken(value);
+    }
+
     /** The raw value, only to build the link returned to the ADMIN. */
     public String value() {
         return value;

@@ -58,4 +58,52 @@ class FamilyMembershipJpaEntity {
         this.createdAt = createdAt;
         this.updatedAt = updatedAt;
     }
+
+    void changeState(String role, String status, Instant joinedAt, Instant removedAt, Instant updatedAt) {
+        this.role = role;
+        this.status = status;
+        this.joinedAt = joinedAt;
+        this.removedAt = removedAt;
+        this.updatedAt = updatedAt;
+    }
+
+    UUID id() {
+        return id;
+    }
+
+    UUID familyId() {
+        return familyId;
+    }
+
+    UUID userId() {
+        return userId;
+    }
+
+    String role() {
+        return role;
+    }
+
+    String status() {
+        return status;
+    }
+
+    Instant joinedAt() {
+        return joinedAt;
+    }
+
+    Instant removedAt() {
+        return removedAt;
+    }
+
+    Instant createdAt() {
+        return createdAt;
+    }
+
+    Instant updatedAt() {
+        return updatedAt;
+    }
+
+    long version() {
+        return version;
+    }
 }

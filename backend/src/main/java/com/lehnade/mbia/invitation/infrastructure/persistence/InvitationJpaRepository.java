@@ -1,11 +1,13 @@
 package com.lehnade.mbia.invitation.infrastructure.persistence;
 
+import jakarta.persistence.LockModeType;
 import java.time.Instant;
 import java.util.Collection;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Lock;
 import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 
@@ -14,6 +16,12 @@ interface InvitationJpaRepository extends JpaRepository<InvitationJpaEntity, UUI
     Optional<InvitationJpaEntity> findByIdAndFamilyId(UUID id, UUID familyId);
 
     List<InvitationJpaEntity> findByFamilyIdAndStatusOrderByCreatedAtDescIdDesc(UUID familyId, String status);
+
+    Optional<InvitationJpaEntity> findByTokenHash(String tokenHash);
+
+    @Lock(LockModeType.PESSIMISTIC_WRITE)
+    @Query("SELECT i FROM InvitationJpaEntity i WHERE i.tokenHash = :tokenHash")
+    Optional<InvitationJpaEntity> lockByTokenHash(String tokenHash);
 
     boolean existsByPersonIdAndStatus(UUID personId, String status);
 

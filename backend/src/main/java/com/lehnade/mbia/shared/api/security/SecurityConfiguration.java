@@ -10,6 +10,7 @@ import org.springframework.boot.context.properties.EnableConfigurationProperties
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.http.HttpHeaders;
+import org.springframework.http.HttpMethod;
 import org.springframework.security.config.Customizer;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configurers.AbstractHttpConfigurer;
@@ -34,7 +35,8 @@ import org.springframework.web.servlet.HandlerExceptionResolver;
  *
  * <ul>
  *   <li>{@code /api/v1/**} needs a bearer token signed by the issuer, from that issuer, for the
- *       {@code mbia-api} audience; {@code /actuator/health} is public. No other path is served.
+ *       {@code mbia-api} audience, except the preview of an invitation ({@code GET
+ *       /api/v1/invitations/{token}}); {@code /actuator/health} is public. No other path is served.
  *   <li>Stateless, bearer tokens only: no session, no CSRF, no form or basic login.
  *   <li>A missing or rejected token is a 401 {@code AUTHENTICATION_REQUIRED} problem, rendered by
  *       the global exception handler like every other error.
@@ -43,6 +45,9 @@ import org.springframework.web.servlet.HandlerExceptionResolver;
 @Configuration(proxyBeanMethods = false)
 @EnableConfigurationProperties(SecurityProperties.class)
 public class SecurityConfiguration {
+
+    /** The public preview of an invitation, whose last segment is the raw token. */
+    public static final String INVITATION_PREVIEW = API_PREFIX + "/invitations/*";
 
     @Bean
     SecurityFilterChain apiSecurityFilterChain(HttpSecurity http, SecurityProperties properties,
@@ -54,6 +59,8 @@ public class SecurityConfiguration {
         };
         return http
                 .authorizeHttpRequests(requests -> requests
+                        // The preview of an invitation is public (openapi previewInvitation).
+                        .requestMatchers(HttpMethod.GET, INVITATION_PREVIEW).permitAll()
                         .requestMatchers(API_PREFIX + "/**").authenticated()
                         .requestMatchers("/actuator/health", "/actuator/health/**").permitAll()
                         // Nothing else is served: unknown paths get a 404 problem.

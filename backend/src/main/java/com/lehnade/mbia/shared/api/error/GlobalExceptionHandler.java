@@ -42,6 +42,8 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
 
     private static final Logger log = LoggerFactory.getLogger(GlobalExceptionHandler.class);
     private static final Pattern WORD_BOUNDARY = Pattern.compile("([a-z0-9])([A-Z])");
+    /** The raw token of an invitation link, never logged (data-model.md §8). */
+    private static final Pattern INVITATION_TOKEN = Pattern.compile("^(.*/api/v1/invitations/)[^/]+");
 
     private final String problemsBaseUri;
 
@@ -188,7 +190,8 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
 
     private static String describe(WebRequest request) {
         if (request instanceof ServletWebRequest servletRequest) {
-            return servletRequest.getHttpMethod() + " " + servletRequest.getRequest().getRequestURI();
+            return servletRequest.getHttpMethod() + " "
+                    + INVITATION_TOKEN.matcher(servletRequest.getRequest().getRequestURI()).replaceFirst("$1***");
         }
         return request.getDescription(false);
     }

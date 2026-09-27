@@ -31,8 +31,10 @@ public final class Invitation {
     private final String tokenHash;
     private final InvitationStatus status;
     private final UUID invitedBy;
+    private final UUID acceptedBy;
     private final UUID revokedBy;
     private final Instant expiresAt;
+    private final Instant acceptedAt;
     private final Instant revokedAt;
     private final Instant renewedAt;
     private final Instant createdAt;
@@ -41,8 +43,8 @@ public final class Invitation {
 
     private Invitation(InvitationId id, UUID familyId, InvitationChannel channel, String email, String locale,
             InvitationRole role, UUID personId, String tokenHash, InvitationStatus status, UUID invitedBy,
-            UUID revokedBy, Instant expiresAt, Instant revokedAt, Instant renewedAt, Instant createdAt,
-            Instant updatedAt, long version) {
+            UUID acceptedBy, UUID revokedBy, Instant expiresAt, Instant acceptedAt, Instant revokedAt,
+            Instant renewedAt, Instant createdAt, Instant updatedAt, long version) {
         this.id = Objects.requireNonNull(id, "id");
         this.familyId = Objects.requireNonNull(familyId, "familyId");
         this.channel = Objects.requireNonNull(channel, "channel");
@@ -53,8 +55,10 @@ public final class Invitation {
         this.tokenHash = Objects.requireNonNull(tokenHash, "tokenHash");
         this.status = Objects.requireNonNull(status, "status");
         this.invitedBy = Objects.requireNonNull(invitedBy, "invitedBy");
+        this.acceptedBy = acceptedBy;
         this.revokedBy = revokedBy;
         this.expiresAt = Objects.requireNonNull(expiresAt, "expiresAt");
+        this.acceptedAt = acceptedAt;
         this.revokedAt = revokedAt;
         this.renewedAt = renewedAt;
         this.createdAt = Objects.requireNonNull(createdAt, "createdAt");
@@ -72,7 +76,7 @@ public final class Invitation {
             InvitationRole role, UUID personId, String tokenHash, UUID invitedBy, Instant now) {
         String validEmail = email == null || email.isBlank() ? null : email.strip();
         return new Invitation(id, familyId, InvitationChannel.LINK, validEmail, locale, role, personId, tokenHash,
-                InvitationStatus.PENDING, invitedBy, null, now.plus(VALIDITY), null, null, now, now, 0);
+                InvitationStatus.PENDING, invitedBy, null, null, now.plus(VALIDITY), null, null, null, now, now, 0);
     }
 
     /**
@@ -85,8 +89,8 @@ public final class Invitation {
     public Invitation renew(String newTokenHash, Instant now) {
         requireNotFinal();
         return new Invitation(id, familyId, channel, email, locale, role, personId, newTokenHash,
-                InvitationStatus.PENDING, invitedBy, revokedBy, now.plus(VALIDITY), revokedAt, now, createdAt, now,
-                version);
+                InvitationStatus.PENDING, invitedBy, acceptedBy, revokedBy, now.plus(VALIDITY), acceptedAt, revokedAt,
+                now, createdAt, now, version);
     }
 
     /**
@@ -98,7 +102,34 @@ public final class Invitation {
     public Invitation revoke(UUID by, Instant now) {
         requireNotFinal();
         return new Invitation(id, familyId, channel, email, locale, role, personId, tokenHash,
-                InvitationStatus.REVOKED, invitedBy, by, expiresAt, now, renewedAt, createdAt, now, version);
+                InvitationStatus.REVOKED, invitedBy, acceptedBy, by, expiresAt, acceptedAt, now, renewedAt, createdAt,
+                now, version);
+    }
+
+    /**
+     * Checks that this invitation can still be accepted (data-model.md §8): a PENDING invitation
+     * past its expiry is expired, even before its status is updated.
+     *
+     * @throws DomainException 410 {@code INVITATION_ALREADY_USED}, {@code INVITATION_REVOKED} or
+     *     {@code INVITATION_EXPIRED}
+     */
+    public void requireAcceptable(Instant now) {
+        requireNotFinal();
+        if (status == InvitationStatus.EXPIRED || !expiresAt.isAfter(now)) {
+            throw new DomainException(ErrorCode.INVITATION_EXPIRED, "This invitation has expired.");
+        }
+    }
+
+    /**
+     * This invitation ACCEPTED by this User, for good: it is single-use (mvp.md §18).
+     *
+     * @throws DomainException 410 as {@link #requireAcceptable(Instant)}
+     */
+    public Invitation accept(UUID by, Instant now) {
+        requireAcceptable(now);
+        return new Invitation(id, familyId, channel, email, locale, role, personId, tokenHash,
+                InvitationStatus.ACCEPTED, invitedBy, by, revokedBy, expiresAt, now, revokedAt, renewedAt, createdAt,
+                now, version);
     }
 
     private void requireNotFinal() {
@@ -116,10 +147,10 @@ public final class Invitation {
     /** Rebuilds a stored invitation. */
     public static Invitation restore(InvitationId id, UUID familyId, InvitationChannel channel, String email,
             String locale, InvitationRole role, UUID personId, String tokenHash, InvitationStatus status,
-            UUID invitedBy, UUID revokedBy, Instant expiresAt, Instant revokedAt, Instant renewedAt,
-            Instant createdAt, Instant updatedAt, long version) {
+            UUID invitedBy, UUID acceptedBy, UUID revokedBy, Instant expiresAt, Instant acceptedAt,
+            Instant revokedAt, Instant renewedAt, Instant createdAt, Instant updatedAt, long version) {
         return new Invitation(id, familyId, channel, email, locale, role, personId, tokenHash, status, invitedBy,
-                revokedBy, expiresAt, revokedAt, renewedAt, createdAt, updatedAt, version);
+                acceptedBy, revokedBy, expiresAt, acceptedAt, revokedAt, renewedAt, createdAt, updatedAt, version);
     }
 
     public InvitationId id() {
@@ -162,12 +193,20 @@ public final class Invitation {
         return invitedBy;
     }
 
+    public Optional<UUID> acceptedBy() {
+        return Optional.ofNullable(acceptedBy);
+    }
+
     public Optional<UUID> revokedBy() {
         return Optional.ofNullable(revokedBy);
     }
 
     public Instant expiresAt() {
         return expiresAt;
+    }
+
+    public Optional<Instant> acceptedAt() {
+        return Optional.ofNullable(acceptedAt);
     }
 
     public Optional<Instant> revokedAt() {

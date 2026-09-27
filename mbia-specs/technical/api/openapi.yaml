@@ -396,7 +396,7 @@ paths:
         '404':
           $ref: '#/components/responses/NotFound'
         '410':
-          description: Invitation expired, revoked, renewed or already used (`INVITATION_EXPIRED`, `INVITATION_REVOKED`, `INVITATION_ALREADY_USED`)
+          description: Invitation expired, revoked or already used (`INVITATION_EXPIRED`, `INVITATION_REVOKED`, `INVITATION_ALREADY_USED`). The previous link of a renewed invitation answers 404 (OQ-058).
           content:
             application/problem+json:
               schema:
@@ -413,8 +413,9 @@ paths:
         Any authenticated, email-verified user holding the token may accept it;
         the invitation is not bound to its email address. If the user is already
         an ACTIVE member of the family, nothing changes, the invitation stays
-        PENDING and the response has `alreadyMember = true`. A REMOVED membership
-        is reactivated with the invitation role.
+        PENDING and the response has `alreadyMember = true`; an expired, revoked
+        or used invitation answers 410 first, even to a member (OQ-059). A REMOVED
+        membership is reactivated with the invitation role.
 
         Accepting never links the user to a Person. `suggestedPerson` is the
         Person the invitation was sent for while it is still ACTIVE and linked to
@@ -432,7 +433,7 @@ paths:
         '409':
           $ref: '#/components/responses/Conflict'
         '410':
-          description: Invitation expired, revoked, renewed or already used (`INVITATION_EXPIRED`, `INVITATION_REVOKED`, `INVITATION_ALREADY_USED`)
+          description: Invitation expired, revoked or already used (`INVITATION_EXPIRED`, `INVITATION_REVOKED`, `INVITATION_ALREADY_USED`). The previous link of a renewed invitation answers 404 (OQ-058).
           content:
             application/problem+json:
               schema:
