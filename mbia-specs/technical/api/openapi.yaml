@@ -1,7 +1,7 @@
 openapi: 3.1.0
 info:
   title: Mbia API
-  version: 0.3.0
+  version: 0.4.0
   summary: REST contract for the Mbia commercial MVP
   description: |
     Contract-first API for Mbia, a private collaborative family heritage platform.
@@ -282,6 +282,13 @@ paths:
         Channel EMAIL requires `email` and sends the invitation email in `locale`.
         Channel LINK sends nothing; the response contains `inviteUrl` to share.
         The invitation is single-use and expires after 14 days.
+
+        `personId` names the Person the invitation is sent for, as a suggestion
+        only (OQ-050): an ACTIVE, living Person of the family linked to no user.
+        An ARCHIVED, MERGED or unknown Person returns 404 `PERSON_NOT_FOUND`; a
+        linked one 409 `PERSON_ALREADY_CLAIMED`; a deceased one 400
+        `VALIDATION_FAILED`. A Person has at most one PENDING invitation: 409
+        `INVITATION_ALREADY_PENDING` (renew it instead).
       requestBody:
         required: true
         content:
@@ -299,6 +306,8 @@ paths:
           $ref: '#/components/responses/BadRequest'
         '403':
           $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
         '409':
           $ref: '#/components/responses/Conflict'
 
@@ -387,6 +396,11 @@ paths:
         an ACTIVE member of the family, nothing changes, the invitation stays
         PENDING and the response has `alreadyMember = true`. A REMOVED membership
         is reactivated with the invitation role.
+
+        Accepting never links the user to a Person. `suggestedPerson` is the
+        Person the invitation was sent for while it is still ACTIVE and linked to
+        no user, so that the client asks "Are you {displayName}?" and links it
+        with `claimPerson` (OQ-050); null otherwise.
       responses:
         '200':
           description: Invitation accepted and membership activated, or user already a member
@@ -1269,6 +1283,13 @@ paths:
       tags: [Activity]
       operationId: listFamilyActivities
       summary: List recent presentation-safe family activity
+      description: |
+        Any ACTIVE member, VIEWER included. Most recent first. Consecutive
+        activities of the same actor and type, each within one hour of the
+        previous one, are returned as one item with their `count` (OQ-054).
+        Types: PERSON_CREATED, PERSON_ARCHIVED, PERSON_RESTORED, PERSON_MERGED,
+        RELATIONSHIP_CREATED, RELATIONSHIP_ARCHIVED, MEMORY_CREATED,
+        INVITATION_ACCEPTED, MEMBER_LEFT, MEMBER_REMOVED.
       parameters:
         - $ref: '#/components/parameters/Page'
         - $ref: '#/components/parameters/Size'
@@ -1570,6 +1591,17 @@ components:
         linkedPersonId:
           type: [string, 'null']
           format: uuid
+        linkedPersonDisplayName:
+          type: [string, 'null']
+          description: Display name of the linked Person, when there is one.
+        relationshipToCurrentUser:
+          description: |
+            What this member's linked Person is to the current user's linked
+            Person (OQ-050). Null when either has no linked Person, and for the
+            current user themselves.
+          oneOf:
+            - $ref: '#/components/schemas/KinshipCode'
+            - type: 'null'
         joinedAt:
           type: string
           format: date-time
@@ -1597,6 +1629,10 @@ components:
           maxLength: 320
         role:
           $ref: '#/components/schemas/InvitationRole'
+        personId:
+          type: [string, 'null']
+          format: uuid
+          description: The Person the invitation is sent for, a suggestion only (OQ-050).
         locale:
           $ref: '#/components/schemas/Locale'
           description: Language of the invitation email. Defaults to the inviter's preferred locale.
@@ -1629,6 +1665,11 @@ components:
           $ref: '#/components/schemas/InvitationRole'
         status:
           $ref: '#/components/schemas/InvitationStatus'
+        person:
+          description: The Person the invitation was sent for, or null (OQ-050).
+          oneOf:
+            - $ref: '#/components/schemas/InvitationPerson'
+            - type: 'null'
         invitedBy:
           $ref: '#/components/schemas/ActivityActor'
         expiresAt:
@@ -1653,8 +1694,19 @@ components:
               format: uri
               example: https://app.mbia.example.com/invitations/Zk3...
 
+    InvitationPerson:
+      type: object
+      required: [id, displayName]
+      properties:
+        id:
+          type: string
+          format: uuid
+        displayName:
+          type: string
+
     InvitationPreviewResponse:
       type: object
+      description: Public. Never names the Person the invitation was sent for (OQ-050).
       required: [familyId, familyName, invitedByDisplayName, role, status, expiresAt]
       properties:
         familyId:
@@ -1679,6 +1731,13 @@ components:
         alreadyMember:
           type: boolean
           description: True when the user was already an ACTIVE member; the invitation was not consumed.
+        suggestedPerson:
+          description: |
+            The Person the invitation was sent for, while it is ACTIVE and linked to
+            no user; null otherwise, and when `alreadyMember` is true (OQ-050).
+          oneOf:
+            - $ref: '#/components/schemas/InvitationPerson'
+            - type: 'null'
         family:
           $ref: '#/components/schemas/FamilySummary'
         membership:
@@ -2501,6 +2560,10 @@ components:
     ActivityResponse:
       type: object
       required: [id, type, actor, occurredAt]
+      description: |
+        One activity, or a group of consecutive activities of the same actor and
+        type (OQ-054). `id`, `resourceType`, `resourceId`, `data` and `occurredAt`
+        are those of the most recent activity of the group.
       properties:
         id:
           type: string
@@ -2508,6 +2571,22 @@ components:
         type:
           type: string
           examples: [PERSON_CREATED]
+        count:
+          type: integer
+          minimum: 1
+          default: 1
+          description: Number of activities in the group.
+        resourceIds:
+          type: array
+          items:
+            type: string
+            format: uuid
+          description: The resources of the group's activities, most recent first.
+        resourceActive:
+          type: boolean
+          description: |
+            Whether `resourceId` is still ACTIVE, so that the client links to it.
+            False for an archived or merged resource and for member activities.
         actor:
           $ref: '#/components/schemas/ActivityActor'
         resourceType:
@@ -2571,6 +2650,7 @@ components:
             - INVITATION_EXPIRED
             - INVITATION_REVOKED
             - INVITATION_ALREADY_USED
+            - INVITATION_ALREADY_PENDING
             - MEDIA_TOO_LARGE
             - MEDIA_INVALID
             - MEDIA_NOT_READY

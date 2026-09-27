@@ -63,7 +63,11 @@ ACTIVE ADMIN / CONTRIBUTOR / VIEWER.
 - Family name;
 - Person count;
 - Memory count;
-- recent activity.
+- recent activity: the 10 most recent lines of `mvp.md` §20, each with who, what and when ("Tony added 6 people · 2 hours ago"), leading to its Person or Memory while it is ACTIVE (OQ-054). Without any activity yet, the section is not shown.
+
+## Welcome after joining
+
+On the first arrival after accepting an invitation (SCREEN-010), a short message above the Family: "Welcome to the {familyName} family", with `View the family tree` (centred on the member's linked Person when there is one) and, for a CONTRIBUTOR, `Add a memory`. It is shown once and can be closed (OQ-050).
 
 ## Primary action
 
@@ -301,6 +305,7 @@ Show only when permission rules allow them:
 
 - `Edit` (SCREEN-012);
 - `This is me` when the Person can be claimed;
+- ADMIN: `Invite {firstName}` (SCREEN-009 with this Person) when the Person is living and linked to no User; when an invitation for this Person is already pending, `Invitation pending` with `Renew` instead (OQ-050);
 - unlink from the current User's own linked Person;
 - ADMIN: archive / restore, merge a duplicate (SCREEN-COMPONENT-004), from the duplicate's profile (OQ-029).
 
@@ -495,16 +500,18 @@ result -> used as the Person of the pending relationship
 
 ADMIN sees `Invite a relative`.
 
+For each member, their kinship to the current User when both have a linked Person ("Awa · your mother"), otherwise the name of their linked Person (OQ-050).
+
 ADMIN also sees a "Pending invitations" section:
 
-- email (or "Shared link" when no email);
+- the Person it was sent for, when there is one ("For Awa Ngo"); otherwise the email, or "Shared link" when no email;
 - role;
 - expiry date;
 - actions: `Renew` (new link, and email resent for email invitations), `Revoke` (with confirmation).
 
 ADMIN member actions (not on themselves): change role (Can contribute / Read only), remove from Family (with confirmation explaining that their contributions stay).
 
-Non-ADMIN members see a `Leave this family` action (with confirmation). The only ADMIN does not see it.
+Non-ADMIN members see a `Leave this family` action (with confirmation). The only ADMIN does not see it: in its place, a sentence explains that a family always keeps its administrator, and that support can hand the role over (`mvp.md` §4).
 
 ---
 
@@ -512,14 +519,14 @@ Non-ADMIN members see a `Leave this family` action (with confirmation). The only
 
 ## Access
 
-ADMIN only.
+ADMIN only. Opened from SCREEN-008 (`Invite a relative`) or from a Person's profile (`Invite {firstName}`, SCREEN-005): the invitation then carries this Person, named at the top of the screen ("Invite Awa Ngo") (OQ-050).
 
 ## Fields
 
 ```text
-channel *        Send by email | Share a link
+channel *        Send by email | Share a link      (Share a link first on a phone)
 email            required for "Send by email", optional otherwise
-permission *
+permission *     Can contribute preselected
 ```
 
 User-facing values:
@@ -538,10 +545,12 @@ Invitation sent
 On success, "Share a link":
 
 - show the link with `Copy link` and `Share` (uses the device share sheet when available, which includes WhatsApp);
-- a pre-filled message in the current language, for example: "Rejoins la famille ADJI sur Mbia : {link}";
+- a pre-filled message in the current language, naming the inviter and, when there is one, the Person, for example: "Tony t'invite dans la famille ADJI sur Mbia, ton profil Awa Ngo t'y attend : {link}", or without Person: "Tony t'invite dans la famille ADJI sur Mbia : {link}";
 - explain that the link works once and expires in 14 days.
 
 The link cannot be displayed again later; the ADMIN can `Renew` it from the Members screen.
+
+`Invite someone else` starts a new invitation from the success screen.
 
 ---
 
@@ -564,15 +573,24 @@ Public (preview), authenticated (acceptance).
 - offered permission (Can contribute / Read only);
 - `Join the family`.
 
+The Person the invitation was sent for is never shown here (OQ-050).
+
 ## Behavior
 
 ```text
 Join the family
 → if signed out: Keycloak sign-in (with sign-up option), then return here
 → accept
-→ "Are you already in this tree?" (see mvp.md §18)
-→ Family Home
+→ "Are you {displayName}?" when the invitation carries a Person that is still ACTIVE and linked to no User
+→ otherwise, or after "No": "Are you already in this tree?" (see mvp.md §18)
+→ Family Home, with its welcome (SCREEN-002)
 ```
+
+The browser remembers the invitation from the first visit until it is accepted or no longer valid: after signing up, verifying the email (even from the mailbox, in another tab) or signing in, the User comes back here (OQ-050).
+
+"Are you {displayName}?" shows the Person's name, one parent or birth year, and three actions: `Yes, it's me` (links the User to the Person), `No`, `Later`.
+
+"Are you already in this tree?" lists the Persons that can be claimed, searchable, each with one parent when known (the path sentence of `localization-and-kinship-labels.md` §4, for example "Awa Ngo is the daughter of Marie Ngo"), otherwise the birth year.
 
 States:
 

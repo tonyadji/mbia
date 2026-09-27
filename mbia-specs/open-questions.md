@@ -56,6 +56,48 @@ When a question is answered, update the relevant spec, then move the entry to **
 - **Blocking:** nothing. SCREEN-013 ships A in Phase 4 (PR-44). The human confirms or reopens it at the human check of PR-44; a change becomes its own PR of the phase.
 - **Status (human, 2026-09-27):** option A, rendered in PR-44, was **not satisfactory**. The human chose to try option B: a grid of thumbnails without text (2 columns on a phone, 3 from tablet width); a tap opens a viewer with the photo large, its caption, its taken date and its position, `Previous photo` / `Next photo` / `Close`, swipe between photos, arrows and Escape on a keyboard. B ships in PR-45b and stays provisional: the question remains open until the human has inspected B's rendering and confirms it or proposes another layout.
 
+### OQ-052 — A group invitation link
+
+- **Raised by / date:** human and coding agent (Phase 5 review), 2026-09-27
+- **Context:** an invitation link works once (mvp.md §18). Posting one link in the family's WhatsApp group, the most natural gesture, therefore lets only the first relative in. The ADMIN creates one link per relative instead.
+- **Question:** does Mbia offer a reusable group link, and in which phase?
+- **Options:** A — keep single-use links only; make creating another link fast ("Invite someone else"); the group link stays for later / B — add a group link in Phase 5: reusable for a short time (for example 7 days), and each person who uses it waits for the ADMIN's approval before entering the Family (new concept: join requests) / C — another design proposed after the review.
+- **Recommendation:** A for the first Phase 5 PRs (decided, 2026-09-27); B only if the first real families ask for it.
+- **Blocking:** nothing in the first Phase 5 PRs, which keep single-use links. **The human decides before the last PR of Phase 5** whether B enters Phase 5 or is deferred (Phase 5 exit criterion, `delivery/phase-5-collaboration.md` §6).
+
+### OQ-053 — Keeping the invitee inside Mbia when they join (deferred email verification)
+
+- **Raised by / date:** human, 2026-09-27 (Phase 5 review)
+- **Context:** today an invitee goes through the Keycloak pages (sign-up), leaves Mbia to verify their email in their mailbox, then comes back to the invitation (mvp.md §18, §21; SCREEN-010). Each step outside Mbia risks losing them. Phase 5 already brings them back to their invitation after the verification (OQ-050), but they still leave.
+- **Idea (not decided):** invitation link → a welcome screen or modal "Welcome to the {family} family" with a short form "Enter the access code received by email" → the code is checked, which verifies the email at the same time → the modal closes and the invitee sees the Family.
+- **Points to settle:**
+  - a `LINK` invitation has no email: ask for it on this screen, then send the code?
+  - the invitation is not bound to an email today (mvp.md §18): the code would bind it;
+  - how the invitee gets a session without the Keycloak pages (account created for them, password set later?): an authentication change, which needs an ADR (AGENTS.md §10, ADR-005);
+  - the rule "verify the email before using Mbia" (mvp.md §21) stays met by the code, but earlier in the flow;
+  - code expiry, limit on attempts, `Resend the code`.
+- **Options:** A — keep the Phase 5 flow (Keycloak sign-up, then back to the invitation) / B — the access-code flow above, after an ADR / C — another flow proposed after the review.
+- **Recommendation:** none yet; the human wants to think about it. Phase 5 ships A.
+- **Blocking:** nothing in Phase 5, which keeps the current acceptance flow until this is decided.
+
+### OQ-055 — An invitation email that cannot be sent
+
+- **Raised by / date:** coding agent (Phase 5 specs), 2026-09-27
+- **Context:** `inviteFamilyMember` with channel `EMAIL` "queues" the email (openapi.yaml), and renewal sends it again (mvp.md §18). The specs do not say what the ADMIN sees when the email provider refuses or cannot be reached.
+- **Question:** what happens to the invitation, and what does the ADMIN see?
+- **Options:** A — the invitation is created in any case (the email is sent after the transaction commits); a sending failure is logged without the address or the link, and SCREEN-008 shows "The email could not be sent" on that pending invitation, with `Renew` to try again / B — the creation fails (503) and nothing is stored / C — retries in the background (a queue: new infrastructure, ADR).
+- **Recommendation:** A. The invitation never depends on the mail provider, the ADMIN always has a way to retry, and no new infrastructure is needed. It adds an `emailDelivery` field (`SENT`, `FAILED`) to `InvitationResponse` (additive).
+- **Blocking:** the email sending of the invitation PR (`delivery/phase-5-collaboration.md`).
+
+### OQ-056 — An invitation whose Person is archived or merged
+
+- **Raised by / date:** coding agent (Phase 5 specs), 2026-09-27
+- **Context:** an invitation may be sent for a Person (OQ-050), and a Person has at most one pending invitation. The specs say that acceptance offers the Person only while it is ACTIVE and linked to no User, but not what the pending invitation becomes when its Person is archived, restored or merged before acceptance, nor what the ADMIN sees.
+- **Question:** what happens to the invitation and its Person?
+- **Options:** A — the invitation stays valid; its Person stays recorded but is offered neither on acceptance nor shown as "For {name}" while it is not ACTIVE (restored, it is offered again); a merge does not move it / B — as A, but a merge moves the suggestion to the kept Person when that one has no pending invitation / C — archiving or merging the Person revokes its pending invitation.
+- **Recommendation:** A: the relative can still join, nothing is guessed about who they are, and the rule "one pending invitation per Person" never conflicts during a merge.
+- **Blocking:** PR-56 (`delivery/phase-5-collaboration.md`).
+
 ## Resolved
 
 ### OQ-001 — JUnit major version with Spring Boot 4.1
@@ -548,3 +590,49 @@ When a question is answered, update the relevant spec, then move the entry to **
 - **Recommendation:** A.
 - **Blocking:** the text rule of PR-42.
 - **Answer:** A (human, 2026-09-27). Documented in `openapi.yaml` (`UpdateMemoryRequest.content`, text only); implemented in PR-42.
+
+### OQ-050 — Inviting a relative who is already in the tree
+
+- **Raised by / date:** human and coding agent (Phase 5 review), 2026-09-27
+- **Context:** in most cases the relative invited is already a Person of the tree (mvp.md §18). The invitation was not related to any Person: after joining, the invitee searched the tree for themselves ("Are you already present in this tree?"), with the risk of choosing the wrong Person, and `Invite a relative` was only on the Members screen.
+- **Question:** can an invitation name the Person it is meant for?
+- **Options:** A — yes: `Invite {firstName}` on a Person's profile; the invitation carries an optional suggested Person; after joining, the invitee answers "Are you {name}?" with one tap; the name is not shown before sign-in / B — the same, with the name already shown in the public preview / C — keep the invitation without Person.
+- **Recommendation:** A.
+- **Blocking:** the invitation and onboarding PRs of Phase 5.
+- **Answer:** A (human, 2026-09-27). Details written in the specs for the human's review of the Phase 5 specs:
+  - `Invite {firstName}` is offered to an ADMIN on the profile of an ACTIVE, living (not deceased) Person linked to no User; the API refuses any other Person (404 `PERSON_NOT_FOUND` for an ARCHIVED, MERGED or unknown Person, 409 `PERSON_ALREADY_CLAIMED` when linked, 400 `VALIDATION_FAILED` when deceased);
+  - a Person has at most one PENDING invitation: a second one returns 409 `INVITATION_ALREADY_PENDING`, and the screen offers `Renew` instead;
+  - the public preview never shows the Person; after acceptance, the invitee sees "Are you {displayName}?" with `Yes, it's me` (claim), `No` (the search of mvp.md §18) and `Later`; if the Person was linked, archived or merged in the meantime, only the search is offered;
+  - the pending invitation is remembered in the browser until it is accepted or refused, so that the invitee comes back to it after signing up, verifying their email, or in another tab; the raw token is removed from the browser as soon as the invitation is accepted or no longer valid;
+  - in the search "Are you already present in this tree?", each Person shows a parent when one is known, with the existing path sentence (localization-and-kinship-labels.md §4), otherwise the birth year;
+  - on the first arrival after joining, Family Home shows a short welcome with `View the family tree` (centred on the linked Person) and, for a CONTRIBUTOR, `Add a memory`;
+  - SCREEN-009 opens on `Share a link` on a phone and on `Can contribute`; the pre-filled message names the inviter and, when there is one, the Person;
+  - SCREEN-008 shows the kinship of each member to the current User and, for each pending invitation, its Person when there is one; the only ADMIN reads why they cannot leave the Family.
+  Documented in `mvp.md` §18, `screens.md` SCREEN-002, SCREEN-005, SCREEN-008 to SCREEN-010, `data-model.md` §8, `openapi.yaml` (`CreateInvitationRequest.personId`, `InvitationResponse.person`, `AcceptInvitationResponse.suggestedPerson`, `MemberResponse.relationshipToCurrentUser`, `INVITATION_ALREADY_PENDING`).
+
+### OQ-051 — Who may invite
+
+- **Raised by / date:** coding agent (Phase 5 review), 2026-09-27
+- **Context:** only the ADMIN invites (mvp.md §4, §18), and the only ADMIN is the Family creator: every invitation goes through one person.
+- **Question:** may a CONTRIBUTOR invite as well?
+- **Options:** A — ADMIN only / B — ADMIN and CONTRIBUTOR, the ADMIN seeing and managing all invitations / C — a CONTRIBUTOR invites as VIEWER only.
+- **Recommendation:** none; a permission choice for the human.
+- **Blocking:** the invitation PRs of Phase 5.
+- **Answer:** A (human, 2026-09-27). The specs are unchanged.
+
+### OQ-054 — The recent activity of Family Home
+
+- **Raised by / date:** coding agent (Phase 5 review), 2026-09-27
+- **Context:** Family Home shows the recent activity (mvp.md §20, SCREEN-002; `data-model.md` §16). On the first day of a Family, one member adds many Persons in a row: one line each would flood the feed. The `activities` table arrives in Phase 5, after four phases of Family data.
+- **Question:** are actions grouped, and does the feed show what happened before Phase 5?
+- **Options:** A — consecutive actions of the same member and type are grouped ("Tony added 6 people"); each line leads to its item; the feed starts empty / B — one line per action, starting empty / C — grouped, and rebuilt from `audit_entries`.
+- **Recommendation:** A.
+- **Blocking:** the activity PRs of Phase 5.
+- **Answer:** A (human, 2026-09-27). Details written in the specs for the human's review of the Phase 5 specs:
+  - activity types shown: a Person added, archived, restored or merged; a relationship added or removed; a Memory added; a member who joined, left or was removed. Edits (Person, Memory), role changes and invitations sent are audited but not shown;
+  - a group: consecutive activities of the Family, in feed order, of the same actor and type, each within one hour of the previous one ("Tony added 6 people");
+  - each line leads to its Person or Memory while it is ACTIVE; a group leads to its first item when it has only one; an archived item is named without link; nothing leads to a member;
+  - the names shown are those stored when the activity happened (presentation-safe payload), not current ones;
+  - Family Home shows the 10 most recent lines, for every member, VIEWER included, with no "show more" in Phase 5;
+  - the feed starts empty when Phase 5 is deployed.
+  Documented in `mvp.md` §20, `screens.md` SCREEN-002, `data-model.md` §16, `openapi.yaml` (`listFamilyActivities`, `ActivityResponse`).
