@@ -46,7 +46,7 @@ A PR does not start while an open question it depends on has no answer:
 
 | Question | Status | Blocks |
 |---|---|---|
-| OQ-052 — a group invitation link | open, first PRs ship single-use links | the human decides **before PR-57** whether it enters this phase (new PRs before PR-57) or is deferred |
+| OQ-052 — a group invitation link | decided (human, 2026-09-27): deferred, Phase 5 ships single-use links only | nothing |
 | OQ-053 — keeping the invitee inside Mbia | open, not in this phase unless decided with an ADR | nothing; Phase 5 keeps the Keycloak sign-up |
 
 ### 2.2 Prompt template for the agent
@@ -68,7 +68,7 @@ These apply to every PR of this phase. They restrict what is delivered now; they
 ### 3.1 Roles and invitations
 
 - Only the ADMIN invites (OQ-051); invitation roles are CONTRIBUTOR and VIEWER; the ADMIN role is never granted through the product (`mvp.md` §4).
-- One invitation = one link = one role, single-use, 14 days (`mvp.md` §18). No group link unless OQ-052 decides it.
+- One invitation = one link = one role, single-use, 14 days (`mvp.md` §18). No group link (OQ-052: deferred).
 - An invitation may carry a suggested Person (OQ-050); accepting never links anyone by itself: the invitee confirms with `claimPerson`.
 - The raw token (32 CSPRNG bytes, base64url) is returned only on creation and renewal; only its SHA-256 hash is stored (`data-model.md` §8). It is never logged, audited, put in activity or in an error response.
 - The browser keeps the raw token of a pending invitation in local storage until it is accepted or no longer valid (OQ-050), and removes it then.
@@ -389,7 +389,7 @@ No analytics event (`family_invitation_sent`, `family_invitation_accepted` arriv
 
 **Goal:** the phase and the MVP journey are releasable.
 
-**Blocked by:** OQ-052 decided (group link in this phase or deferred).
+**Blocked by:** OQ-052 decided (group link in this phase or deferred). Decided: deferred (human, 2026-09-27).
 
 **Scope**
 
@@ -413,7 +413,7 @@ No analytics event (`family_invitation_sent`, `family_invitation_accepted` arriv
 
 ## 5. Not in Phase 5 (planned later)
 
-- a group invitation link and join requests, unless OQ-052 brings them into this phase;
+- a group invitation link and join requests (OQ-052: deferred);
 - the access-code onboarding of OQ-053;
 - granting or transferring the ADMIN role in the product (support only, `mvp.md` §4);
 - invitations by a CONTRIBUTOR (OQ-051);

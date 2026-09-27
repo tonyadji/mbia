@@ -396,7 +396,7 @@ Most relatives invited are already in the tree. An ADMIN may therefore invite **
 - a Person has at most one pending invitation (`INVITATION_ALREADY_PENDING`): the ADMIN renews it instead;
 - the Person is never shown before the invitee is signed in.
 
-Only the ADMIN invites (OQ-051). A link works once: a reusable group link is an open question (OQ-052).
+Only the ADMIN invites (OQ-051). A link works once: a reusable group link is deferred (OQ-052).
 
 Rules:
 
