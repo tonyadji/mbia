@@ -98,6 +98,7 @@ function fakeApi({
   invitations = () => jsonResponse([]),
   create = () => jsonResponse({ ...invitation(), inviteUrl: LINK }, 201),
   renew = () => jsonResponse({ ...invitation({ version: 1 }), inviteUrl: RENEWED_LINK }),
+  other = {},
 }: {
   role?: string;
   /** The User's preferred language, which the application switches to after sign-in. */
@@ -106,6 +107,8 @@ function fakeApi({
   invitations?: Handler;
   create?: Handler;
   renew?: Handler;
+  /** More handlers, by `METHOD /path`. */
+  other?: Record<string, Handler>;
 } = {}) {
   const handlers: Record<string, Handler> = {
     [`GET /families/${ADJI_ID}`]: () => jsonResponse(family(role)),
@@ -113,6 +116,7 @@ function fakeApi({
     [`GET /families/${ADJI_ID}/invitations`]: invitations,
     [`POST /families/${ADJI_ID}/invitations`]: create,
     [`POST /families/${ADJI_ID}/invitations/${INVITATION_ID}/renew`]: renew,
+    ...other,
   };
   const requests: Request[] = [];
   fetchMock.mockImplementation(async (input) => {
@@ -253,6 +257,58 @@ describe('Invite screens', () => {
         ),
       ).toHaveAttribute('role', 'alert');
       expect(screen.queryByText('raw server detail')).not.toBeInTheDocument();
+    });
+    describe('in the Person lifecycle (OQ-056)', () => {
+      it('shows neither `Invite` nor `Invitation pending` on an archived Person with a pending invitation', async () => {
+        // The invitation stays pending; while its Person is not ACTIVE, the API names no Person.
+        fakeApi({
+          person: () => jsonResponse(awa({ status: 'ARCHIVED' })),
+          invitations: () => jsonResponse([invitation({ person: null })]),
+        });
+        renderApp(PROFILE);
+
+        expect(await screen.findByRole('button', { name: 'Restaurer cette fiche' })).toBeVisible();
+        expect(screen.queryByRole('link', { name: 'Inviter Awa' })).not.toBeInTheDocument();
+        expect(screen.queryByText('Invitation en attente')).not.toBeInTheDocument();
+      });
+
+      it('shows `Invitation pending` again once the Person is restored', async () => {
+        let restored = false;
+        fakeApi({
+          person: () =>
+            jsonResponse(awa(restored ? { version: 3 } : { status: 'ARCHIVED', version: 2 })),
+          invitations: () => jsonResponse([invitation(restored ? {} : { person: null })]),
+          other: {
+            [`POST /families/${ADJI_ID}/persons/${AWA_ID}/restore`]: () => {
+              restored = true;
+              return jsonResponse(awa({ version: 3 }));
+            },
+          },
+        });
+        renderApp(PROFILE);
+
+        fireEvent.click(await screen.findByRole('button', { name: 'Restaurer cette fiche' }));
+
+        expect(await screen.findByText('Invitation en attente')).toBeInTheDocument();
+        expect(
+          screen.getByRole('button', { name: "Renouveler l'invitation de Awa" }),
+        ).toBeInTheDocument();
+        expect(screen.queryByRole('link', { name: 'Inviter Awa' })).not.toBeInTheDocument();
+      });
+
+      it("offers `Invite Awa` on the kept Person of a merge: the duplicate's invitation did not move", async () => {
+        // The merged duplicate's invitation stays pending, for the duplicate, and names no Person.
+        fakeApi({
+          invitations: () =>
+            jsonResponse([
+              invitation({ id: '7b6a5f4e-3d2c-4b1a-9f0e-8d7c6b5a4f3e', person: null }),
+            ]),
+        });
+        renderApp(PROFILE);
+
+        expect(await screen.findByRole('link', { name: 'Inviter Awa' })).toBeInTheDocument();
+        expect(screen.queryByText('Invitation en attente')).not.toBeInTheDocument();
+      });
     });
   });
 
