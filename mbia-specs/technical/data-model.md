@@ -308,6 +308,7 @@ family_invitations (
     locale             VARCHAR(5) NOT NULL,
     role               membership_role NOT NULL,
     person_id          UUID,
+    email_delivery     VARCHAR(20),
     token_hash         VARCHAR(255) NOT NULL UNIQUE,
     status             invitation_status NOT NULL DEFAULT 'PENDING',
     invited_by         UUID NOT NULL REFERENCES users(id),
@@ -324,6 +325,8 @@ family_invitations (
     CHECK (channel <> 'EMAIL' OR email IS NOT NULL),
     CHECK (role <> 'ADMIN'),
     CHECK (locale IN ('fr', 'en')),
+    CHECK ((channel = 'EMAIL') = (email_delivery IS NOT NULL)),
+    CHECK (email_delivery IS NULL OR email_delivery IN ('PENDING', 'SENT', 'FAILED')),
     FOREIGN KEY (person_id, family_id) REFERENCES persons(id, family_id)
 )
 ```
@@ -342,7 +345,9 @@ Rules:
 - `role = ADMIN` is not allowed in MVP;
 - expired, revoked or accepted invitations cannot be accepted;
 - `person_id` is the Person the invitation was sent for, a suggestion only (OQ-050): an ACTIVE, living Person of the same Family linked to no User when the invitation is created; accepting never links it by itself;
-- a Person has at most one `PENDING` invitation (unique partial index below; `INVITATION_ALREADY_PENDING`); an expired one is marked `EXPIRED` before the check, so that a new invitation can be created.
+- a Person has at most one `PENDING` invitation (unique partial index below; `INVITATION_ALREADY_PENDING`); an expired one is marked `EXPIRED` before the check, so that a new invitation can be created;
+- when its Person is archived or merged, a pending invitation stays valid and keeps `person_id`; the Person is offered on acceptance and shown with the invitation only while it is ACTIVE (a restored Person is offered again); a merge never moves `person_id` (OQ-056);
+- `email_delivery` is null for `LINK`. For `EMAIL`, it is `PENDING` when the invitation is created or renewed, and the email is sent after the transaction commits; it then becomes `SENT`, or `FAILED` when the mail provider refuses or cannot be reached. A failure is logged without the address or the link; the ADMIN retries with a renewal (OQ-055).
 
 Recommended partial indexes:
 

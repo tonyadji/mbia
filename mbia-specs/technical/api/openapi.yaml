@@ -279,7 +279,9 @@ paths:
       summary: Invite someone to a family by email or shareable link
       description: |
         ADMIN only. Allowed invitation roles are CONTRIBUTOR and VIEWER.
-        Channel EMAIL requires `email` and sends the invitation email in `locale`.
+        Channel EMAIL requires `email` and sends the invitation email in `locale`,
+        after the invitation is saved: when it cannot be sent, the invitation
+        still exists and `emailDelivery` becomes FAILED (OQ-055).
         Channel LINK sends nothing; the response contains `inviteUrl` to share.
         The invitation is single-use and expires after 14 days.
 
@@ -321,7 +323,8 @@ paths:
       summary: Issue a new link for a pending or expired invitation
       description: |
         ADMIN only. Generates a new token, resets the expiry to 14 days and, for
-        channel EMAIL, sends the email again. The previous link stops working.
+        channel EMAIL, sends the email again (`emailDelivery` PENDING, then SENT
+        or FAILED, OQ-055). The previous link stops working.
       parameters:
         - $ref: '#/components/parameters/IfMatch'
       responses:
@@ -1666,9 +1669,18 @@ components:
         status:
           $ref: '#/components/schemas/InvitationStatus'
         person:
-          description: The Person the invitation was sent for, or null (OQ-050).
+          description: |
+            The Person the invitation was sent for while that Person is ACTIVE;
+            null otherwise (OQ-050, OQ-056).
           oneOf:
             - $ref: '#/components/schemas/InvitationPerson'
+            - type: 'null'
+        emailDelivery:
+          description: |
+            For channel EMAIL: PENDING until the email of the last creation or
+            renewal is sent, then SENT or FAILED (OQ-055). Null for LINK.
+          oneOf:
+            - $ref: '#/components/schemas/EmailDelivery'
             - type: 'null'
         invitedBy:
           $ref: '#/components/schemas/ActivityActor'
@@ -1693,6 +1705,10 @@ components:
               type: string
               format: uri
               example: https://app.mbia.example.com/invitations/Zk3...
+
+    EmailDelivery:
+      type: string
+      enum: [PENDING, SENT, FAILED]
 
     InvitationPerson:
       type: object

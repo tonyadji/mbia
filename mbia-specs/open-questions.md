@@ -80,24 +80,6 @@ When a question is answered, update the relevant spec, then move the entry to **
 - **Recommendation:** none yet; the human wants to think about it. Phase 5 ships A.
 - **Blocking:** nothing in Phase 5, which keeps the current acceptance flow until this is decided.
 
-### OQ-055 — An invitation email that cannot be sent
-
-- **Raised by / date:** coding agent (Phase 5 specs), 2026-09-27
-- **Context:** `inviteFamilyMember` with channel `EMAIL` "queues" the email (openapi.yaml), and renewal sends it again (mvp.md §18). The specs do not say what the ADMIN sees when the email provider refuses or cannot be reached.
-- **Question:** what happens to the invitation, and what does the ADMIN see?
-- **Options:** A — the invitation is created in any case (the email is sent after the transaction commits); a sending failure is logged without the address or the link, and SCREEN-008 shows "The email could not be sent" on that pending invitation, with `Renew` to try again / B — the creation fails (503) and nothing is stored / C — retries in the background (a queue: new infrastructure, ADR).
-- **Recommendation:** A. The invitation never depends on the mail provider, the ADMIN always has a way to retry, and no new infrastructure is needed. It adds an `emailDelivery` field (`SENT`, `FAILED`) to `InvitationResponse` (additive).
-- **Blocking:** the email sending of the invitation PR (`delivery/phase-5-collaboration.md`).
-
-### OQ-056 — An invitation whose Person is archived or merged
-
-- **Raised by / date:** coding agent (Phase 5 specs), 2026-09-27
-- **Context:** an invitation may be sent for a Person (OQ-050), and a Person has at most one pending invitation. The specs say that acceptance offers the Person only while it is ACTIVE and linked to no User, but not what the pending invitation becomes when its Person is archived, restored or merged before acceptance, nor what the ADMIN sees.
-- **Question:** what happens to the invitation and its Person?
-- **Options:** A — the invitation stays valid; its Person stays recorded but is offered neither on acceptance nor shown as "For {name}" while it is not ACTIVE (restored, it is offered again); a merge does not move it / B — as A, but a merge moves the suggestion to the kept Person when that one has no pending invitation / C — archiving or merging the Person revokes its pending invitation.
-- **Recommendation:** A: the relative can still join, nothing is guessed about who they are, and the rule "one pending invitation per Person" never conflicts during a merge.
-- **Blocking:** PR-56 (`delivery/phase-5-collaboration.md`).
-
 ## Resolved
 
 ### OQ-001 — JUnit major version with Spring Boot 4.1
@@ -636,3 +618,23 @@ When a question is answered, update the relevant spec, then move the entry to **
   - Family Home shows the 10 most recent lines, for every member, VIEWER included, with no "show more" in Phase 5;
   - the feed starts empty when Phase 5 is deployed.
   Documented in `mvp.md` §20, `screens.md` SCREEN-002, `data-model.md` §16, `openapi.yaml` (`listFamilyActivities`, `ActivityResponse`).
+
+### OQ-055 — An invitation email that cannot be sent
+
+- **Raised by / date:** coding agent (Phase 5 specs), 2026-09-27
+- **Context:** `inviteFamilyMember` with channel `EMAIL` "queues" the email (openapi.yaml), and renewal sends it again (mvp.md §18). The specs do not say what the ADMIN sees when the email provider refuses or cannot be reached.
+- **Question:** what happens to the invitation, and what does the ADMIN see?
+- **Options:** A — the invitation is created in any case (the email is sent after the transaction commits); a sending failure is logged without the address or the link, and SCREEN-008 shows "The email could not be sent" on that pending invitation, with `Renew` to try again / B — the creation fails (503) and nothing is stored / C — retries in the background (a queue: new infrastructure, ADR).
+- **Recommendation:** A. The invitation never depends on the mail provider, the ADMIN always has a way to retry, and no new infrastructure is needed. It adds an `emailDelivery` field (`SENT`, `FAILED`) to `InvitationResponse` (additive).
+- **Blocking:** the email sending of the invitation PR (`delivery/phase-5-collaboration.md`).
+- **Answer:** A (human, 2026-09-27). Documented in `mvp.md` §18, `screens.md` SCREEN-008, `data-model.md` §8 (`email_delivery`) and `openapi.yaml` (`InvitationResponse.emailDelivery`, `inviteFamilyMember`, `renewInvitation`).
+
+### OQ-056 — An invitation whose Person is archived or merged
+
+- **Raised by / date:** coding agent (Phase 5 specs), 2026-09-27
+- **Context:** an invitation may be sent for a Person (OQ-050), and a Person has at most one pending invitation. The specs say that acceptance offers the Person only while it is ACTIVE and linked to no User, but not what the pending invitation becomes when its Person is archived, restored or merged before acceptance, nor what the ADMIN sees.
+- **Question:** what happens to the invitation and its Person?
+- **Options:** A — the invitation stays valid; its Person stays recorded but is offered neither on acceptance nor shown as "For {name}" while it is not ACTIVE (restored, it is offered again); a merge does not move it / B — as A, but a merge moves the suggestion to the kept Person when that one has no pending invitation / C — archiving or merging the Person revokes its pending invitation.
+- **Recommendation:** A: the relative can still join, nothing is guessed about who they are, and the rule "one pending invitation per Person" never conflicts during a merge.
+- **Blocking:** PR-56 (`delivery/phase-5-collaboration.md`).
+- **Answer:** A (human, 2026-09-27). Documented in `mvp.md` §18, `screens.md` SCREEN-008, `data-model.md` §8 and `openapi.yaml` (`InvitationResponse.person`, `AcceptInvitationResponse.suggestedPerson`).

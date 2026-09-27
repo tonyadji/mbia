@@ -391,7 +391,8 @@ For `LINK`, the email address is optional and only informative.
 Most relatives invited are already in the tree. An ADMIN may therefore invite **from a Person's profile** (`Invite {firstName}`), as well as from the Members screen (OQ-050):
 
 - the Person must be ACTIVE, living and linked to no User;
-- the invitation then carries this Person as a suggestion; it never binds the invitee to it (when that Person is archived or merged before acceptance: OQ-056);
+- the invitation then carries this Person as a suggestion; it never binds the invitee to it;
+- when that Person is archived or merged before acceptance, the invitation stays valid; the Person is neither offered to the invitee nor shown with the invitation while it is not ACTIVE, and a merge does not move it to the kept Person (OQ-056);
 - a Person has at most one pending invitation (`INVITATION_ALREADY_PENDING`): the ADMIN renews it instead;
 - the Person is never shown before the invitee is signed in.
 
@@ -408,7 +409,7 @@ Rules:
 - an ACTIVE member who opens a link for their own Family is simply taken to the Family; the invitation stays pending;
 - expired, revoked or already used links show a clear message and suggest asking the ADMIN for a new link;
 - the browser remembers a pending invitation until it is accepted or no longer valid, so that signing up, verifying the email or opening another tab always brings the invitee back to it (OQ-050);
-- when the email of an `EMAIL` invitation cannot be sent, see OQ-055.
+- the email is sent after the invitation is saved: when it cannot be sent, the invitation still exists, the ADMIN sees that the email could not be sent, and `Renew` tries again (OQ-055).
 
 ### Acceptance flow
 
