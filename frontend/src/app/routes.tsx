@@ -12,6 +12,7 @@ import { FamilyGatePage } from '../pages/FamilyGatePage';
 import { FamilyHomePage } from '../pages/FamilyHomePage';
 import { FamilyMemoriesPage } from '../pages/FamilyMemoriesPage';
 import { FamilyTreePage } from '../pages/FamilyTreePage';
+import { InviteMemberPage } from '../pages/InviteMemberPage';
 import { MemoryPage } from '../pages/MemoryPage';
 import { PersonProfilePage } from '../pages/PersonProfilePage';
 import { SearchPage } from '../pages/SearchPage';
@@ -34,6 +35,7 @@ export const routes: RouteObject[] = [
           { path: 'families/:familyId/tree', element: <FamilyTreePage /> },
           { path: 'families/:familyId/search', element: <SearchPage /> },
           { path: 'families/:familyId/archived', element: <ArchivedPeoplePage /> },
+          { path: 'families/:familyId/invitations/new', element: <InviteMemberPage /> },
           { path: 'families/:familyId/persons/new', element: <AddPersonPage /> },
           { path: 'families/:familyId/persons/:personId', element: <PersonProfilePage /> },
           { path: 'families/:familyId/persons/:personId/edit', element: <EditPersonPage /> },

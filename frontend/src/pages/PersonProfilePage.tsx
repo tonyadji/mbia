@@ -17,6 +17,10 @@ import { ArchivePersonDialog } from '../persons/ArchivePersonDialog';
 import { MergePersonDialog } from '../persons/MergePersonDialog';
 import { PersonHistory } from '../persons/PersonHistory';
 import { formatDate } from '../i18n/formatDate';
+import { InvitationLinkShare } from '../invitations/InvitationLinkShare';
+import { inviteBlocker } from '../invitations/invitable';
+import { useFamilyInvitations } from '../invitations/useFamilyInvitations';
+import { useRenewInvitation } from '../invitations/useRenewInvitation';
 import { formatPartialDate, yearOf } from '../persons/formatPartialDate';
 import { familySections, sectionLink, type TreeEdge } from '../persons/familySections';
 import { genderForm, kinshipLabel } from '../persons/kinship';
@@ -35,6 +39,7 @@ import { useFamilyTree, type TreeNode } from '../persons/useFamilyTree';
 import { usePerson, type Person } from '../persons/usePerson';
 import { familyHomePath } from './FamilyHomePage';
 import { FamilyNotFoundPage } from './FamilyNotFoundPage';
+import { invitePath } from './InviteMemberPage';
 
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
@@ -101,6 +106,14 @@ export function canArchivePerson(person: Person, role: Role | undefined) {
 /** Whether the caller may merge this Person, a duplicate, into another: ADMIN, ACTIVE Person (mvp.md §12). */
 export function canMergePerson(person: Person, role: Role | undefined) {
   return role === 'ADMIN' && person.status === 'ACTIVE';
+}
+
+/**
+ * Whether the caller may invite this Person: ADMIN (OQ-051), ACTIVE, living Person linked to no User
+ * (mvp.md §18, OQ-050). The backend enforces the same rule.
+ */
+export function canInvitePerson(person: Person, role: Role | undefined) {
+  return role === 'ADMIN' && inviteBlocker(person) === null;
 }
 
 /**
@@ -258,6 +271,7 @@ function PersonProfile({
           </Link>
         )}
         <ClaimAction familyId={familyId} person={person} />
+        {canInvitePerson(person, role) && <InviteAction familyId={familyId} person={person} />}
         <ArchiveAction familyId={familyId} person={person} role={role} />
         <MergeAction familyId={familyId} person={person} role={role} />
       </header>
@@ -681,6 +695,83 @@ function ClaimAction({ familyId, person }: { familyId: string; person: Person })
       {claim.isSuccess && (
         <p role="status" className="text-caption text-text-muted">
           {t(isMine ? 'profile.claimed' : 'profile.unclaimed')}
+        </p>
+      )}
+    </div>
+  );
+}
+
+/**
+ * SCREEN-005 `Invite {firstName}` for the ADMIN (SCREEN-009 with this Person); when an invitation
+ * for this Person is already pending, `Invitation pending` with `Renew` instead, whose new link is
+ * shown here, once (mvp.md §18, OQ-050).
+ */
+function InviteAction({ familyId, person }: { familyId: string; person: Person }) {
+  const { t, i18n } = useTranslation('invitation');
+  const invitations = useFamilyInvitations(familyId);
+  const family = useFamily(familyId);
+  const renew = useRenewInvitation(familyId);
+  const language = isSupportedLanguage(i18n.resolvedLanguage)
+    ? i18n.resolvedLanguage
+    : DEFAULT_LANGUAGE;
+  const name = person.firstName;
+
+  if (renew.isSuccess && family.isSuccess) {
+    return (
+      <div className="flex flex-col gap-3 rounded-xl border border-border bg-surface px-4 py-3">
+        <p role="status" className="text-body text-text">
+          {t('profile.renewed')}
+        </p>
+        <InvitationLinkShare invitation={renew.data} familyName={family.data.name} />
+      </div>
+    );
+  }
+  // A secondary action: nothing is shown while the invitations load or when they cannot be loaded.
+  if (!invitations.isSuccess) return null;
+  const pending = invitations.data.find(
+    (invitation) => invitation.status === 'PENDING' && invitation.person?.id === person.id,
+  );
+  if (!pending) {
+    return (
+      <Link
+        to={invitePath(familyId, { personId: person.id })}
+        className={buttonClassName('secondary', 'sm:w-auto sm:self-start')}
+      >
+        {t('profile.invite', { name })}
+      </Link>
+    );
+  }
+  const refusal =
+    renew.error instanceof ApiError &&
+    (renew.error.code === 'INVITATION_ALREADY_USED' ||
+      renew.error.code === 'INVITATION_REVOKED' ||
+      renew.error.code === 'CONCURRENT_MODIFICATION')
+      ? t(`profile.refused.${renew.error.code}`, { name })
+      : renew.isError
+        ? errorMessage(i18n, renew.error)
+        : null;
+  return (
+    <div className="flex flex-col gap-2">
+      <p className="text-body font-semibold text-text">
+        {t('profile.pending')}{' '}
+        <span className="text-caption font-normal text-text-muted">
+          {t('profile.expires', { date: formatDate(new Date(pending.expiresAt), language) })}
+        </span>
+      </p>
+      <Button
+        variant="secondary"
+        className="sm:w-auto sm:self-start"
+        disabled={renew.isPending}
+        aria-label={t('profile.renewFor', { name })}
+        onClick={() => {
+          renew.mutate({ invitationId: pending.id, version: pending.version });
+        }}
+      >
+        {t('profile.renew')}
+      </Button>
+      {refusal && (
+        <p role="alert" className="text-body text-text">
+          {refusal}
         </p>
       )}
     </div>

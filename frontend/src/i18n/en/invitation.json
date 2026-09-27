@@ -1,0 +1,52 @@
+{
+  "invite": {
+    "title": "Invite a relative",
+    "titlePerson": "Invite {{name}}",
+    "intro": "Mbia creates a link that you send yourself, for example on WhatsApp.",
+    "role": "Permission",
+    "roles": {
+      "CONTRIBUTOR": "Can contribute",
+      "VIEWER": "Read only"
+    },
+    "roleHelp": {
+      "CONTRIBUTOR": "Can add people, links and memories.",
+      "VIEWER": "Can look at the family, without changing anything."
+    },
+    "submit": "Create the link",
+    "notAdmin": "Only the family's administrator can invite relatives.",
+    "backToProfile": "Back to {{name}}'s profile",
+    "cannot": {
+      "linked": "{{name}} is already linked to a member of the family: there is no one to invite.",
+      "deceased": "{{name}} is recorded as deceased, so they cannot be invited.",
+      "inactive": "{{name}} was archived or merged, so they cannot be invited.",
+      "pending": "An invitation for {{name}} is already waiting. Renew it from their profile to get a new link."
+    }
+  },
+  "share": {
+    "done": "The link is ready",
+    "link": "Invitation link",
+    "copy": "Copy link",
+    "copied": "Link copied.",
+    "copyFailed": "The link could not be copied. Select it and copy it yourself.",
+    "share": "Share",
+    "message": "Message to send",
+    "withPerson": "{{inviter}} invites you to the {{family}} family on Mbia, your profile {{person}} is waiting for you: {{link}}",
+    "withoutPerson": "{{inviter}} invites you to the {{family}} family on Mbia: {{link}}",
+    "once": "This link works only once and expires in 14 days.",
+    "notShownAgain": "It will not be shown again: if needed, renew the invitation to get a new link.",
+    "inviteSomeoneElse": "Invite someone else"
+  },
+  "profile": {
+    "invite": "Invite {{name}}",
+    "pending": "Invitation pending",
+    "expires": "Expires on {{date}}",
+    "renew": "Renew",
+    "renewFor": "Renew the invitation of {{name}}",
+    "renewed": "New link created. The previous link no longer works.",
+    "refused": {
+      "INVITATION_ALREADY_USED": "This invitation has just been used: {{name}} has probably joined the family.",
+      "INVITATION_REVOKED": "This invitation was revoked.",
+      "CONCURRENT_MODIFICATION": "This invitation changed in the meantime. Check it and try again."
+    }
+  }
+}
