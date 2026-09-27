@@ -2,7 +2,16 @@
   "invite": {
     "title": "Inviter un proche",
     "titlePerson": "Inviter {{name}}",
+    "channel": "Comment inviter",
+    "channels": {
+      "EMAIL": "Envoyer par e-mail",
+      "LINK": "Partager un lien"
+    },
+    "email": "Adresse e-mail",
+    "emailRequired": "Saisissez l'adresse e-mail.",
+    "emailInvalid": "Saisissez une adresse e-mail valide, par exemple awa@example.com.",
     "intro": "Mbia crée un lien que vous envoyez vous-même, par exemple sur WhatsApp.",
+    "introEmail": "Mbia envoie le lien d'invitation à cette adresse, dans votre langue.",
     "role": "Permission",
     "roles": {
       "CONTRIBUTOR": "Peut contribuer",
@@ -13,6 +22,7 @@
       "VIEWER": "Peut consulter la famille, sans rien modifier."
     },
     "submit": "Créer le lien",
+    "submitEmail": "Envoyer l'invitation",
     "notAdmin": "Seul l'administrateur de la famille peut inviter des proches.",
     "backToProfile": "Retour au profil de {{name}}",
     "cannot": {
@@ -35,6 +45,12 @@
     "once": "Ce lien ne fonctionne qu'une fois et expire dans 14 jours.",
     "notShownAgain": "Il ne sera plus affiché : si besoin, renouvelez l'invitation pour obtenir un nouveau lien.",
     "inviteSomeoneElse": "Inviter quelqu'un d'autre"
+  },
+  "email": {
+    "sent": "Invitation envoyée",
+    "sentTo": "Le lien a été envoyé à {{email}}. Il ne fonctionne qu'une fois et expire dans 14 jours.",
+    "failed": "L'e-mail n'a pas pu être envoyé",
+    "failedHelp": "L'invitation est enregistrée. Renouvelez-la plus tard pour envoyer l'e-mail à nouveau."
   },
   "profile": {
     "invite": "Inviter {{name}}",

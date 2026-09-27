@@ -668,3 +668,13 @@ When a question is answered, update the relevant spec, then move the entry to **
 - **Recommendation:** A.
 - **Blocking:** PR-48.
 - **Answer:** A (human, 2026-09-27). Documented in `data-model.md` §8 and `openapi.yaml` (`acceptInvitation`).
+
+### OQ-060 — Showing the result of an invitation email
+
+- **Raised by / date:** coding agent (PR-51), 2026-09-27
+- **Context:** OQ-055 sends the invitation email after the transaction commits, `emailDelivery` going from PENDING to SENT or FAILED, and SCREEN-008 shows "The email could not be sent". SCREEN-008 only arrives with PR-53, SCREEN-009 only says `Invitation sent`, and a renewal (`renewInvitation`, no request body) did not say in which language the email is sent again.
+- **Question:** what does the creation or renewal answer, where does the ADMIN see a failure before PR-53, and in which language is a renewed email sent?
+- **Options:** response — A: the email is sent right after the commit, before the response, which carries SENT or FAILED / B: the response always carries PENDING and the failure is seen later. Failure before PR-53 — A: on `Invitation pending` of the Person's profile (SCREEN-005), where `Renew` already is / B: a first "Pending invitations" section of SCREEN-008 in PR-51. Language — A: the locale stored at creation / B: the renewing ADMIN's preferred locale.
+- **Recommendation:** A, A, A.
+- **Blocking:** PR-51.
+- **Answer:** A, A, A (human, 2026-09-27). Documented in `screens.md` SCREEN-005, SCREEN-009; `data-model.md` §8; `openapi.yaml` (`inviteFamilyMember`, `renewInvitation`, descriptions only); plan phase 5 PR-51, PR-53.

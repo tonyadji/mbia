@@ -12,7 +12,10 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.EnumSource;
 
-/** mvp.md §18, data-model.md §8, OQ-057: expiry, renewal, revocation and acceptance of an invitation. */
+/**
+ * mvp.md §18, data-model.md §8, OQ-055, OQ-057: expiry, renewal, revocation and acceptance of an
+ * invitation, and the email of an EMAIL invitation.
+ */
 class InvitationTest {
 
     private static final Instant NOW = Instant.parse("2026-09-27T10:00:00Z");
@@ -35,6 +38,44 @@ class InvitationTest {
                 InvitationRole.VIEWER, null, "hash", ADMIN, NOW).email()).isEmpty();
         assertThat(Invitation.createLink(InvitationId.newId(), UUID.randomUUID(), " awa@example.com ", "fr",
                 InvitationRole.VIEWER, null, "hash", ADMIN, NOW).email()).contains("awa@example.com");
+    }
+
+    @Test
+    void aLinkInvitationHasNoEmailToSend() {
+        assertThat(newInvitation().emailDelivery()).isEmpty();
+        assertThat(newInvitation().renew("new-hash", NOW).emailDelivery()).isEmpty();
+        assertThatThrownBy(() -> newInvitation().withEmailDelivery(EmailDelivery.SENT, NOW))
+                .isInstanceOf(IllegalArgumentException.class);
+    }
+
+    @Test
+    void anEmailInvitationHasItsEmailPendingUntilTheProviderAnswers() {
+        Invitation invitation = newEmailInvitation();
+
+        assertThat(invitation.channel()).isEqualTo(InvitationChannel.EMAIL);
+        assertThat(invitation.email()).contains("awa@example.com");
+        assertThat(invitation.locale()).isEqualTo("en");
+        assertThat(invitation.status()).isEqualTo(InvitationStatus.PENDING);
+        assertThat(invitation.expiresAt()).isEqualTo(Instant.parse("2026-10-11T10:00:00Z"));
+        assertThat(invitation.emailDelivery()).contains(EmailDelivery.PENDING);
+
+        Invitation failed = invitation.withEmailDelivery(EmailDelivery.FAILED, NOW.plusSeconds(1));
+        assertThat(failed.emailDelivery()).contains(EmailDelivery.FAILED);
+        assertThat(failed.tokenHash()).isEqualTo(invitation.tokenHash());
+        assertThat(failed.expiresAt()).isEqualTo(invitation.expiresAt());
+        assertThat(failed.status()).isEqualTo(InvitationStatus.PENDING);
+        assertThat(invitation.withEmailDelivery(EmailDelivery.SENT, NOW).emailDelivery()).contains(EmailDelivery.SENT);
+    }
+
+    @Test
+    void aRenewalSendsTheEmailAgain() {
+        Invitation failed = newEmailInvitation().withEmailDelivery(EmailDelivery.FAILED, NOW);
+
+        Invitation renewed = failed.renew("new-hash", NOW.plus(Duration.ofDays(2)));
+
+        assertThat(renewed.emailDelivery()).contains(EmailDelivery.PENDING);
+        assertThat(renewed.locale()).isEqualTo("en");
+        assertThat(renewed.email()).contains("awa@example.com");
     }
 
     @ParameterizedTest
@@ -121,10 +162,16 @@ class InvitationTest {
                 UUID.randomUUID(), "hash", ADMIN, NOW);
     }
 
+    private static Invitation newEmailInvitation() {
+        return Invitation.createEmail(InvitationId.newId(), UUID.randomUUID(), " awa@example.com ", "en",
+                InvitationRole.VIEWER, UUID.randomUUID(), "hash", ADMIN, NOW);
+    }
+
     private static Invitation inStatus(InvitationStatus status) {
         Invitation invitation = newInvitation();
         return Invitation.restore(invitation.id(), invitation.familyId(), invitation.channel(), null,
-                invitation.locale(), invitation.role(), invitation.personId().orElseThrow(), invitation.tokenHash(),
-                status, ADMIN, null, null, invitation.expiresAt(), null, null, null, NOW, NOW, 3);
+                invitation.locale(), invitation.role(), invitation.personId().orElseThrow(), null,
+                invitation.tokenHash(), status, ADMIN, null, null, invitation.expiresAt(), null, null, null, NOW, NOW,
+                3);
     }
 }

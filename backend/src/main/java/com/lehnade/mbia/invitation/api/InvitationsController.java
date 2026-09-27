@@ -152,6 +152,7 @@ class InvitationsController implements InvitationsApi {
                 toActor(view), toDateTime(invitation.expiresAt()), toDateTime(invitation.createdAt()),
                 invitation.version())
                 .email(invitation.email().orElse(null))
+                .emailDelivery(toEmailDelivery(invitation))
                 .person(toPerson(view));
     }
 
@@ -165,7 +166,15 @@ class InvitationsController implements InvitationsApi {
                 toActor(view), toDateTime(invitation.expiresAt()), toDateTime(invitation.createdAt()),
                 invitation.version(), created.inviteUrl())
                 .email(invitation.email().orElse(null))
+                .emailDelivery(toEmailDelivery(invitation))
                 .person(toPerson(view));
+    }
+
+    /** Null for a LINK invitation (OQ-055). */
+    private static com.lehnade.mbia.api.generated.model.EmailDelivery toEmailDelivery(Invitation invitation) {
+        return invitation.emailDelivery()
+                .map(delivery -> com.lehnade.mbia.api.generated.model.EmailDelivery.valueOf(delivery.name()))
+                .orElse(null);
     }
 
     private static ActivityActor toActor(InvitationView view) {

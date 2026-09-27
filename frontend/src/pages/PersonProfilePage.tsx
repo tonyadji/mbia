@@ -17,6 +17,7 @@ import { ArchivePersonDialog } from '../persons/ArchivePersonDialog';
 import { MergePersonDialog } from '../persons/MergePersonDialog';
 import { PersonHistory } from '../persons/PersonHistory';
 import { formatDate } from '../i18n/formatDate';
+import { InvitationEmailResult } from '../invitations/InvitationEmailResult';
 import { InvitationLinkShare } from '../invitations/InvitationLinkShare';
 import { inviteBlocker } from '../invitations/invitable';
 import { useFamilyInvitations } from '../invitations/useFamilyInvitations';
@@ -704,7 +705,8 @@ function ClaimAction({ familyId, person }: { familyId: string; person: Person })
 /**
  * SCREEN-005 `Invite {firstName}` for the ADMIN (SCREEN-009 with this Person); when an invitation
  * for this Person is already pending, `Invitation pending` with `Renew` instead, whose new link is
- * shown here, once (mvp.md §18, OQ-050).
+ * shown here, once, or whose email is sent again (mvp.md §18, OQ-050). An email that could not be
+ * sent is said here until the Members screen exists (OQ-055, OQ-060).
  */
 function InviteAction({ familyId, person }: { familyId: string; person: Person }) {
   const { t, i18n } = useTranslation('invitation');
@@ -719,10 +721,16 @@ function InviteAction({ familyId, person }: { familyId: string; person: Person }
   if (renew.isSuccess && family.isSuccess) {
     return (
       <div className="flex flex-col gap-3 rounded-xl border border-border bg-surface px-4 py-3">
-        <p role="status" className="text-body text-text">
-          {t('profile.renewed')}
-        </p>
-        <InvitationLinkShare invitation={renew.data} familyName={family.data.name} />
+        {renew.data.channel === 'EMAIL' ? (
+          <InvitationEmailResult invitation={renew.data} />
+        ) : (
+          <>
+            <p role="status" className="text-body text-text">
+              {t('profile.renewed')}
+            </p>
+            <InvitationLinkShare invitation={renew.data} familyName={family.data.name} />
+          </>
+        )}
       </div>
     );
   }
@@ -758,6 +766,9 @@ function InviteAction({ familyId, person }: { familyId: string; person: Person }
           {t('profile.expires', { date: formatDate(new Date(pending.expiresAt), language) })}
         </span>
       </p>
+      {pending.emailDelivery === 'FAILED' && (
+        <p className="text-body text-text">{t('email.failed')}</p>
+      )}
       <Button
         variant="secondary"
         className="sm:w-auto sm:self-start"

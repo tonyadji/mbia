@@ -19,6 +19,7 @@ public class TestcontainersConfiguration {
     // Same images as docker-compose.yml.
     static final String POSTGRES_IMAGE = "postgres:18.6-alpine";
     static final String RUSTFS_IMAGE = "rustfs/rustfs:1.0.0";
+    static final String MAILPIT_IMAGE = "axllent/mailpit:v1.31.2";
 
     public static final String S3_BUCKET = "mbia-media";
     public static final String S3_REGION = "us-east-1";
@@ -58,6 +59,36 @@ public class TestcontainersConfiguration {
             registry.add("mbia.storage.access-key", () -> S3_ACCESS_KEY);
             registry.add("mbia.storage.secret-key", () -> S3_SECRET_KEY);
         };
+    }
+
+    /**
+     * The transactional email provider (stack.md): Mailpit catches every email, read through its API
+     * ({@link MailpitClient}). Its chaos mode lets a test make it refuse emails (OQ-055).
+     */
+    @Bean
+    GenericContainer<?> mailpitContainer() {
+        GenericContainer<?> mailpit = new GenericContainer<>(MAILPIT_IMAGE)
+                .withEnv("MP_ENABLE_CHAOS", "true")
+                // The reverse DNS lookup of a client outside the Docker network delays the SMTP greeting.
+                .withEnv("MP_SMTP_DISABLE_RDNS", "true")
+                .withExposedPorts(1025, 8025)
+                .waitingFor(Wait.forHttp("/readyz").forPort(8025));
+        mailpit.start();
+        return mailpit;
+    }
+
+    @Bean
+    DynamicPropertyRegistrar mailProperties(GenericContainer<?> mailpitContainer) {
+        return registry -> {
+            registry.add("spring.mail.host", mailpitContainer::getHost);
+            registry.add("spring.mail.port", () -> mailpitContainer.getMappedPort(1025));
+        };
+    }
+
+    @Bean
+    MailpitClient mailpitClient(GenericContainer<?> mailpitContainer) {
+        return new MailpitClient(URI.create(
+                "http://" + mailpitContainer.getHost() + ":" + mailpitContainer.getMappedPort(8025)));
     }
 
     public static URI endpoint(GenericContainer<?> rustfs) {

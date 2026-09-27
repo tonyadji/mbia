@@ -68,6 +68,9 @@ services:
 
   mailpit:
     image: axllent/mailpit:v1.31.2
+    environment:
+      # The backend runs on the host: the reverse DNS lookup of its address delays the SMTP greeting.
+      MP_SMTP_DISABLE_RDNS: "true"
     ports:
       - "${MAILPIT_SMTP_PORT:-1025}:1025"
       - "${MAILPIT_UI_PORT:-8025}:8025"

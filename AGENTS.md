@@ -77,7 +77,9 @@ cd frontend && npm run dev                # http://localhost:5173
 
 Local services: Keycloak admin http://localhost:8081, Mailpit http://localhost:8025, RustFS console http://localhost:9001/rustfs/console/. Test users are defined in `infrastructure/keycloak/realm-mbia.json`.
 
-Application settings are environment variables documented in `.env.example` (for example `MBIA_MEMORY_MAX_PHOTOS`, the photos per Memory, 1–10, default 3: the backend refuses to start outside; `MBIA_APP_BASE_URL`, the frontend address used in invitation links, required outside the `local` and `test` profiles).
+Application settings are environment variables documented in `.env.example` (for example `MBIA_MEMORY_MAX_PHOTOS`, the photos per Memory, 1–10, default 3: the backend refuses to start outside; `MBIA_APP_BASE_URL`, the frontend address used in invitation links, required outside the `local` and `test` profiles; `MBIA_SMTP_HOST`, `MBIA_SMTP_PORT`, `MBIA_SMTP_USERNAME`, `MBIA_SMTP_PASSWORD`, `MBIA_SMTP_AUTH`, `MBIA_SMTP_STARTTLS`, the transactional email provider, Mailpit without authentication nor TLS in `local`; `MBIA_MAIL_FROM`, the sender of Mbia's emails, required outside `local` and `test`).
+
+Every email sent locally (Keycloak's and Mbia's invitation emails) lands in Mailpit, http://localhost:8025; backend tests read them from a Mailpit Testcontainers container.
 
 A change is done only when `./mvnw verify` and all frontend checks pass. CI (`.github/workflows/ci.yml`) runs the same checks on every pull request to `develop` and `main`.
 

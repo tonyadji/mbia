@@ -280,8 +280,9 @@ paths:
       description: |
         ADMIN only. Allowed invitation roles are CONTRIBUTOR and VIEWER.
         Channel EMAIL requires `email` and sends the invitation email in `locale`,
-        after the invitation is saved: when it cannot be sent, the invitation
-        still exists and `emailDelivery` becomes FAILED (OQ-055).
+        after the invitation is saved and before answering: the response carries
+        `emailDelivery` SENT, or FAILED when it cannot be sent, the invitation
+        existing all the same (OQ-055, OQ-060).
         Channel LINK sends nothing; the response contains `inviteUrl` to share.
         The invitation is single-use and expires after 14 days.
 
@@ -323,8 +324,8 @@ paths:
       summary: Issue a new link for a pending or expired invitation
       description: |
         ADMIN only. Generates a new token, resets the expiry to 14 days and, for
-        channel EMAIL, sends the email again (`emailDelivery` PENDING, then SENT
-        or FAILED, OQ-055). The previous link stops working. An accepted or
+        channel EMAIL, sends the email again in the invitation's locale, before
+        answering (`emailDelivery` SENT or FAILED in the response, OQ-055, OQ-060). The previous link stops working. An accepted or
         revoked invitation cannot be renewed: 410 (OQ-057).
       parameters:
         - $ref: '#/components/parameters/IfMatch'

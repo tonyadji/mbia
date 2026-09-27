@@ -99,13 +99,6 @@ class InviteFamilyMemberApiTest extends ApiTestSupport {
     }
 
     @Test
-    void theEmailChannelIsNotAvailableYet() {
-        assertBadRequest(invitations.invite(family.admin(), family.familyId(), """
-                {"channel": "EMAIL", "role": "VIEWER", "email": "cousin@example.com"}
-                """));
-    }
-
-    @Test
     void anArchivedMergedOrUnknownPersonIsNotFound() {
         UUID archived = persons.createId(family.admin(), family.familyId(), "{\"firstName\": \"Paul\"}");
         persons.archive(archived);

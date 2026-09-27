@@ -65,6 +65,11 @@
             <groupId>org.springframework.boot</groupId>
             <artifactId>spring-boot-starter-actuator</artifactId>
         </dependency>
+        <!-- Invitation emails through the transactional email provider's SMTP (stack.md). -->
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-mail</artifactId>
+        </dependency>
         <!-- Validates Keycloak access tokens (ADR-005). -->
         <dependency>
             <groupId>org.springframework.boot</groupId>

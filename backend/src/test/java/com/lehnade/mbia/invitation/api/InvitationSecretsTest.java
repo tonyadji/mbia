@@ -19,7 +19,8 @@ import org.springframework.test.web.servlet.assertj.MvcTestResult;
 /**
  * PR-47, PR-48, Phase 5 plan §2.3, §3.1: the raw token and the link are never logged nor audited,
  * and the audit holds neither the token hash nor the email (data-model.md §8, §17). Creation,
- * renewal, revocation and acceptance are audited.
+ * renewal, revocation and acceptance are audited. PR-51: sending the email by email invitation
+ * logs neither the address nor the link.
  */
 @ExtendWith(OutputCaptureExtension.class)
 class InvitationSecretsTest extends ApiTestSupport {
@@ -97,5 +98,28 @@ class InvitationSecretsTest extends ApiTestSupport {
         assertThat(values).doesNotContain(token).doesNotContain(InvitationFixtures.sha256Hex(token))
                 .doesNotContain(EMAIL).doesNotContain("http").doesNotContain("token")
                 .contains("\"status\": \"ACCEPTED\"").contains("\"role\": \"CONTRIBUTOR\"");
+    }
+
+    @Test
+    void sendingAnInvitationByEmailNeitherLogsNorAuditsTheAddressOrTheLink(CapturedOutput output) {
+        FamilyWithMembers family = families().givenFamilyWithMembersOfEachRole();
+        InvitationFixtures invitations = new InvitationFixtures(mvc, jdbc);
+        String address = "sentinelle-" + UUID.randomUUID() + "@example.com";
+
+        MvcTestResult created = invitations.inviteByEmail(family.admin(), family.familyId(), address, "VIEWER", null,
+                "fr");
+        UUID id = InvitationFixtures.idOf(created);
+        MvcTestResult renewed = invitations.renew(family.admin(), family.familyId(), id, "\"1\"");
+
+        assertThat(renewed).bodyJson().extractingPath("$.emailDelivery").isEqualTo("SENT");
+        for (String secret : List.of(address, InvitationFixtures.tokenOf(created), InvitationFixtures.tokenOf(renewed),
+                InvitationFixtures.sha256Hex(InvitationFixtures.tokenOf(created)))) {
+            assertThat(output.getAll()).doesNotContain(secret);
+        }
+        String audit = String.join(" ", jdbc.sql("""
+                SELECT coalesce(old_value::text, '') || ' ' || new_value::text FROM audit_entries
+                WHERE family_id = ? AND resource_type = 'INVITATION'
+                """).param(family.familyId()).query(String.class).list());
+        assertThat(audit).contains("\"channel\": \"EMAIL\"").doesNotContain(address).doesNotContain("http");
     }
 }

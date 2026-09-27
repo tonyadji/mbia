@@ -402,4 +402,195 @@ describe('Invite screens', () => {
       expect(posts('/invitations')).toHaveLength(0);
     });
   });
+
+  describe('Invite by email (PR-51)', () => {
+    const ADDRESS = 'awa@example.com';
+
+    function emailInvitation(overrides: Record<string, unknown> = {}) {
+      return {
+        ...invitation({ channel: 'EMAIL', email: ADDRESS, emailDelivery: 'SENT', ...overrides }),
+        inviteUrl: LINK,
+      };
+    }
+
+    function setLargeScreen(large: boolean | null) {
+      Object.defineProperty(window, 'matchMedia', {
+        configurable: true,
+        value:
+          large === null
+            ? undefined
+            : (query: string) => ({
+                matches: large && query === '(min-width: 768px)',
+                media: query,
+              }),
+      });
+    }
+
+    afterEach(() => {
+      setLargeScreen(null);
+    });
+
+    it('offers `Share a link` first on a phone, without email field', async () => {
+      fakeApi();
+      setLargeScreen(false);
+      renderApp(INVITE);
+      const phone = await screen.findByRole('combobox', { name: 'Comment inviter' });
+      expect(phone).toHaveValue('LINK');
+      expect(
+        within(phone)
+          .getAllByRole('option')
+          .map((option) => option.textContent),
+      ).toEqual(['Partager un lien', 'Envoyer par e-mail']);
+      expect(screen.queryByLabelText('Adresse e-mail')).not.toBeInTheDocument();
+    });
+
+    it('preselects `Send by email` on a larger screen', async () => {
+      fakeApi();
+      setLargeScreen(true);
+      renderApp(INVITE);
+
+      expect(await screen.findByRole('combobox', { name: 'Comment inviter' })).toHaveValue('EMAIL');
+      expect(screen.getByLabelText('Adresse e-mail')).toBeInTheDocument();
+      expect(screen.getByRole('button', { name: "Envoyer l'invitation" })).toBeInTheDocument();
+    });
+
+    it('requires a valid address, then sends the email in the current language', async () => {
+      const api = fakeApi({ create: () => jsonResponse(emailInvitation(), 201) });
+      renderApp(INVITE);
+
+      fireEvent.change(await screen.findByRole('combobox', { name: 'Comment inviter' }), {
+        target: { value: 'EMAIL' },
+      });
+      fireEvent.click(screen.getByRole('button', { name: "Envoyer l'invitation" }));
+      expect(await screen.findByText("Saisissez l'adresse e-mail.")).toBeInTheDocument();
+      fireEvent.change(screen.getByLabelText('Adresse e-mail'), { target: { value: 'awa@' } });
+      fireEvent.click(screen.getByRole('button', { name: "Envoyer l'invitation" }));
+      expect(
+        await screen.findByText(
+          'Saisissez une adresse e-mail valide, par exemple awa@example.com.',
+        ),
+      ).toBeInTheDocument();
+      expect(api.posts('/invitations')).toHaveLength(0);
+
+      fireEvent.change(screen.getByLabelText('Adresse e-mail'), {
+        target: { value: ` ${ADDRESS} ` },
+      });
+      fireEvent.click(screen.getByRole('button', { name: "Envoyer l'invitation" }));
+
+      expect(
+        await screen.findByRole('heading', { name: 'Invitation envoyée' }),
+      ).toBeInTheDocument();
+      expect(
+        screen.getByText(
+          "Le lien a été envoyé à awa@example.com. Il ne fonctionne qu'une fois et expire dans 14 jours.",
+        ),
+      ).toBeInTheDocument();
+      // The link is not shown: Mbia sent it.
+      expect(screen.queryByText(LINK)).not.toBeInTheDocument();
+      const [creation] = api.posts('/invitations');
+      expect(await creation?.json()).toEqual({
+        channel: 'EMAIL',
+        role: 'CONTRIBUTOR',
+        personId: AWA_ID,
+        email: ADDRESS,
+        locale: 'fr',
+      });
+    });
+
+    it('asks for the email in English for an inviter using Mbia in English', async () => {
+      const api = fakeApi({ locale: 'en', create: () => jsonResponse(emailInvitation(), 201) });
+      renderApp(INVITE);
+
+      fireEvent.change(await screen.findByRole('combobox', { name: 'How to invite' }), {
+        target: { value: 'EMAIL' },
+      });
+      fireEvent.change(screen.getByLabelText('Email address'), { target: { value: ADDRESS } });
+      fireEvent.click(screen.getByRole('button', { name: 'Send the invitation' }));
+
+      expect(await screen.findByRole('heading', { name: 'Invitation sent' })).toBeInTheDocument();
+      const [creation] = api.posts('/invitations');
+      expect(await creation?.json()).toMatchObject({ channel: 'EMAIL', locale: 'en' });
+    });
+
+    it('says when the email could not be sent, the invitation being saved', async () => {
+      fakeApi({ create: () => jsonResponse(emailInvitation({ emailDelivery: 'FAILED' }), 201) });
+      renderApp(INVITE);
+
+      fireEvent.change(await screen.findByRole('combobox', { name: 'Comment inviter' }), {
+        target: { value: 'EMAIL' },
+      });
+      fireEvent.change(screen.getByLabelText('Adresse e-mail'), { target: { value: ADDRESS } });
+      fireEvent.click(screen.getByRole('button', { name: "Envoyer l'invitation" }));
+
+      expect(
+        await screen.findByRole('heading', { name: "L'e-mail n'a pas pu être envoyé" }),
+      ).toBeInTheDocument();
+      expect(
+        screen.getByText(
+          "L'invitation est enregistrée. Renouvelez-la plus tard pour envoyer l'e-mail à nouveau.",
+        ),
+      ).toBeInTheDocument();
+      expect(screen.queryByText('Invitation envoyée')).not.toBeInTheDocument();
+    });
+
+    it('shows an address refused by the server on its field', async () => {
+      fakeApi({
+        create: () =>
+          jsonResponse(
+            {
+              code: 'VALIDATION_FAILED',
+              status: 400,
+              title: 'VALIDATION_FAILED',
+              detail: 'raw server detail',
+              fieldErrors: [{ field: 'email', code: 'EMAIL', message: 'raw' }],
+            },
+            400,
+            'application/problem+json',
+          ),
+      });
+      renderApp(INVITE);
+
+      fireEvent.change(await screen.findByRole('combobox', { name: 'Comment inviter' }), {
+        target: { value: 'EMAIL' },
+      });
+      fireEvent.change(screen.getByLabelText('Adresse e-mail'), { target: { value: ADDRESS } });
+      fireEvent.click(screen.getByRole('button', { name: "Envoyer l'invitation" }));
+
+      expect(
+        await screen.findByText(
+          'Saisissez une adresse e-mail valide, par exemple awa@example.com.',
+        ),
+      ).toBeInTheDocument();
+      expect(screen.queryByText(/décédé/)).not.toBeInTheDocument();
+      expect(screen.queryByText('raw server detail')).not.toBeInTheDocument();
+    });
+
+    it('says on the profile that the email of the pending invitation could not be sent', async () => {
+      fakeApi({
+        invitations: () => jsonResponse([emailInvitation({ emailDelivery: 'FAILED' })]),
+      });
+      renderApp(PROFILE);
+
+      expect(await screen.findByText('Invitation en attente')).toBeInTheDocument();
+      expect(screen.getByText("L'e-mail n'a pas pu être envoyé")).toBeInTheDocument();
+    });
+
+    it('sends the email again on `Renew`, without showing the link', async () => {
+      const api = fakeApi({
+        invitations: () => jsonResponse([emailInvitation({ emailDelivery: 'FAILED' })]),
+        renew: () => jsonResponse({ ...emailInvitation({ version: 2 }), inviteUrl: RENEWED_LINK }),
+      });
+      renderApp(PROFILE);
+
+      fireEvent.click(
+        await screen.findByRole('button', { name: "Renouveler l'invitation de Awa" }),
+      );
+
+      expect(
+        await screen.findByRole('heading', { name: 'Invitation envoyée' }),
+      ).toBeInTheDocument();
+      expect(screen.queryByText(RENEWED_LINK)).not.toBeInTheDocument();
+      expect(api.posts('/renew')).toHaveLength(1);
+    });
+  });
 });
