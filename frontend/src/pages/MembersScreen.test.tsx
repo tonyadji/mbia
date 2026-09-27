@@ -347,6 +347,45 @@ describe('Members screen (SCREEN-008)', () => {
       expect(forMarie?.queryByText("L'e-mail n'a pas pu être envoyé")).not.toBeInTheDocument();
     });
 
+    it.each([
+      ['fr', 'Pour Marie Ngo', 'Lien partagé'],
+      ['en', 'For Marie Ngo', 'Shared link'],
+    ])(
+      'names no Person that is not ACTIVE, the invitation staying pending (OQ-056, %s)',
+      async (locale, forMarie, sharedLink) => {
+        // Marie archived or merged: the API keeps the invitation but names no Person.
+        fakeApi({
+          locale,
+          handlers: {
+            [`GET /families/${ADJI_ID}/invitations`]: () =>
+              jsonResponse([
+                invitation({ id: AWA_INVITATION }),
+                invitation({
+                  id: EMAIL_INVITATION,
+                  channel: 'EMAIL',
+                  email: 'marie@example.com',
+                  emailDelivery: 'SENT',
+                }),
+              ]),
+          },
+        });
+        await act(() => i18n.changeLanguage(locale));
+        renderApp(MEMBERS);
+
+        const section = within(
+          await screen.findByRole('region', {
+            name: locale === 'fr' ? 'Invitations en attente' : 'Pending invitations',
+          }),
+        );
+        const [byLink, byEmail] = (await section.findAllByRole('listitem')).map((item) =>
+          within(item),
+        );
+        expect(byLink?.getByText(sharedLink)).toBeInTheDocument();
+        expect(byEmail?.getByText('marie@example.com')).toBeInTheDocument();
+        expect(section.queryByText(forMarie)).not.toBeInTheDocument();
+      },
+    );
+
     it('shows the new link of a renewed invitation once', async () => {
       const api = fakeApi({
         handlers: {
