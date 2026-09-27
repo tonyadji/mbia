@@ -56,15 +56,6 @@ When a question is answered, update the relevant spec, then move the entry to **
 - **Blocking:** nothing. SCREEN-013 ships A in Phase 4 (PR-44). The human confirms or reopens it at the human check of PR-44; a change becomes its own PR of the phase.
 - **Status (human, 2026-09-27):** option A, rendered in PR-44, was **not satisfactory**. The human chose to try option B: a grid of thumbnails without text (2 columns on a phone, 3 from tablet width); a tap opens a viewer with the photo large, its caption, its taken date and its position, `Previous photo` / `Next photo` / `Close`, swipe between photos, arrows and Escape on a keyboard. B ships in PR-45b and stays provisional: the question remains open until the human has inspected B's rendering and confirms it or proposes another layout.
 
-### OQ-052 — A group invitation link
-
-- **Raised by / date:** human and coding agent (Phase 5 review), 2026-09-27
-- **Context:** an invitation link works once (mvp.md §18). Posting one link in the family's WhatsApp group, the most natural gesture, therefore lets only the first relative in. The ADMIN creates one link per relative instead.
-- **Question:** does Mbia offer a reusable group link, and in which phase?
-- **Options:** A — keep single-use links only; make creating another link fast ("Invite someone else"); the group link stays for later / B — add a group link in Phase 5: reusable for a short time (for example 7 days), and each person who uses it waits for the ADMIN's approval before entering the Family (new concept: join requests) / C — another design proposed after the review.
-- **Recommendation:** A for the first Phase 5 PRs (decided, 2026-09-27); B only if the first real families ask for it.
-- **Blocking:** nothing in the first Phase 5 PRs, which keep single-use links. **The human decides before the last PR of Phase 5** whether B enters Phase 5 or is deferred (Phase 5 exit criterion, `delivery/phase-5-collaboration.md` §6).
-
 ### OQ-053 — Keeping the invitee inside Mbia when they join (deferred email verification)
 
 - **Raised by / date:** human, 2026-09-27 (Phase 5 review)
@@ -601,6 +592,16 @@ When a question is answered, update the relevant spec, then move the entry to **
 - **Recommendation:** none; a permission choice for the human.
 - **Blocking:** the invitation PRs of Phase 5.
 - **Answer:** A (human, 2026-09-27). The specs are unchanged.
+
+### OQ-052 — A group invitation link
+
+- **Raised by / date:** human and coding agent (Phase 5 review), 2026-09-27
+- **Context:** an invitation link works once (mvp.md §18). Posting one link in the family's WhatsApp group, the most natural gesture, therefore lets only the first relative in. The ADMIN creates one link per relative instead.
+- **Question:** does Mbia offer a reusable group link, and in which phase?
+- **Options:** A — keep single-use links only; make creating another link fast ("Invite someone else"); the group link stays for later / B — add a group link in Phase 5: reusable for a short time (for example 7 days), and each person who uses it waits for the ADMIN's approval before entering the Family (new concept: join requests) / C — another design proposed after the review.
+- **Recommendation:** A for the first Phase 5 PRs (decided, 2026-09-27); B only if the first real families ask for it.
+- **Blocking:** nothing in the first Phase 5 PRs, which keep single-use links. **The human decides before the last PR of Phase 5** whether B enters Phase 5 or is deferred (Phase 5 exit criterion, `delivery/phase-5-collaboration.md` §6).
+- **Answer:** A (human, 2026-09-27, before PR-57). Invitation links stay single-use; a group link and join requests are deferred after Phase 5, to reconsider only if real families ask for it. Documented in `mvp.md` §18; plan phase 5 §2.1, §5.
 
 ### OQ-054 — The recent activity of Family Home
 

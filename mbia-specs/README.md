@@ -71,6 +71,10 @@ The visual mockup is a design reference. Product rules and screen behavior are d
 
 ## Changelog
 
+### 0.6.7 — 2026-09-27
+
+- A group invitation link (OQ-052): deferred. Invitation links stay single-use; a reusable link and join requests are not part of Phase 5 (`mvp.md` §18; `delivery/phase-5-collaboration.md` §2.1, §5).
+
 ### 0.6.6 — 2026-09-27
 
 - Members screen (OQ-062): the ADMIN's role label is `Family administrator` (FR "Administrateur de la famille"); on SCREEN-008, `FIRST_COUSIN` takes its neutral form, the member list carrying no gender. `screens.md` SCREEN-008.

@@ -49,16 +49,18 @@ export async function openRegistration(page: Page) {
 /**
  * Signs up, then verifies the email from the mailbox **in another tab** of the same browser, as a
  * relative opening the email would (OQ-050); the password is chosen in that tab. Returns that tab.
+ * The account is Awa Ngo's unless `name` says otherwise.
  */
 export async function registerAndVerifyInAnotherTab(
   page: Page,
   request: APIRequestContext,
   user: TestUser,
+  name: { firstName: string; lastName: string } = { firstName: 'Awa', lastName: 'Ngo' },
 ): Promise<Page> {
   await page.waitForURL(`${KEYCLOAK_URL}/**`);
   await page.locator('#email').fill(user.email);
-  await page.locator('#firstName').fill('Awa');
-  await page.locator('#lastName').fill('Ngo');
+  await page.locator('#firstName').fill(name.firstName);
+  await page.locator('#lastName').fill(name.lastName);
   await page.locator('input[type=submit]').click();
   await page.waitForURL(/execution=VERIFY_EMAIL/);
 
