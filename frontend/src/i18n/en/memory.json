@@ -4,6 +4,37 @@
     "intro": "Write a memory and link it to the people it is about. The whole family will be able to read it.",
     "titleLabel": "Title",
     "contentLabel": "Your story",
+    "contentOptional": "Optional when the memory has a photo.",
+    "photos": {
+      "label": "Photos",
+      "add": "Add a photo",
+      "limit_one": "A memory can have only one photo.",
+      "limit_other": "A memory can have up to {{count}} photos.",
+      "leftOut_one": "{{count}} photo was not added.",
+      "leftOut_other": "{{count}} photos were not added.",
+      "photo": "Photo {{position}}",
+      "thumbnail": "Photo {{position}}",
+      "caption": "Caption of photo {{position}}",
+      "moreInfo": "More information",
+      "moreInfoLabel": "More information about photo {{position}}",
+      "takenAt": "When was this photo taken?",
+      "takenDate": "Date the photo was taken",
+      "takenYear": "Year the photo was taken",
+      "remove": "Remove",
+      "removeLabel": "Remove photo {{position}}",
+      "retry": "Try again",
+      "retryLabel": "Try again to send photo {{position}}",
+      "preparing": "Preparing the photo…",
+      "uploading": "Sending the photo… {{percent}} %",
+      "processing": "Checking the photo…",
+      "progressLabel": "Sending photo {{position}}",
+      "errors": {
+        "unsupported": "This file is not a photo Mbia can use. Remove it and choose a JPEG, PNG or WEBP photo.",
+        "tooLarge": "This photo is too large. Remove it and choose a photo of 15 MB or less.",
+        "failed": "The photo could not be sent. Check your connection and try again.",
+        "invalid": "This file cannot be used as a photo. Remove it and choose another one."
+      }
+    },
     "required": "This field is required.",
     "tooLong": "This text cannot be longer than {{max, number}} characters.",
     "invalid": "Check this field.",
@@ -19,7 +50,12 @@
   },
   "errors": {
     "PERSON_NOT_ACTIVE": "One of the chosen people was archived or merged in the meantime. Remove them, then publish again.",
-    "PERSON_NOT_FOUND": "One of the chosen people is no longer part of the family. Remove them, then publish again."
+    "PERSON_NOT_FOUND": "One of the chosen people is no longer part of the family. Remove them, then publish again.",
+    "MEMORY_PHOTO_LIMIT_REACHED_one": "A memory can have only one photo. Remove the extra photos, then publish again.",
+    "MEMORY_PHOTO_LIMIT_REACHED_other": "A memory can have up to {{count}} photos. Remove the extra photos, then publish again.",
+    "MEDIA_NOT_READY": "One of the photos is not ready yet. Remove it and add it again, then publish.",
+    "MEDIA_ALREADY_USED": "One of the photos is already used elsewhere. Remove it and add it again, then publish.",
+    "MEDIA_NOT_FOUND": "One of the photos can no longer be found. Remove it and add it again, then publish."
   },
   "published": "Your memory “{{title}}” has been published.",
   "profile": {

@@ -3,6 +3,7 @@ import { useTranslation } from 'react-i18next';
 import { Avatar } from '../components/Avatar';
 import { Button } from '../components/Button';
 import { PHOTO_TYPES } from './prepareImage';
+import { UploadProgress } from './UploadProgress';
 import { usePhotoUpload } from './usePhotoUpload';
 
 /** What the form does with the Person's photo when it is saved. */
@@ -40,7 +41,7 @@ export function PhotoField({
   const { t } = useTranslation('person');
   const labelId = useId();
   const input = useRef<HTMLInputElement>(null);
-  const { state, start, retry, reset } = usePhotoUpload(familyId);
+  const { state, start, retry, reset } = usePhotoUpload(familyId, 'PROFILE_PICTURE');
   const busy =
     state.status === 'preparing' || state.status === 'uploading' || state.status === 'processing';
 
@@ -103,7 +104,13 @@ export function PhotoField({
       {value.kind === 'removed' && currentUrl !== null && (
         <p className="text-caption text-text-muted">{t('photo.removedHint')}</p>
       )}
-      {busy && <UploadProgress percent={state.status === 'uploading' ? state.percent : null} />}
+      {busy && (
+        <UploadProgress
+          percent={state.status === 'uploading' ? state.percent : null}
+          label={t('photo.progressLabel')}
+          text={t('photo.uploading', { percent: state.status === 'uploading' ? state.percent : 0 })}
+        />
+      )}
       {busy && state.status !== 'uploading' && (
         <p className="text-caption text-text-muted" aria-live="polite">
           {state.status === 'processing' ? t('photo.processing') : t('photo.preparing')}
@@ -130,32 +137,6 @@ export function PhotoField({
             </Button>
           )}
         </div>
-      )}
-    </div>
-  );
-}
-
-function UploadProgress({ percent }: { percent: number | null }) {
-  const { t } = useTranslation('person');
-  return (
-    <div className="flex flex-col gap-1">
-      <div
-        role="progressbar"
-        aria-label={t('photo.progressLabel')}
-        aria-valuemin={0}
-        aria-valuemax={100}
-        aria-valuenow={percent ?? undefined}
-        className="h-2 overflow-hidden rounded-full bg-border"
-      >
-        <div
-          className="h-full rounded-full bg-primary transition-[width]"
-          style={{ width: `${String(percent ?? 0)}%` }}
-        />
-      </div>
-      {percent !== null && (
-        <p className="text-caption text-text-muted" aria-live="polite">
-          {t('photo.uploading', { percent })}
-        </p>
       )}
     </div>
   );

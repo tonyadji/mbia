@@ -40,6 +40,7 @@ function family(overrides: Record<string, unknown> = {}) {
     myRole: 'ADMIN',
     myLinkedPersonId: MARIE_ID,
     stats: { personCount: 2, memoryCount: 0, activeMemberCount: 1 },
+    limits: { maxPhotosPerMemory: 3 },
     version: 0,
     createdAt: '2026-09-25T10:00:00Z',
     updatedAt: '2026-09-25T10:00:00Z',
@@ -221,7 +222,7 @@ describe('Add a Memory (SCREEN-006)', () => {
       expect(screen.queryByRole('link', { name: 'Ajouter un souvenir' })).not.toBeInTheDocument();
     });
 
-    it('opens the story form directly, without a photo or story choice', async () => {
+    it('opens the one Memory form directly, without a photo or story choice', async () => {
       fakeApi();
       const { router } = renderApp(familyHomePath(ADJI_ID));
       fireEvent.click(await screen.findByRole('link', { name: 'Ajouter un souvenir' }));
@@ -229,7 +230,10 @@ describe('Add a Memory (SCREEN-006)', () => {
         await screen.findByRole('heading', { level: 1, name: 'Raconter une histoire' }),
       ).toBeInTheDocument();
       expect(router.state.location.pathname).toBe(`/families/${ADJI_ID}/memories/new`);
-      expect(screen.queryByText(/photo/i)).not.toBeInTheDocument();
+      // One form with no initial choice (OQ-042): the title first, the photos as a section of it.
+      expect(await screen.findByRole('textbox', { name: 'Titre' })).toBeInTheDocument();
+      expect(screen.getByRole('group', { name: 'Photos' })).toBeInTheDocument();
+      expect(screen.queryByRole('radio')).not.toBeInTheDocument();
     });
   });
 

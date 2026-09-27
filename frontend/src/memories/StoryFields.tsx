@@ -13,20 +13,39 @@ type FieldErrorKey = 'required' | 'tooLong' | 'invalid';
 /** Codes explained in the words of a Memory; others use the shared `errors` messages. */
 export const MEMORY_ERRORS = ['PERSON_NOT_ACTIVE', 'PERSON_NOT_FOUND'] as const;
 
+/** Refusals of a Memory's photos, explained in the words of a Memory. */
+export const PHOTO_ERRORS = [
+  'MEMORY_PHOTO_LIMIT_REACHED',
+  'MEDIA_NOT_READY',
+  'MEDIA_ALREADY_USED',
+  'MEDIA_NOT_FOUND',
+] as const;
+
 export interface StoryFormValues {
   title: string;
   content: string;
 }
 
-/** The title and text of a story (SCREEN-006, SCREEN-014). */
-export function StoryFields({ form }: { form: UseFormReturn<StoryFormValues> }) {
+/**
+ * The title and text of a story (SCREEN-006, SCREEN-014). The text may stay empty when
+ * `contentOptional`, that is when the Memory has a photo (mvp.md §17).
+ */
+export function StoryFields({
+  form,
+  contentOptional = false,
+}: {
+  form: UseFormReturn<StoryFormValues>;
+  contentOptional?: boolean;
+}) {
   const { t } = useTranslation('memory');
 
-  const validate = (max: number) => (value: string) => {
-    if (value.trim() === '') return 'required' satisfies FieldErrorKey;
-    if (value.length > max) return 'tooLong' satisfies FieldErrorKey;
-    return true;
-  };
+  const validate =
+    (max: number, optional = false) =>
+    (value: string) => {
+      if (value.trim() === '' && !optional) return 'required' satisfies FieldErrorKey;
+      if (value.length > max) return 'tooLong' satisfies FieldErrorKey;
+      return true;
+    };
 
   function message(field: keyof StoryFormValues) {
     const key = form.formState.errors[field]?.message as FieldErrorKey | undefined;
@@ -42,13 +61,18 @@ export function StoryFields({ form }: { form: UseFormReturn<StoryFormValues> }) 
         error={message('title')}
         {...form.register('title', { validate: validate(LIMITS.title) })}
       />
-      <TextArea
-        label={t('form.contentLabel')}
-        rows={10}
-        required
-        error={message('content')}
-        {...form.register('content', { validate: validate(LIMITS.content) })}
-      />
+      <div className="flex flex-col gap-1">
+        <TextArea
+          label={t('form.contentLabel')}
+          rows={10}
+          required={!contentOptional}
+          error={message('content')}
+          {...form.register('content', { validate: validate(LIMITS.content, contentOptional) })}
+        />
+        {contentOptional && (
+          <p className="text-caption text-text-muted">{t('form.contentOptional')}</p>
+        )}
+      </div>
     </>
   );
 }
