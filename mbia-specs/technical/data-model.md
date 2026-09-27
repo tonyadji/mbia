@@ -341,6 +341,7 @@ Rules:
 - if the accepting User already has an `ACTIVE` membership in the Family, nothing changes and the invitation stays `PENDING`;
 - renewal replaces `token_hash`, resets `expires_at`, sets `renewed_at` and, for `EMAIL`, sends the email again; the old token stops working immediately;
 - revocation sets `status = REVOKED`, `revoked_at`, `revoked_by`;
+- a `PENDING` or `EXPIRED` invitation can be renewed or revoked; an `ACCEPTED` or `REVOKED` one cannot (410 `INVITATION_ALREADY_USED`, `INVITATION_REVOKED`; OQ-057); revocation is final;
 - `EXPIRED` is set lazily when an expired `PENDING` invitation is read or accepted, and may also be set by a scheduled task;
 - `role = ADMIN` is not allowed in MVP;
 - expired, revoked or accepted invitations cannot be accepted;

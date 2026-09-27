@@ -18,6 +18,7 @@ public record AuditEntry(UUID familyId, UUID actorUserId, String action, String 
     public static final String PERSON = "PERSON";
     public static final String RELATIONSHIP = "RELATIONSHIP";
     public static final String MEMORY = "MEMORY";
+    public static final String INVITATION = "INVITATION";
 
     public AuditEntry {
         Objects.requireNonNull(action, "action");

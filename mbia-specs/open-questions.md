@@ -638,3 +638,13 @@ When a question is answered, update the relevant spec, then move the entry to **
 - **Recommendation:** A: the relative can still join, nothing is guessed about who they are, and the rule "one pending invitation per Person" never conflicts during a merge.
 - **Blocking:** PR-56 (`delivery/phase-5-collaboration.md`).
 - **Answer:** A (human, 2026-09-27). Documented in `mvp.md` §18, `screens.md` SCREEN-008, `data-model.md` §8 and `openapi.yaml` (`InvitationResponse.person`, `AcceptInvitationResponse.suggestedPerson`).
+
+### OQ-057 — Renewing or revoking an invitation that is no longer pending
+
+- **Raised by / date:** coding agent (PR-47), 2026-09-27
+- **Context:** `renewInvitation` renews "a pending or expired invitation" and `revokeInvitation` revokes "a pending invitation"; revocation is final (mvp.md §18, data-model.md §8). The specs did not say what the API answers for an ACCEPTED or REVOKED invitation, nor whether an EXPIRED one can be revoked.
+- **Question:** what do renewal and revocation answer outside PENDING, and can an EXPIRED invitation be revoked?
+- **Options:** A — 410 with the existing code (`INVITATION_ALREADY_USED`, `INVITATION_REVOKED`), as the preview answers / B — 409 with a new code `INVITATION_NOT_PENDING` / C — 404 `INVITATION_NOT_FOUND`. For EXPIRED: revocable (it becomes REVOKED) / refused with 410 `INVITATION_EXPIRED`.
+- **Recommendation:** A, and an EXPIRED invitation is revocable, so that the ADMIN can close a link they will not renew.
+- **Blocking:** PR-47.
+- **Answer:** A, and an EXPIRED invitation (or a PENDING one past its expiry) can be revoked (human, 2026-09-27). Documented in `data-model.md` §8 and `openapi.yaml` (`renewInvitation`, `revokeInvitation`: `410`).
