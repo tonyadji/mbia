@@ -1,6 +1,4 @@
-import { useState } from 'react';
-import { useQueryClient } from '@tanstack/react-query';
-import { familiesQueryKey } from '../families/useMyFamilies';
+import { useFreshImageUrl } from '../media/useFreshImageUrl';
 
 /** The first letter of the display name, otherwise of the email (user content, never translated). */
 export function initialOf(displayName: string | null | undefined, email: string): string {
@@ -39,23 +37,9 @@ export function Avatar({
   /** The Person's name, for a photo that is not decorative. */
   alt?: string;
 }) {
-  const queryClient = useQueryClient();
-  // The last URL that failed to load, until a photo loads again.
-  const [failed, setFailed] = useState<string | null>(null);
-  const showPhoto = photoUrl !== null && failed !== photoUrl;
+  const photo = useFreshImageUrl(photoUrl);
+  const showPhoto = photo.show;
   const described = showPhoto && alt !== undefined && alt !== '';
-
-  const onError = () => {
-    if (photoUrl === null) return;
-    setFailed(photoUrl);
-    // A second failure in a row, with a fresh URL, keeps the initial: no reload loop.
-    if (failed === null) {
-      void queryClient.invalidateQueries(
-        { queryKey: familiesQueryKey, refetchType: 'active' },
-        { cancelRefetch: false },
-      );
-    }
-  };
 
   return (
     <span
@@ -64,13 +48,11 @@ export function Avatar({
     >
       {showPhoto ? (
         <img
-          src={photoUrl}
+          src={photoUrl ?? undefined}
           alt={described ? alt : ''}
           loading="lazy"
-          onError={onError}
-          onLoad={() => {
-            setFailed(null);
-          }}
+          onError={photo.onError}
+          onLoad={photo.onLoad}
           className="size-full object-cover"
         />
       ) : (
