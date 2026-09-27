@@ -38,6 +38,8 @@ class FamiliesApiTest extends ApiTestSupport {
             json.assertThat().extractingPath("$.stats.activeMemberCount").isEqualTo(1);
             json.assertThat().extractingPath("$.stats.personCount").isEqualTo(0);
             json.assertThat().extractingPath("$.stats.memoryCount").isEqualTo(0);
+            // The default of mbia.memory.max-photos (Phase 4 plan §3.5).
+            json.assertThat().extractingPath("$.limits.maxPhotosPerMemory").isEqualTo(3);
             json.assertThat().extractingPath("$.createdAt").isNotNull();
             json.assertThat().extractingPath("$.updatedAt").isNotNull();
         });

@@ -5,6 +5,7 @@ import com.lehnade.mbia.genealogy.application.RelatedPersons;
 import com.lehnade.mbia.identity.application.CurrentUserAccessor;
 import com.lehnade.mbia.memory.application.MemoryAuthors;
 import com.lehnade.mbia.memory.application.MemoryEditors;
+import com.lehnade.mbia.memory.application.MemoryPhotos;
 import com.lehnade.mbia.memory.application.MemoryView;
 import com.lehnade.mbia.memory.domain.Memory;
 import com.lehnade.mbia.memory.domain.MemoryRepository;
@@ -64,6 +65,9 @@ public class UpdateMemoryUseCase {
         if (memory.type() == MemoryType.STORY && !command.photoFields().isEmpty()) {
             String field = command.photoFields().stream().sorted().findFirst().orElseThrow();
             throw new FieldValidationException(field, "NOT_ALLOWED", "A story has no " + field + ".");
+        }
+        if (command.withPhotos()) {
+            throw MemoryPhotos.notAvailableYet();
         }
         Versions.requireCurrent(command.expectedVersion(), memory.version());
 

@@ -64,16 +64,12 @@ public final class MediaAsset {
     /**
      * A new asset waiting for the browser's upload ({@code PENDING_UPLOAD}).
      *
-     * @throws DomainException {@code VALIDATION_FAILED} for a purpose other than
-     *     {@code PROFILE_PICTURE}, an unsupported MIME type, a missing or too long file name or a
-     *     size that is not positive; {@code MEDIA_TOO_LARGE} above 15 MB
+     * @param purpose a Person's photo or a Memory photo (OQ-040, OQ-042)
+     * @throws DomainException {@code VALIDATION_FAILED} for an unsupported MIME type, a missing or
+     *     too long file name or a size that is not positive; {@code MEDIA_TOO_LARGE} above 15 MB
      */
     public static MediaAsset requestUpload(MediaAssetId id, UUID familyId, MediaPurpose purpose, String fileName,
             String mimeType, long sizeBytes, UUID uploadedBy, Instant now) {
-        if (purpose != MediaPurpose.PROFILE_PICTURE) {
-            throw new FieldValidationException("purpose", "NOT_SUPPORTED",
-                    "Only profile pictures can be uploaded.");
-        }
         if (mimeType == null || !SUPPORTED_MIME_TYPES.contains(mimeType)) {
             throw new FieldValidationException("mimeType", "NOT_SUPPORTED",
                     "Only JPEG, PNG and WEBP images can be uploaded.");

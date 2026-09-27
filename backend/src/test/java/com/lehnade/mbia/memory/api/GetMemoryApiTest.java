@@ -50,6 +50,7 @@ class GetMemoryApiTest extends ApiTestSupport {
                         json.assertThat().extractingPath("$.title").isEqualTo("Le marché de Yaoundé");
                         json.assertThat().extractingPath("$.content")
                                 .isEqualTo("Grand-mère vendait du plantain.");
+                        json.assertThat().extractingPath("$.photos").asArray().isEmpty();
                         json.assertThat().extractingPath("$.relatedPersons[0].id").isEqualTo(grandmother.toString());
                         json.assertThat().extractingPath("$.relatedPersons[0].displayName").isEqualTo("Awa");
                         json.assertThat().extractingPath("$.relatedPersons[0].status").isEqualTo("ACTIVE");

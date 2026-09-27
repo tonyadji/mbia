@@ -5,6 +5,7 @@ import com.lehnade.mbia.memory.domain.MemoryId;
 import com.lehnade.mbia.memory.domain.MemoryRepository;
 import com.lehnade.mbia.memory.domain.MemoryStatus;
 import com.lehnade.mbia.memory.domain.MemoryType;
+import java.util.Collection;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -96,6 +97,14 @@ class JpaMemoryRepository implements MemoryRepository {
     @Override
     public long countActiveInFamily(UUID familyId, Optional<MemoryType> type) {
         return jpa.countActiveInFamily(familyId, type.map(Enum::name).orElse(null));
+    }
+
+    @Override
+    public Set<UUID> findPhotosAmong(Collection<UUID> mediaAssetIds) {
+        if (mediaAssetIds.isEmpty()) {
+            return Set.of();
+        }
+        return Set.copyOf(jpa.findPhotosAmong(mediaAssetIds));
     }
 
     /** The Memories with their Persons, read for the whole page in one query. */

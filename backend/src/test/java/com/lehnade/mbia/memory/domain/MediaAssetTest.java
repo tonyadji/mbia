@@ -73,8 +73,12 @@ class MediaAssetTest {
     }
 
     @Test
-    void aMemoryPhotoIsNotUploadedInThisIteration() {
-        assertInvalid(() -> upload(MediaPurpose.MEMORY_PHOTO, "image/jpeg", 1_000), "purpose");
+    void aMemoryPhotoUploadIsPendingLikeAProfilePicture() {
+        MediaAsset asset = upload(MediaPurpose.MEMORY_PHOTO, "image/jpeg", 1_000);
+
+        assertThat(asset.purpose()).isEqualTo(MediaPurpose.MEMORY_PHOTO);
+        assertThat(asset.status()).isEqualTo(MediaStatus.PENDING_UPLOAD);
+        assertThat(asset.uploadStorageKey()).isEqualTo("families/" + FAMILY + "/media/" + asset.id().value() + "/upload");
     }
 
     @ParameterizedTest

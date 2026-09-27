@@ -5,9 +5,11 @@ import com.lehnade.mbia.memory.application.ObjectStorage;
 import com.lehnade.mbia.memory.domain.MediaAsset;
 import com.lehnade.mbia.memory.domain.MediaAssetRepository;
 import com.lehnade.mbia.memory.domain.MediaFailureReason;
+import com.lehnade.mbia.memory.domain.MemoryRepository;
 import java.time.Clock;
 import java.time.Duration;
 import java.time.Instant;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 import java.util.UUID;
@@ -22,7 +24,8 @@ import org.springframework.transaction.support.TransactionTemplate;
  *
  * <ul>
  *   <li>PENDING_UPLOAD assets created more than 24 hours ago;
- *   <li>READY assets that are still nobody's photo 24 hours after {@code ready_at}.
+ *   <li>READY assets that are still the photo of no Person and no Memory 24 hours after
+ *       {@code ready_at} (OQ-042).
  * </ul>
  *
  * <p>Their objects are deleted and they become FAILED; an attached asset is never touched. Each
@@ -41,14 +44,17 @@ public class CleanUpMediaUseCase {
     private final MediaAssetRepository mediaAssets;
     private final ObjectStorage objectStorage;
     private final ProfilePictures profilePictures;
+    private final MemoryRepository memories;
     private final TransactionTemplate transaction;
     private final Clock clock;
 
     public CleanUpMediaUseCase(MediaAssetRepository mediaAssets, ObjectStorage objectStorage,
-            ProfilePictures profilePictures, TransactionTemplate transaction, Clock clock) {
+            ProfilePictures profilePictures, MemoryRepository memories, TransactionTemplate transaction,
+            Clock clock) {
         this.mediaAssets = mediaAssets;
         this.objectStorage = objectStorage;
         this.profilePictures = profilePictures;
+        this.memories = memories;
         this.transaction = transaction;
         this.clock = clock;
     }
@@ -86,7 +92,9 @@ public class CleanUpMediaUseCase {
         if (ready.isEmpty()) {
             return new ReadyBatch(0, null);
         }
-        Set<UUID> attached = profilePictures.inUse(ready.stream().map(asset -> asset.id().value()).toList());
+        List<UUID> ids = ready.stream().map(asset -> asset.id().value()).toList();
+        Set<UUID> attached = new HashSet<>(profilePictures.inUse(ids));
+        attached.addAll(memories.findPhotosAmong(ids));
         int failed = failAll(ready.stream().filter(asset -> !attached.contains(asset.id().value())).toList(),
                 MediaFailureReason.NEVER_ATTACHED);
         return new ReadyBatch(failed, ready.getLast().id().value());

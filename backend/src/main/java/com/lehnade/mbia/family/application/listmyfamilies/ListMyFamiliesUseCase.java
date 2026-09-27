@@ -4,6 +4,7 @@ import com.lehnade.mbia.family.application.FamilyRole;
 import com.lehnade.mbia.family.application.FamilyStats;
 import com.lehnade.mbia.family.application.FamilyStatsPort;
 import com.lehnade.mbia.family.application.FamilyView;
+import com.lehnade.mbia.family.application.FamilyViews;
 import com.lehnade.mbia.family.application.LinkedPersonsPort;
 import com.lehnade.mbia.family.domain.FamilyId;
 import java.util.List;
@@ -19,11 +20,14 @@ public class ListMyFamiliesUseCase {
     private final MyFamiliesQuery query;
     private final FamilyStatsPort stats;
     private final LinkedPersonsPort linkedPersons;
+    private final FamilyViews views;
 
-    public ListMyFamiliesUseCase(MyFamiliesQuery query, FamilyStatsPort stats, LinkedPersonsPort linkedPersons) {
+    public ListMyFamiliesUseCase(MyFamiliesQuery query, FamilyStatsPort stats, LinkedPersonsPort linkedPersons,
+            FamilyViews views) {
         this.query = query;
         this.stats = stats;
         this.linkedPersons = linkedPersons;
+        this.views = views;
     }
 
     @Transactional(readOnly = true)
@@ -38,7 +42,7 @@ public class ListMyFamiliesUseCase {
             return new FamilyView(row.family().id().value(), row.family().name(), FamilyRole.of(row.myRole()),
                     myLinkedPersons.get(row.family().id().value()),
                     new FamilyStats(content.personCount(), content.memoryCount(), row.activeMemberCount()),
-                    row.family().version(), row.family().createdAt(), row.family().updatedAt());
+                    views.limits(), row.family().version(), row.family().createdAt(), row.family().updatedAt());
         }).toList();
     }
 }

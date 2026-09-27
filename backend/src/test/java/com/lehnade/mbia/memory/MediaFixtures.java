@@ -52,7 +52,12 @@ public final class MediaFixtures {
 
     /** A PROFILE_PICTURE slot created by {@code token}, which must be allowed to create it. */
     public Slot createSlot(TestJwts.Token token, UUID familyId, String mimeType, long sizeBytes) {
-        MvcTestResult result = createUpload(token, familyId, "PROFILE_PICTURE", mimeType, sizeBytes);
+        return createSlot(token, familyId, "PROFILE_PICTURE", mimeType, sizeBytes);
+    }
+
+    /** A slot of this purpose created by {@code token}, which must be allowed to create it. */
+    public Slot createSlot(TestJwts.Token token, UUID familyId, String purpose, String mimeType, long sizeBytes) {
+        MvcTestResult result = createUpload(token, familyId, purpose, mimeType, sizeBytes);
         assertThat(result).hasStatus(HttpStatus.CREATED);
         String body = FamilyFixtures.body(result);
         return new Slot(UUID.fromString(JsonPath.read(body, "$.mediaAssetId")), JsonPath.read(body, "$.uploadUrl"),
@@ -69,7 +74,12 @@ public final class MediaFixtures {
 
     /** A slot of {@code token} with {@code content} uploaded to it, as the browser does (ADR-004). */
     public Slot uploaded(TestJwts.Token token, UUID familyId, String mimeType, byte[] content) {
-        Slot slot = createSlot(token, familyId, mimeType, content.length);
+        return uploaded(token, familyId, "PROFILE_PICTURE", mimeType, content);
+    }
+
+    /** A slot of this purpose with {@code content} uploaded to it. */
+    public Slot uploaded(TestJwts.Token token, UUID familyId, String purpose, String mimeType, byte[] content) {
+        Slot slot = createSlot(token, familyId, purpose, mimeType, content.length);
         assertThat(put(slot, content).statusCode()).isEqualTo(200);
         return slot;
     }
@@ -94,6 +104,11 @@ public final class MediaFixtures {
 
     /** @see #row(UUID, UUID, String) */
     public static UUID insertRow(JdbcClient jdbc, UUID familyId, UUID uploadedBy, String status) {
+        return insertRow(jdbc, familyId, uploadedBy, "PROFILE_PICTURE", status);
+    }
+
+    /** A row of this purpose and status, as {@link #row(UUID, UUID, String)}. */
+    public static UUID insertRow(JdbcClient jdbc, UUID familyId, UUID uploadedBy, String purpose, String status) {
         UUID id = UUID.randomUUID();
         boolean processed = status.equals("READY") || status.equals("ARCHIVED");
         Timestamp now = Timestamp.from(Instant.now());
@@ -102,9 +117,9 @@ public final class MediaFixtures {
                                           thumbnail_storage_key, original_filename, upload_mime_type,
                                           upload_size_bytes, width_px, height_px, uploaded_by, created_at, ready_at,
                                           archived_at)
-                VALUES (?, ?, 'PROFILE_PICTURE', ?, ?, ?, ?, 'photo.jpg', 'image/jpeg', 1000, ?, ?, ?, now(), ?, ?)
+                VALUES (?, ?, ?, ?, ?, ?, ?, 'photo.jpg', 'image/jpeg', 1000, ?, ?, ?, now(), ?, ?)
                 """)
-                .params(id, familyId, status, key(familyId, id, "upload"),
+                .params(id, familyId, purpose, status, key(familyId, id, "upload"),
                         processed ? key(familyId, id, "display") : null,
                         processed ? key(familyId, id, "thumbnail") : null, processed ? 800 : null,
                         processed ? 600 : null, uploadedBy, processed ? now : null,

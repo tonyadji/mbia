@@ -110,6 +110,17 @@ public final class MemoryFixtures {
     }
 
     /** Sets when the Memory was added, to test the list order. */
+    /**
+     * A photo of a Memory written straight to the database (data-model.md §14bis), before the API
+     * can attach one (Phase 4 plan, PR-40).
+     */
+    public void insertPhoto(UUID familyId, UUID memoryId, UUID mediaAssetId, int position) {
+        jdbc.sql("""
+                INSERT INTO memory_photos (family_id, memory_id, media_asset_id, position, created_at)
+                VALUES (?, ?, ?, ?, now())
+                """).params(familyId, memoryId, mediaAssetId, position).update();
+    }
+
     public void createdAt(UUID memoryId, Instant createdAt) {
         jdbc.sql("UPDATE memories SET created_at = ? WHERE id = ?").params(Timestamp.from(createdAt), memoryId)
                 .update();

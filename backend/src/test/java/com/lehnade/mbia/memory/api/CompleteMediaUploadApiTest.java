@@ -115,6 +115,27 @@ class CompleteMediaUploadApiTest extends ApiTestSupport {
         }
     }
 
+    @ParameterizedTest
+    @CsvSource({MediaImages.PNG_WITH_GPS + ", image/png", MediaImages.LARGE_WITH_GPS + ", image/jpeg"})
+    void aMemoryPhotoBecomesReadyWithoutMetadataLikeAProfilePicture(String name, String mimeType) {
+        Slot slot = media.uploaded(family.contributor(), family.familyId(), "MEMORY_PHOTO", mimeType, fixture(name));
+
+        MvcTestResult result = media.complete(family.contributor(), family.familyId(), slot.mediaAssetId());
+
+        assertThat(result).hasStatusOk();
+        String body = FamilyFixtures.body(result);
+        assertThat((String) JsonPath.read(body, "$.purpose")).isEqualTo("MEMORY_PHOTO");
+        assertThat((String) JsonPath.read(body, "$.status")).isEqualTo("READY");
+        assertThat(media.row(slot.mediaAssetId())).containsEntry("status", "READY");
+        assertNotStored(key(family.familyId(), slot.mediaAssetId(), "upload"));
+        for (String url : new String[] {JsonPath.read(body, "$.url"), JsonPath.read(body, "$.thumbnailUrl")}) {
+            HttpResponse<byte[]> served = MediaFixtures.get(URI.create(url));
+            assertThat(served.statusCode()).isEqualTo(200);
+            assertThat(isJpeg(served.body())).isTrue();
+            assertHasNoMetadata(served.body());
+        }
+    }
+
     @Test
     void theDisplayIsOrientedAndItsSizeIsReturned() {
         Slot slot = media.uploaded(family.admin(), family.familyId(), "image/jpeg",

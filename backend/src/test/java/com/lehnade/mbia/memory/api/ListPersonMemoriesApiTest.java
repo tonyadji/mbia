@@ -54,6 +54,7 @@ class ListPersonMemoriesApiTest extends ApiTestSupport {
             assertThat(JsonPath.<List<String>>read(body, "$.items[*].id")).containsExactly(story.toString());
             assertThat(JsonPath.<String>read(body, "$.items[0].title")).isEqualTo("Le marché de Yaoundé");
             assertThat(JsonPath.<String>read(body, "$.items[0].content")).isEqualTo("Grand-mère vendait du plantain.");
+            assertThat(JsonPath.<List<Object>>read(body, "$.items[0].photos")).isEmpty();
             assertThat(JsonPath.<String>read(body, "$.items[0].relatedPersons[0].displayName")).isEqualTo("Awa");
             assertThat(JsonPath.<String>read(body, "$.items[0].relatedPersons[0].status")).isEqualTo("ACTIVE");
             assertThat(JsonPath.<String>read(body, "$.items[0].createdBy.userId")).isEqualTo(contributor.toString());
