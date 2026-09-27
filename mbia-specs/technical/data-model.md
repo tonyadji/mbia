@@ -289,9 +289,9 @@ ON family_memberships (family_id, status);
 Rules:
 
 - only `ACTIVE` memberships grant access;
-- changing a membership role is an audited operation;
+- changing a membership role is an audited operation (`MEMBERSHIP_ROLE_CHANGED`);
 - removing a membership does not delete the user or family data;
-- removing a membership (removal by ADMIN or leaving) sets `linked_user_id = NULL` on the User's Person in that Family, in the same transaction, with an audit entry;
+- removing a membership (removal by ADMIN or leaving) sets `linked_user_id = NULL` on the User's Person in that Family, in the same transaction, with an audit entry (`MEMBERSHIP_REMOVED` or `MEMBERSHIP_LEFT`, and `PERSON_UNCLAIMED` on the Person);
 - a Family must keep at least one ACTIVE `ADMIN` membership; the use case locks the Family's ADMIN memberships before removing or demoting one (`LAST_ADMIN_REQUIRED`);
 - accepting a new invitation for a `REMOVED` membership reactivates the existing row (`status = ACTIVE`, new role, new `joined_at`, `removed_at = NULL`).
 
@@ -865,6 +865,7 @@ PERSONS_MERGED
 RELATIONSHIP_ARCHIVED
 MEMBERSHIP_ROLE_CHANGED
 MEMBERSHIP_REMOVED
+MEMBERSHIP_LEFT
 PERSON_CLAIMED
 PERSON_UNCLAIMED
 INVITATION_CREATED

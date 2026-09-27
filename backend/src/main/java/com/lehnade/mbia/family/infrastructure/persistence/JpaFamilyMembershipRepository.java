@@ -5,6 +5,7 @@ import com.lehnade.mbia.family.domain.FamilyMembership;
 import com.lehnade.mbia.family.domain.FamilyMembershipRepository;
 import com.lehnade.mbia.family.domain.MembershipRole;
 import com.lehnade.mbia.family.domain.MembershipStatus;
+import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 import org.springframework.dao.DataIntegrityViolationException;
@@ -59,6 +60,29 @@ class JpaFamilyMembershipRepository implements FamilyMembershipRepository {
         entity.changeState(membership.role().name(), membership.status().name(), membership.joinedAt(),
                 membership.removedAt(), membership.updatedAt());
         return toDomain(jpa.saveAndFlush(entity));
+    }
+
+    @Override
+    public Optional<FamilyMembership> findActive(FamilyId familyId, UUID membershipId) {
+        return jpa.findByIdAndFamilyIdAndStatus(membershipId, familyId.value(), MembershipStatus.ACTIVE.name())
+                .map(JpaFamilyMembershipRepository::toDomain);
+    }
+
+    @Override
+    public List<FamilyMembership> findAllActive(FamilyId familyId) {
+        return jpa.findByFamilyIdAndStatusOrderByJoinedAtAscIdAsc(familyId.value(), MembershipStatus.ACTIVE.name())
+                .stream()
+                .map(JpaFamilyMembershipRepository::toDomain)
+                .toList();
+    }
+
+    /**
+     * PostgreSQL re-evaluates the condition of a row committed while waiting for its lock: an ADMIN
+     * removed by the transaction that held it is no longer returned.
+     */
+    @Override
+    public List<FamilyMembership> lockActiveAdmins(FamilyId familyId) {
+        return jpa.lockActiveAdmins(familyId.value()).stream().map(JpaFamilyMembershipRepository::toDomain).toList();
     }
 
     @Override

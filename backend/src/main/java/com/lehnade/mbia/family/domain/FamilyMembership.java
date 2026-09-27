@@ -62,9 +62,39 @@ public final class FamilyMembership {
                 null, createdAt, now, version);
     }
 
+    /**
+     * This ACTIVE membership with another role, CONTRIBUTOR or VIEWER (mvp.md §5). Whether the
+     * caller may change it, and the last ADMIN, are the use case's checks.
+     */
+    public FamilyMembership changeRole(MembershipRole newRole, Instant now) {
+        requireActive();
+        return new FamilyMembership(id, familyId, userId, requireInvitable(newRole), status, joinedAt, removedAt,
+                createdAt, now, version);
+    }
+
+    /**
+     * This membership REMOVED, by an ADMIN or by its User leaving (mvp.md §5): the User loses
+     * access, the Family's data stays (data-model.md §7).
+     */
+    public FamilyMembership remove(Instant now) {
+        requireActive();
+        return new FamilyMembership(id, familyId, userId, role, MembershipStatus.REMOVED, joinedAt, now, createdAt,
+                now, version);
+    }
+
+    public boolean isActive() {
+        return status == MembershipStatus.ACTIVE;
+    }
+
+    private void requireActive() {
+        if (!isActive()) {
+            throw new IllegalStateException("Only an ACTIVE membership can change.");
+        }
+    }
+
     private static MembershipRole requireInvitable(MembershipRole role) {
         if (role == MembershipRole.ADMIN) {
-            throw new IllegalArgumentException("The ADMIN role is never granted through an invitation.");
+            throw new IllegalArgumentException("The ADMIN role is never granted through the product.");
         }
         return role;
     }

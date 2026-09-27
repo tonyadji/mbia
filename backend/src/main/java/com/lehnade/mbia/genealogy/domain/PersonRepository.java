@@ -46,6 +46,9 @@ public interface PersonRepository {
     /** @return the non-MERGED Person of the Family that represents the User, if any */
     Optional<Person> findLinkedTo(UUID familyId, UUID userId);
 
+    /** @return the non-MERGED Persons of the Family that represent these Users, at most one each */
+    List<Person> findLinkedToUsers(UUID familyId, Collection<UUID> userIds);
+
     /**
      * @return among these media assets, those that are the photo of a Person, whatever its status
      *     or Family (data-model.md §10, OQ-036)

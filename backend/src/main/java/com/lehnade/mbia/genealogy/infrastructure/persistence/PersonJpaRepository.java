@@ -38,6 +38,9 @@ interface PersonJpaRepository extends JpaRepository<PersonJpaEntity, UUID> {
     Optional<PersonJpaEntity> findByFamilyIdAndLinkedUserIdAndStatusNot(UUID familyId, UUID linkedUserId,
             String status);
 
+    List<PersonJpaEntity> findByFamilyIdAndLinkedUserIdInAndStatusNot(UUID familyId,
+            Collection<UUID> linkedUserIds, String status);
+
     @Query("""
             SELECT new com.lehnade.mbia.genealogy.infrastructure.persistence.PersonCountRow(p.familyId, COUNT(p))
             FROM PersonJpaEntity p

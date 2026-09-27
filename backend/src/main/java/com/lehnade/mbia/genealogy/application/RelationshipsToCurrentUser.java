@@ -38,10 +38,13 @@ public class RelationshipsToCurrentUser {
     }
 
     /**
-     * Paths use ACTIVE Persons only (OQ-013): a linked Person that is not ACTIVE has no known
-     * kinship with the results, and ARCHIVED results have none with anyone.
+     * What each result is to {@code me}, the caller's linked Person, if any. Paths use ACTIVE
+     * Persons only (OQ-013): a linked Person that is not ACTIVE has no known kinship with the
+     * results, and ARCHIVED results have none with anyone.
+     *
+     * @return empty when the caller has no linked Person
      */
-    private Map<PersonId, KinshipCode> relationshipsTo(Optional<Person> me, List<Person> results) {
+    public Map<PersonId, KinshipCode> relationshipsTo(Optional<Person> me, List<Person> results) {
         if (me.isEmpty() || results.isEmpty()) {
             return Map.of();
         }

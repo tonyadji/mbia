@@ -71,6 +71,10 @@ The visual mockup is a design reference. Product rules and screen behavior are d
 
 ## Changelog
 
+### 0.6.5 — 2026-09-27
+
+- Members (OQ-061): `listFamilyMembers` returns the ACTIVE members only, never their email; an unknown, other-Family or REMOVED membership answers 404 `RESOURCE_NOT_FOUND` on `updateMemberRole` and `removeFamilyMember`; role changes, removals and departures are audited `MEMBERSHIP_ROLE_CHANGED`, `MEMBERSHIP_REMOVED` and `MEMBERSHIP_LEFT`. `data-model.md` §7, §17; `openapi.yaml` `listFamilyMembers`, `updateMemberRole`, `removeFamilyMember`, `MemberResponse` (descriptions only).
+
 ### 0.6.4 — 2026-09-27
 
 - Invitation emails (OQ-060): the email is sent right after the invitation is saved, before the response, which carries `emailDelivery` SENT or FAILED; SCREEN-009 shows `Invitation sent` or "The email could not be sent"; until the Members screen (PR-53), the failure is shown on `Invitation pending` of the Person's profile (SCREEN-005); a renewal sends the email again in the invitation's stored language. `screens.md` SCREEN-005, SCREEN-009; `data-model.md` §8; `openapi.yaml` `inviteFamilyMember`, `renewInvitation` (descriptions only).

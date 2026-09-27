@@ -173,7 +173,10 @@ paths:
     get:
       tags: [Members]
       operationId: listFamilyMembers
-      summary: List active and removed family memberships
+      summary: List the family's active members
+      description: |
+        Any ACTIVE member. Only ACTIVE memberships, in the order they joined;
+        never a member's email (OQ-061).
       responses:
         '200':
           description: Family members
@@ -199,6 +202,7 @@ paths:
       description: |
         ADMIN only. MVP public API does not grant ADMIN through this operation.
         An ADMIN cannot change their own role (`LAST_ADMIN_REQUIRED`).
+        An unknown, other-Family or REMOVED membership → 404 `RESOURCE_NOT_FOUND` (OQ-061).
       parameters:
         - $ref: '#/components/parameters/IfMatch'
       requestBody:
@@ -236,6 +240,8 @@ paths:
 
         Removal is logical and does not delete contributed family data. The
         member's linked Person, if any, is released in the same transaction.
+        An unknown, other-Family or already REMOVED membership → 404
+        `RESOURCE_NOT_FOUND` (OQ-061).
       parameters:
         - $ref: '#/components/parameters/IfMatch'
       responses:
@@ -1639,6 +1645,7 @@ components:
         email:
           type: string
           format: email
+          description: Not returned in the MVP (OQ-061).
         role:
           $ref: '#/components/schemas/MembershipRole'
         status:
