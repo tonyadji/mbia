@@ -79,7 +79,9 @@ Family collaboration (Phase 5), from the Phase 5 review with the human (OQ-050 t
 - only the ADMIN invites (OQ-051, unchanged);
 - recent activity: the types shown, grouping of consecutive actions, links while ACTIVE, names at the time, 10 lines on Family Home, starting empty (OQ-054; `mvp.md` §20, `screens.md` SCREEN-002, `data-model.md` §16);
 - `openapi.yaml` 0.4.0, additive: `CreateInvitationRequest.personId`, `InvitationPerson`, `InvitationResponse.person`, `AcceptInvitationResponse.suggestedPerson`, `MemberResponse.linkedPersonDisplayName` and `.relationshipToCurrentUser`, `ActivityResponse.count`, `.resourceIds`, `.resourceActive`, code `INVITATION_ALREADY_PENDING`;
-- open: a group invitation link, to decide before the end of Phase 5 (OQ-052); keeping the invitee inside Mbia with an access code (OQ-053); an invitation email that cannot be sent (OQ-055); an invitation whose Person is archived or merged (OQ-056);
+- an invitation email that cannot be sent: the invitation exists, its `emailDelivery` says `FAILED`, and a renewal tries again (OQ-055; `mvp.md` §18, SCREEN-008, `data-model.md` §8, `InvitationResponse.emailDelivery`);
+- an invitation whose Person is archived or merged stays valid, without offering or showing that Person while it is not ACTIVE; a merge never moves it (OQ-056);
+- open: a group invitation link, to decide before the end of Phase 5 (OQ-052); keeping the invitee inside Mbia with an access code (OQ-053);
 - delivery plan `delivery/phase-5-collaboration.md`.
 
 ### 0.5.1 — 2026-09-27

@@ -504,9 +504,10 @@ For each member, their kinship to the current User when both have a linked Perso
 
 ADMIN also sees a "Pending invitations" section:
 
-- the Person it was sent for, when there is one ("For Awa Ngo"); otherwise the email, or "Shared link" when no email;
+- the Person it was sent for, while that Person is ACTIVE ("For Awa Ngo", OQ-056); otherwise the email, or "Shared link" when no email;
 - role;
 - expiry date;
+- for an email invitation whose email could not be sent, "The email could not be sent" (OQ-055);
 - actions: `Renew` (new link, and email resent for email invitations), `Revoke` (with confirmation).
 
 ADMIN member actions (not on themselves): change role (Can contribute / Read only), remove from Family (with confirmation explaining that their contributions stay).
