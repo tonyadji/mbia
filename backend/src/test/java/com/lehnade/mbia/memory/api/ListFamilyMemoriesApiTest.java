@@ -59,6 +59,7 @@ class ListFamilyMemoriesApiTest extends ApiTestSupport {
             assertThat(JsonPath.<String>read(body, "$.items[1].type")).isEqualTo("STORY");
             assertThat(JsonPath.<String>read(body, "$.items[1].title")).isEqualTo("Le marché de Yaoundé");
             assertThat(JsonPath.<String>read(body, "$.items[1].content")).isEqualTo("Grand-mère vendait du plantain.");
+            assertThat(JsonPath.<List<List<Object>>>read(body, "$.items[*].photos")).containsOnly(List.of());
             assertThat(JsonPath.<String>read(body, "$.items[1].relatedPersons[0].displayName")).isEqualTo("Awa");
             assertThat(JsonPath.<String>read(body, "$.items[1].createdBy.userId")).isEqualTo(contributor.toString());
             assertThat(JsonPath.<Map<String, Object>>read(body, "$.page"))

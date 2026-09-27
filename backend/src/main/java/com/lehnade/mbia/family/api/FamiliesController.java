@@ -2,6 +2,7 @@ package com.lehnade.mbia.family.api;
 
 import com.lehnade.mbia.api.generated.FamiliesApi;
 import com.lehnade.mbia.api.generated.model.CreateFamilyRequest;
+import com.lehnade.mbia.api.generated.model.FamilyLimits;
 import com.lehnade.mbia.api.generated.model.FamilyResponse;
 import com.lehnade.mbia.api.generated.model.FamilyStats;
 import com.lehnade.mbia.api.generated.model.FamilySummary;
@@ -74,7 +75,8 @@ class FamiliesController implements FamiliesApi {
 
     private static FamilyResponse toResponse(FamilyView family) {
         return new FamilyResponse(family.id(), family.name(), toRole(family), toStats(family), family.version(),
-                toDateTime(family.createdAt()), toDateTime(family.updatedAt()))
+                new FamilyLimits(family.limits().maxPhotosPerMemory()), toDateTime(family.createdAt()),
+                toDateTime(family.updatedAt()))
                 .myLinkedPersonId(family.myLinkedPersonId());
     }
 

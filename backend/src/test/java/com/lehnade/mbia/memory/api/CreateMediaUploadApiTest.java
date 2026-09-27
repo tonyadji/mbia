@@ -28,9 +28,10 @@ import org.springframework.http.MediaType;
 import org.springframework.test.web.servlet.assertj.MvcTestResult;
 
 /**
- * PR-35: an ADMIN or CONTRIBUTOR opens a direct upload of a Person photo (openapi
- * {@code createMediaUpload}; data-model.md §13; technical-specification.md §16; Phase 3 plan §3.3,
- * §3.5). The storage key never leaves the backend, except inside the pre-signed URL itself.
+ * PR-35, PR-40: an ADMIN or CONTRIBUTOR opens a direct upload of a Person photo or of a Memory
+ * photo (openapi {@code createMediaUpload}; data-model.md §13; technical-specification.md §16;
+ * Phase 3 plan §3.3, §3.5; Phase 4 plan §3.6). The storage key never leaves the backend, except
+ * inside the pre-signed URL itself.
  */
 @ExtendWith(OutputCaptureExtension.class)
 class CreateMediaUploadApiTest extends ApiTestSupport {
@@ -181,13 +182,32 @@ class CreateMediaUploadApiTest extends ApiTestSupport {
     }
 
     @Test
-    void aMemoryPhotoCannotBeUploadedInThisIteration() {
-        MvcTestResult result = media.createUpload(family.admin(), family.familyId(), "MEMORY_PHOTO", "image/jpeg",
-                1_000);
+    void anAdminAndAContributorGetAMemoryPhotoSlot() {
+        for (TestJwts.Token caller : new TestJwts.Token[] {family.admin(), family.contributor()}) {
+            Slot slot = media.createSlot(caller, family.familyId(), "MEMORY_PHOTO", "image/jpeg", 2_000_000);
 
-        assertThat(result).hasStatus(HttpStatus.BAD_REQUEST)
-                .bodyJson().extractingPath("$.code").isEqualTo("VALIDATION_FAILED");
-        assertThat(result).bodyJson().extractingPath("$.fieldErrors[0].field").isEqualTo("purpose");
+            assertThat(media.row(slot.mediaAssetId())).containsEntry("purpose", "MEMORY_PHOTO")
+                    .containsEntry("status", "PENDING_UPLOAD")
+                    .containsEntry("uploaded_by", userIdOf(caller));
+        }
+        assertThat(media.count(family.familyId())).isEqualTo(2);
+    }
+
+    @Test
+    void aViewerCannotUploadAMemoryPhoto() {
+        assertThat(media.createUpload(family.viewer(), family.familyId(), "MEMORY_PHOTO", "image/jpeg", 1_000))
+                .hasStatus(HttpStatus.FORBIDDEN)
+                .bodyJson().extractingPath("$.code").isEqualTo("PERMISSION_DENIED");
+        assertThat(media.count(family.familyId())).isZero();
+    }
+
+    @Test
+    void aMemberOfAnotherFamilyGets404ForAMemoryPhoto() {
+        FamilyWithMembers other = families().givenFamilyWithMembersOfEachRole();
+
+        assertThat(media.createUpload(other.admin(), family.familyId(), "MEMORY_PHOTO", "image/jpeg", 1_000))
+                .hasStatus(HttpStatus.NOT_FOUND)
+                .bodyJson().extractingPath("$.code").isEqualTo("FAMILY_NOT_FOUND");
         assertThat(media.count(family.familyId())).isZero();
     }
 

@@ -6,6 +6,7 @@ import com.lehnade.mbia.ApiTestSupport;
 import com.lehnade.mbia.TestJwts;
 import com.lehnade.mbia.family.FamilyFixtures.FamilyWithMembers;
 import com.lehnade.mbia.genealogy.PersonFixtures;
+import com.lehnade.mbia.memory.MediaFixtures;
 import com.lehnade.mbia.memory.MemoryFixtures;
 import java.util.UUID;
 import org.junit.jupiter.api.BeforeEach;
@@ -62,6 +63,7 @@ class CreateStoryMemoryApiTest extends ApiTestSupport {
                     json.assertThat().extractingPath("$.caption").isNull();
                     json.assertThat().extractingPath("$.media").isNull();
                     json.assertThat().extractingPath("$.takenAt").isNull();
+                    json.assertThat().extractingPath("$.photos").asArray().isEmpty();
                     json.assertThat().extractingPath("$.relatedPersons[*].id").asArray()
                             .containsExactly(grandmother.toString(), mother.toString());
                     json.assertThat().extractingPath("$.relatedPersons[*].displayName").asArray()
@@ -194,6 +196,36 @@ class CreateStoryMemoryApiTest extends ApiTestSupport {
                 "x".repeat(50_001), mother));
         assertThat(memories.createStory(family.admin(), family.familyId(), "x".repeat(250), "x".repeat(50_000),
                 mother)).hasStatus(HttpStatus.CREATED);
+    }
+
+    // --- Photos: attached from PR-41 (Phase 4 plan) ---
+
+    @ParameterizedTest
+    @ValueSource(strings = {"[]", "[{\"mediaAssetId\": \"%s\"}]"})
+    void photosCannotBeAttachedYet(String photos) {
+        UUID photo = MediaFixtures.insertRow(jdbc, family.familyId(), families().userId(family.admin()),
+                "MEMORY_PHOTO", "READY");
+        String json = """
+                {"title": "Titre", "content": "Texte", "relatedPersonIds": ["%s"], "photos": %s}
+                """.formatted(mother, photos.formatted(photo));
+
+        MvcTestResult result = memories.createStory(family.admin(), family.familyId(), json);
+
+        assertValidationFailed(result);
+        assertThat(result).bodyJson().extractingPath("$.fieldErrors[0].field").isEqualTo("photos");
+        assertThat(jdbc.sql("SELECT count(*) FROM memory_photos WHERE family_id = ?").param(family.familyId())
+                .query(Long.class).single()).isZero();
+    }
+
+    @Test
+    void aViewerIsRefusedBeforeThePhotos() {
+        String json = """
+                {"title": "Titre", "content": "Texte", "relatedPersonIds": ["%s"], "photos": []}
+                """.formatted(mother);
+
+        assertThat(memories.createStory(family.viewer(), family.familyId(), json))
+                .hasStatus(HttpStatus.FORBIDDEN)
+                .bodyJson().extractingPath("$.code").isEqualTo("PERMISSION_DENIED");
     }
 
     private static void assertPersonNotFound(MvcTestResult result) {

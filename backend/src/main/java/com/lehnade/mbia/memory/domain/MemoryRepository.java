@@ -1,7 +1,9 @@
 package com.lehnade.mbia.memory.domain;
 
+import java.util.Collection;
 import java.util.List;
 import java.util.Optional;
+import java.util.Set;
 import java.util.UUID;
 
 public interface MemoryRepository {
@@ -37,4 +39,10 @@ public interface MemoryRepository {
     List<Memory> findActiveInFamily(UUID familyId, Optional<MemoryType> type, int page, int size);
 
     long countActiveInFamily(UUID familyId, Optional<MemoryType> type);
+
+    /**
+     * @return among these media assets, those that are the photo of a Memory, whatever its status
+     *     (data-model.md §14bis)
+     */
+    Set<UUID> findPhotosAmong(Collection<UUID> mediaAssetIds);
 }

@@ -6,19 +6,24 @@ import java.util.List;
 import java.util.UUID;
 import org.springframework.stereotype.Component;
 
-/** Builds the {@link FamilyView} of one Family for one of its members, with its current statistics. */
+/**
+ * Builds the {@link FamilyView} of one Family for one of its members, with its current statistics
+ * and limits.
+ */
 @Component
 public class FamilyViews {
 
     private final FamilyMembershipRepository memberships;
     private final FamilyStatsPort stats;
     private final LinkedPersonsPort linkedPersons;
+    private final MemoryLimitsPort memoryLimits;
 
     public FamilyViews(FamilyMembershipRepository memberships, FamilyStatsPort stats,
-            LinkedPersonsPort linkedPersons) {
+            LinkedPersonsPort linkedPersons, MemoryLimitsPort memoryLimits) {
         this.memberships = memberships;
         this.stats = stats;
         this.linkedPersons = linkedPersons;
+        this.memoryLimits = memoryLimits;
     }
 
     public FamilyView of(Family family, UUID memberUserId, FamilyRole myRole) {
@@ -27,6 +32,11 @@ public class FamilyViews {
         UUID myLinkedPersonId = linkedPersons.linkedPersonIds(memberUserId, List.of(familyId)).get(familyId);
         return new FamilyView(familyId, family.name(), myRole, myLinkedPersonId,
                 new FamilyStats(counts.personCount(), counts.memoryCount(), memberships.countActive(family.id())),
-                family.version(), family.createdAt(), family.updatedAt());
+                limits(), family.version(), family.createdAt(), family.updatedAt());
+    }
+
+    /** The limits of every Family: application settings, the same for all. */
+    public FamilyLimits limits() {
+        return new FamilyLimits(memoryLimits.maxPhotosPerMemory());
     }
 }

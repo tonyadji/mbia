@@ -7,6 +7,7 @@ import com.lehnade.mbia.genealogy.application.RelatedPersons;
 import com.lehnade.mbia.identity.application.CurrentUser;
 import com.lehnade.mbia.identity.application.CurrentUserAccessor;
 import com.lehnade.mbia.memory.application.MemoryAuthors;
+import com.lehnade.mbia.memory.application.MemoryPhotos;
 import com.lehnade.mbia.memory.application.MemoryView;
 import com.lehnade.mbia.memory.domain.Memory;
 import com.lehnade.mbia.memory.domain.MemoryId;
@@ -50,6 +51,9 @@ public class CreateStoryMemoryUseCase {
     public MemoryView create(CreateStoryMemoryCommand command) {
         CurrentUser caller = currentUserAccessor.currentUser();
         familyAccess.requireRole(command.familyId(), FamilyRole.ADMIN, FamilyRole.CONTRIBUTOR);
+        if (command.withPhotos()) {
+            throw MemoryPhotos.notAvailableYet();
+        }
 
         Instant now = clock.instant();
         Memory memory = Memory.createStory(MemoryId.newId(), command.familyId(), command.title(),

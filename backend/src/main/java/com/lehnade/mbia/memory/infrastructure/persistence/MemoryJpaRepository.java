@@ -53,4 +53,8 @@ interface MemoryJpaRepository extends JpaRepository<MemoryJpaEntity, UUID> {
     /** Each row is {@code [id, display_name, status]}. */
     @Query(nativeQuery = true, value = "SELECT id, display_name, status FROM users WHERE id IN (:userIds)")
     List<Object[]> findAuthors(Collection<UUID> userIds);
+
+    @Query(nativeQuery = true,
+            value = "SELECT media_asset_id FROM memory_photos WHERE media_asset_id IN (:mediaAssetIds)")
+    List<UUID> findPhotosAmong(Collection<UUID> mediaAssetIds);
 }

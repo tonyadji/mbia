@@ -1,7 +1,7 @@
 openapi: 3.1.0
 info:
   title: Mbia API
-  version: 0.2.0
+  version: 0.3.0
   summary: REST contract for the Mbia commercial MVP
   description: |
     Contract-first API for Mbia, a private collaborative family heritage platform.
@@ -985,6 +985,10 @@ paths:
         - name: type
           in: query
           required: false
+          deprecated: true
+          description: |
+            Deprecated (OQ-042): every Memory is a `STORY`. `STORY` lists all Memories,
+            `PHOTO` none.
           schema:
             $ref: '#/components/schemas/MemoryType'
         - $ref: '#/components/parameters/Page'
@@ -1008,6 +1012,10 @@ paths:
       tags: [Memories]
       operationId: createPhotoMemory
       summary: Create a photo memory from an already uploaded READY media asset
+      deprecated: true
+      description: |
+        Deprecated (OQ-042): photos belong to a story (`createStoryMemory`, `photos`).
+        Always answers 404 `RESOURCE_NOT_FOUND`.
       requestBody:
         required: true
         content:
@@ -1037,7 +1045,18 @@ paths:
     post:
       tags: [Memories]
       operationId: createStoryMemory
-      summary: Create a written family story
+      summary: Create a family story, with a title, a text and up to a few photos
+      description: |
+        ADMIN or CONTRIBUTOR (VIEWER: 403 `PERMISSION_DENIED`). The title is required; the text
+        is required when the Memory has no photo (400 `VALIDATION_FAILED`). Each photo is a READY
+        `MEMORY_PHOTO` asset uploaded by the caller and used nowhere else; photos keep the order
+        of the list (OQ-042). A related Person unknown, of another Family or MERGED returns 404
+        `PERSON_NOT_FOUND`, an ARCHIVED one 409 `PERSON_NOT_ACTIVE`. A photo asset unknown or of
+        another Family returns 404 `MEDIA_NOT_FOUND`; another member's upload 403
+        `PERMISSION_DENIED`; another purpose or the same asset twice 400 `VALIDATION_FAILED`; an
+        asset not READY 409 `MEDIA_NOT_READY`; an asset already used 409 `MEDIA_ALREADY_USED`;
+        more photos than `FamilyResponse.limits.maxPhotosPerMemory` 409
+        `MEMORY_PHOTO_LIMIT_REACHED`. Memory, Persons and photos are stored in one transaction.
       requestBody:
         required: true
         content:
@@ -1058,6 +1077,10 @@ paths:
           $ref: '#/components/responses/BadRequest'
         '403':
           $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
 
   /families/{familyId}/memories/{memoryId}:
     parameters:
@@ -1096,6 +1119,13 @@ paths:
         Person (400 `VALIDATION_FAILED`, OQ-043); a Person newly added must be ACTIVE (409
         `PERSON_NOT_ACTIVE`), while an archived Person already on the Memory may stay (OQ-035). An unknown, other-Family or ARCHIVED Memory returns
         404 `MEMORY_NOT_FOUND` (OQ-037).
+        `photos` is the complete new list of photos (OQ-042): photos already on the Memory keep
+        their position whatever their order in the list, new ones are added after them in list
+        order, missing ones are removed (their asset becomes ARCHIVED). New photos follow the
+        rules of `createStoryMemory`; more photos than the limit after an addition returns 409
+        `MEMORY_PHOTO_LIMIT_REACHED`, while a Memory above a lowered limit may still be changed
+        without adding a photo. A Memory left without text and without photo returns 400
+        `VALIDATION_FAILED`.
       parameters:
         - $ref: '#/components/parameters/IfMatch'
       requestBody:
@@ -1175,6 +1205,11 @@ paths:
       tags: [Media]
       operationId: createMediaUpload
       summary: Create a pre-signed direct upload for an image
+      description: |
+        ADMIN or CONTRIBUTOR (VIEWER: 403 `PERMISSION_DENIED`). The purpose is `PROFILE_PICTURE`
+        for a Person's photo or `MEMORY_PHOTO` for a photo of a Memory (OQ-040, OQ-042). An
+        upload not completed within 24 hours, or completed but attached nowhere 24 hours after,
+        is removed (OQ-036).
       requestBody:
         required: true
         content:
@@ -1445,6 +1480,19 @@ components:
           type: integer
           minimum: 0
 
+    FamilyLimits:
+      type: object
+      description: Limits the API enforces in this Family (application settings).
+      required: [maxPhotosPerMemory]
+      properties:
+        maxPhotosPerMemory:
+          type: integer
+          minimum: 1
+          maximum: 10
+          description: |
+            Maximum number of photos of a Memory, enforced on every addition (OQ-042).
+            A Memory above a lowered limit keeps its photos.
+
     FamilySummary:
       type: object
       required: [id, name, myRole, stats]
@@ -1467,12 +1515,14 @@ components:
       allOf:
         - $ref: '#/components/schemas/FamilySummary'
         - type: object
-          required: [version, createdAt, updatedAt]
+          required: [version, createdAt, updatedAt, limits]
           properties:
             version:
               type: integer
               format: int64
               minimum: 0
+            limits:
+              $ref: '#/components/schemas/FamilyLimits'
             createdAt:
               type: string
               format: date-time
@@ -2116,6 +2166,7 @@ components:
 
     MemoryType:
       type: string
+      description: Every Memory is a `STORY` (OQ-042); `PHOTO` is deprecated and never returned.
       enum: [PHOTO, STORY]
 
     MemoryStatus:
@@ -2148,6 +2199,7 @@ components:
         - type
         - status
         - relatedPersons
+        - photos
         - createdBy
         - createdAt
         - updatedAt
@@ -2167,13 +2219,24 @@ components:
           type: [string, 'null']
         content:
           type: [string, 'null']
+        photos:
+          type: array
+          description: The photos of the Memory in position order (order of addition); empty without photo.
+          items:
+            $ref: '#/components/schemas/MemoryPhotoResponse'
         caption:
           type: [string, 'null']
+          deprecated: true
+          description: Deprecated (OQ-042), always null. Each photo has its own `caption`.
         media:
+          deprecated: true
+          description: Deprecated (OQ-042), always null. See `photos`.
           oneOf:
             - $ref: '#/components/schemas/MediaAssetResponse'
             - type: 'null'
         takenAt:
+          deprecated: true
+          description: Deprecated (OQ-042), always null. Each photo has its own `takenAt`.
           oneOf:
             - $ref: '#/components/schemas/PartialDate'
             - type: 'null'
@@ -2194,8 +2257,54 @@ components:
           type: integer
           format: int64
 
+    MemoryPhotoInput:
+      type: object
+      required: [mediaAssetId]
+      properties:
+        mediaAssetId:
+          type: string
+          format: uuid
+          description: A READY `MEMORY_PHOTO` asset uploaded by the caller, or a photo already on the Memory.
+        caption:
+          type: [string, 'null']
+          maxLength: 5000
+        takenAt:
+          oneOf:
+            - $ref: '#/components/schemas/PartialDate'
+            - type: 'null'
+
+    MemoryPhotoResponse:
+      type: object
+      required: [mediaAssetId, url, thumbnailUrl]
+      properties:
+        mediaAssetId:
+          type: string
+          format: uuid
+        caption:
+          type: [string, 'null']
+        takenAt:
+          oneOf:
+            - $ref: '#/components/schemas/PartialDate'
+            - type: 'null'
+        url:
+          type: string
+          format: uri
+          description: Display derivative (long edge ≤ 2048 px). Pre-signed, valid 60 minutes.
+        thumbnailUrl:
+          type: string
+          format: uri
+          description: Thumbnail derivative (long edge ≤ 480 px). Pre-signed, valid 60 minutes.
+        widthPx:
+          type: [integer, 'null']
+          description: Width of the display derivative.
+        heightPx:
+          type: [integer, 'null']
+          description: Height of the display derivative.
+
     CreatePhotoMemoryRequest:
       type: object
+      deprecated: true
+      description: Deprecated (OQ-042), see `createPhotoMemory`.
       required: [mediaAssetId, relatedPersonIds]
       properties:
         mediaAssetId:
@@ -2218,16 +2327,23 @@ components:
 
     CreateStoryMemoryRequest:
       type: object
-      required: [title, content, relatedPersonIds]
+      required: [title, relatedPersonIds]
       properties:
         title:
           type: string
           minLength: 1
           maxLength: 250
         content:
-          type: string
+          type: [string, 'null']
           minLength: 1
           maxLength: 50000
+          description: Not blank when present; required when the Memory has no photo.
+        photos:
+          type: array
+          maxItems: 10
+          description: The photos, in this order. At most `FamilyResponse.limits.maxPhotosPerMemory`.
+          items:
+            $ref: '#/components/schemas/MemoryPhotoInput'
         relatedPersonIds:
           type: array
           minItems: 1
@@ -2247,10 +2363,23 @@ components:
         content:
           type: [string, 'null']
           maxLength: 50000
+          description: |
+            `null` or `""` empties the text, allowed only if a photo remains (OQ-042).
+        photos:
+          type: array
+          maxItems: 10
+          description: |
+            The complete new list of photos; absent means unchanged (OQ-008). See `updateMemory`.
+          items:
+            $ref: '#/components/schemas/MemoryPhotoInput'
         caption:
           type: [string, 'null']
           maxLength: 5000
+          deprecated: true
+          description: Deprecated (OQ-042), rejected with 400 `VALIDATION_FAILED`. See `photos`.
         takenAt:
+          deprecated: true
+          description: Deprecated (OQ-042), rejected with 400 `VALIDATION_FAILED`. See `photos`.
           oneOf:
             - $ref: '#/components/schemas/PartialDate'
             - type: 'null'
@@ -2447,6 +2576,7 @@ components:
             - MEDIA_ALREADY_USED
             - MEDIA_NOT_FOUND
             - MEMORY_NOT_FOUND
+            - MEMORY_PHOTO_LIMIT_REACHED
             - VALIDATION_FAILED
             - INTERNAL_ERROR
             - AUTHENTICATION_REQUIRED

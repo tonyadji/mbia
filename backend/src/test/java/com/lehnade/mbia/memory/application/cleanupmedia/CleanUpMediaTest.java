@@ -12,6 +12,7 @@ import com.lehnade.mbia.genealogy.PersonFixtures;
 import com.lehnade.mbia.memory.MediaFixtures;
 import com.lehnade.mbia.memory.MediaFixtures.Slot;
 import com.lehnade.mbia.memory.MediaImages;
+import com.lehnade.mbia.memory.MemoryFixtures;
 import java.net.URI;
 import java.sql.Timestamp;
 import java.time.Duration;
@@ -27,9 +28,10 @@ import software.amazon.awssdk.services.s3.S3Client;
 import software.amazon.awssdk.services.s3.model.S3Exception;
 
 /**
- * PR-36: the scheduled cleanup removes the uploads that will never be shown, PENDING_UPLOAD after
- * 24 hours and READY still unattached 24 hours after {@code ready_at}, and never touches an
- * attached photo (ADR-007 §4; data-model.md §13; OQ-036).
+ * PR-36, PR-40: the scheduled cleanup removes the uploads that will never be shown, PENDING_UPLOAD
+ * after 24 hours and READY still unattached 24 hours after {@code ready_at}, Person photos and
+ * Memory photos alike, and never touches an attached photo (ADR-007 §4; data-model.md §13, §14bis;
+ * OQ-036, OQ-042).
  */
 class CleanUpMediaTest extends ApiTestSupport {
 
@@ -129,6 +131,45 @@ class CleanUpMediaTest extends ApiTestSupport {
     }
 
     @Test
+    void aMemoryPhotoNeverAttachedIsRemovedLikeAProfilePicture() {
+        Slot pending = memoryPhotoUploaded();
+        Slot old = memoryPhotoCompleted();
+        Slot recent = memoryPhotoCompleted();
+        backdate("created_at", pending.mediaAssetId(), MORE_THAN_A_DAY);
+        backdate("ready_at", old.mediaAssetId(), MORE_THAN_A_DAY);
+        backdate("ready_at", recent.mediaAssetId(), Duration.ofHours(23));
+
+        cleanUpMedia.cleanUp();
+
+        assertThat(media.row(pending.mediaAssetId())).containsEntry("status", "FAILED")
+                .containsEntry("failure_reason", "UPLOAD_EXPIRED");
+        assertNotStored(pending, "upload");
+        assertThat(media.row(old.mediaAssetId())).containsEntry("status", "FAILED")
+                .containsEntry("failure_reason", "NEVER_ATTACHED");
+        assertNotStored(old, "display");
+        assertNotStored(old, "thumbnail");
+        assertThat(media.row(recent.mediaAssetId())).containsEntry("status", "READY");
+        assertStored(recent, "display");
+    }
+
+    @Test
+    void aPhotoOfAMemoryIsNeverTouched() {
+        MemoryFixtures memories = new MemoryFixtures(mvc, jdbc);
+        UUID person = new PersonFixtures(mvc, jdbc).createId(family.admin(), family.familyId(),
+                "{\"firstName\": \"Awa\"}");
+        UUID memory = memories.createStoryId(family.contributor(), family.familyId(), person);
+        Slot photo = memoryPhotoCompleted();
+        memories.insertPhoto(family.familyId(), memory, photo.mediaAssetId(), 1);
+        backdate("ready_at", photo.mediaAssetId(), Duration.ofDays(30));
+
+        cleanUpMedia.cleanUp();
+
+        assertThat(media.row(photo.mediaAssetId())).containsEntry("status", "READY");
+        assertStored(photo, "display");
+        assertStored(photo, "thumbnail");
+    }
+
+    @Test
     void failedAndArchivedAssetsAreLeftAsTheyAre() {
         Slot failed = media.uploaded(family.admin(), family.familyId(), "image/jpeg",
                 fixture(MediaImages.TEXT_RENAMED_JPG));
@@ -160,6 +201,17 @@ class CleanUpMediaTest extends ApiTestSupport {
 
     private Slot completed() {
         Slot slot = uploaded();
+        assertThat(media.complete(family.contributor(), family.familyId(), slot.mediaAssetId())).hasStatusOk();
+        return slot;
+    }
+
+    private Slot memoryPhotoUploaded() {
+        return media.uploaded(family.contributor(), family.familyId(), "MEMORY_PHOTO", "image/png",
+                fixture(MediaImages.PNG_WITH_GPS));
+    }
+
+    private Slot memoryPhotoCompleted() {
+        Slot slot = memoryPhotoUploaded();
         assertThat(media.complete(family.contributor(), family.familyId(), slot.mediaAssetId())).hasStatusOk();
         return slot;
     }

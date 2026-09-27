@@ -17,8 +17,8 @@ import org.springframework.transaction.annotation.Transactional;
 
 /**
  * Opens a direct upload of an image to object storage (openapi {@code createMediaUpload};
- * technical-specification.md §16; data-model.md §13; ADR-004). ADMIN or CONTRIBUTOR only. Only
- * Person photos are uploaded in this iteration (Phase 3 plan §3.3). The asset is stored
+ * technical-specification.md §16; data-model.md §13; ADR-004). ADMIN or CONTRIBUTOR only. A
+ * Person's photo and a Memory photo follow the same pipeline (OQ-042). The asset is stored
  * {@code PENDING_UPLOAD} and a pre-signed {@code PUT} is returned; completion and processing are
  * {@code completeMediaUpload} (ADR-007). Media operations are not audited (data-model.md §17).
  */

@@ -33,6 +33,7 @@ import java.time.Instant;
 import java.time.OffsetDateTime;
 import java.time.ZoneOffset;
 import java.util.HashSet;
+import java.util.List;
 import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
@@ -41,8 +42,9 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.RestController;
 
 /**
- * Memories of a Family. Only stories exist in this iteration (Phase 3 plan §3.1): photo Memories
- * wait for OQ-042 and answer like a route that does not exist yet ({@code RESOURCE_NOT_FOUND}).
+ * Memories of a Family. Every Memory is a story (OQ-042): the deprecated photo Memories answer like
+ * a route that does not exist ({@code RESOURCE_NOT_FOUND}). Photos of a Memory are not attached yet
+ * (Phase 4 plan, PR-40): {@code photos} is always empty.
  */
 @RestController
 class MemoriesController implements MemoriesApi {
@@ -68,7 +70,7 @@ class MemoriesController implements MemoriesApi {
     @Override
     public ResponseEntity<MemoryResponse> createStoryMemory(UUID familyId, CreateStoryMemoryRequest request) {
         MemoryView memory = createStoryMemory.create(new CreateStoryMemoryCommand(familyId, request.getTitle(),
-                request.getContent(), request.getRelatedPersonIds()));
+                request.getContent(), request.getRelatedPersonIds(), request.getPhotos() != null));
         return ResponseEntity.status(HttpStatus.CREATED)
                 .eTag(ETags.of(memory.memory().version()))
                 .body(toResponse(memory));
@@ -113,7 +115,7 @@ class MemoriesController implements MemoriesApi {
         MemoryView memory = updateMemory.update(new UpdateMemoryCommand(familyId, memoryId,
                 ETags.parseIfMatch(ifMatch), Optional.ofNullable(request.getTitle()),
                 Optional.ofNullable(request.getContent()), Optional.ofNullable(request.getRelatedPersonIds()),
-                photoFields));
+                photoFields, request.getPhotos() != null));
         return ResponseEntity.ok().eTag(ETags.of(memory.memory().version())).body(toResponse(memory));
     }
 
@@ -132,6 +134,7 @@ class MemoriesController implements MemoriesApi {
         Memory memory = view.memory();
         return new MemoryResponse(memory.id().value(), memory.familyId(), MemoryType.valueOf(memory.type().name()),
                 MemoryStatus.valueOf(memory.status().name()),
+                List.of(),
                 view.relatedPersons().stream()
                         .map(person -> new RelatedPersonReference(person.id(), person.displayName(),
                                 PersonStatus.valueOf(person.status().name()))

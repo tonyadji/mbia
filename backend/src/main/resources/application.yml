@@ -51,6 +51,9 @@ mbia:
   media:
     # Interval between two runs of the cleanup of expired uploads and unattached photos (ADR-007 §4, OQ-036).
     cleanup-interval: PT1H
+  memory:
+    # Maximum number of photos of a Memory, between 1 and 10: startup fails outside (Phase 4 plan §3.5, OQ-042).
+    max-photos: ${MBIA_MEMORY_MAX_PHOTOS:3}
 
 ---
 # Structured JSON logs everywhere except local development (technical-specification.md §19).

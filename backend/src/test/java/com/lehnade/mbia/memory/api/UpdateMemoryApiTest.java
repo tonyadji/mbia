@@ -6,6 +6,7 @@ import com.lehnade.mbia.ApiTestSupport;
 import com.lehnade.mbia.TestJwts;
 import com.lehnade.mbia.family.FamilyFixtures.FamilyWithMembers;
 import com.lehnade.mbia.genealogy.PersonFixtures;
+import com.lehnade.mbia.memory.MediaFixtures;
 import com.lehnade.mbia.memory.MemoryFixtures;
 import java.util.Set;
 import java.util.UUID;
@@ -57,6 +58,7 @@ class UpdateMemoryApiTest extends ApiTestSupport {
                     json.assertThat().extractingPath("$.title").isEqualTo("Le marché central");
                     json.assertThat().extractingPath("$.content").isEqualTo("Elle vendait du plantain.\nEt du manioc.");
                     json.assertThat().extractingPath("$.version").isEqualTo(1);
+                    json.assertThat().extractingPath("$.photos").asArray().isEmpty();
                     json.assertThat().extractingPath("$.relatedPersons[0].id").isEqualTo(grandmother.toString());
                 });
         assertThat(memories.row(contributorsMemory)).containsEntry("version", 1L);
@@ -157,6 +159,26 @@ class UpdateMemoryApiTest extends ApiTestSupport {
                     .isEqualTo(body.contains("caption") ? "caption" : "takenAt");
         });
         assertThat(memories.row(contributorsMemory)).containsEntry("version", 0L);
+    }
+
+    /** Photos are changed from PR-42 (Phase 4 plan): until then, {@code photos} is refused. */
+    @ParameterizedTest
+    @ValueSource(strings = {
+            "{\"photos\": []}",
+            "{\"title\": \"Le marché\", \"photos\": [{\"mediaAssetId\": \"%s\"}]}"})
+    void photosCannotBeChangedYet(String template) {
+        UUID photo = MediaFixtures.insertRow(jdbc, family.familyId(), families().userId(family.admin()),
+                "MEMORY_PHOTO", "READY");
+
+        MvcTestResult result = update(family.admin(), contributorsMemory, "\"0\"", template.formatted(photo));
+
+        assertThat(result).hasStatus(HttpStatus.BAD_REQUEST).bodyJson().satisfies(json -> {
+            json.assertThat().extractingPath("$.code").isEqualTo("VALIDATION_FAILED");
+            json.assertThat().extractingPath("$.fieldErrors[0].field").isEqualTo("photos");
+        });
+        assertThat(memories.row(contributorsMemory)).containsEntry("version", 0L);
+        assertThat(jdbc.sql("SELECT count(*) FROM memory_photos WHERE family_id = ?").param(family.familyId())
+                .query(Long.class).single()).isZero();
     }
 
     @ParameterizedTest

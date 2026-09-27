@@ -9,4 +9,4 @@ import java.util.UUID;
  * @param myLinkedPersonId the member's linked Person in this Family, {@code null} when none
  */
 public record FamilyView(UUID id, String name, FamilyRole myRole, UUID myLinkedPersonId, FamilyStats stats,
-        long version, Instant createdAt, Instant updatedAt) {}
+        FamilyLimits limits, long version, Instant createdAt, Instant updatedAt) {}

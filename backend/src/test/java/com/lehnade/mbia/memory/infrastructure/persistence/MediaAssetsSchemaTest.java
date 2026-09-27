@@ -16,8 +16,8 @@ import org.junit.jupiter.params.provider.ValueSource;
 import org.springframework.dao.DataIntegrityViolationException;
 
 /**
- * V008: the database is the last guard of data-model.md §13 invariants and of the Person photo
- * foreign key (§10). Only Person photos exist in this iteration (Phase 3 plan §3.3).
+ * V008, V009: the database is the last guard of data-model.md §13 invariants and of the Person
+ * photo foreign key (§10). Person photos and Memory photos are the two purposes (OQ-042).
  */
 class MediaAssetsSchemaTest extends ApiTestSupport {
 
@@ -37,9 +37,17 @@ class MediaAssetsSchemaTest extends ApiTestSupport {
         assertThatCode(() -> insert(familyId, UUID.randomUUID())).doesNotThrowAnyException();
     }
 
+    @Test
+    void aMemoryPhotoIsAccepted() {
+        UUID id = insert(familyId, UUID.randomUUID());
+
+        assertThatCode(() -> jdbc.sql("UPDATE media_assets SET purpose = 'MEMORY_PHOTO' WHERE id = ?").param(id)
+                .update()).doesNotThrowAnyException();
+    }
+
     @ParameterizedTest
     @ValueSource(strings = {
-            "purpose = 'MEMORY_PHOTO'",
+            "purpose = 'ALBUM_PHOTO'",
             "status = 'DELETED'",
             "upload_size_bytes = 0",
             "upload_size_bytes = 15728641",

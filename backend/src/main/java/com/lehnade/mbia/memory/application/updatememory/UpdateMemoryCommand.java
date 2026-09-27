@@ -10,6 +10,9 @@ import java.util.UUID;
  * @param expectedVersion the version the change was built from ({@code If-Match})
  * @param photoFields the fields of a photo Memory present in the request ({@code caption},
  *     {@code takenAt}), refused on a story (OQ-037)
+ * @param withPhotos whether the request carries {@code photos}, refused until photos can be changed
+ *     (Phase 4 plan, PR-40)
  */
 public record UpdateMemoryCommand(UUID familyId, UUID memoryId, long expectedVersion, Optional<String> title,
-        Optional<String> content, Optional<Set<UUID>> relatedPersonIds, Set<String> photoFields) {}
+        Optional<String> content, Optional<Set<UUID>> relatedPersonIds, Set<String> photoFields,
+        boolean withPhotos) {}
