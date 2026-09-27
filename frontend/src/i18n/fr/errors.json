@@ -22,5 +22,6 @@
   "INVITATION_ALREADY_PENDING": "Une invitation pour cette personne est déjà en attente. Renouvelez-la plutôt.",
   "INVITATION_ALREADY_USED": "Cette invitation a déjà été utilisée.",
   "INVITATION_REVOKED": "Cette invitation a été révoquée.",
-  "INVITATION_NOT_FOUND": "Cette invitation est introuvable."
+  "INVITATION_NOT_FOUND": "Cette invitation est introuvable.",
+  "LAST_ADMIN_REQUIRED": "Une famille doit toujours garder son administrateur : il ne peut ni la quitter ni en être retiré."
 }
