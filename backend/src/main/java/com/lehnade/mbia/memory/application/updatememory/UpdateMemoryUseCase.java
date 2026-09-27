@@ -5,6 +5,7 @@ import com.lehnade.mbia.genealogy.application.RelatedPersons;
 import com.lehnade.mbia.identity.application.CurrentUserAccessor;
 import com.lehnade.mbia.memory.application.MemoryAuthors;
 import com.lehnade.mbia.memory.application.MemoryEditors;
+import com.lehnade.mbia.memory.application.MemoryPhotoViews;
 import com.lehnade.mbia.memory.application.MemoryPhotos;
 import com.lehnade.mbia.memory.application.MemoryView;
 import com.lehnade.mbia.memory.domain.Memory;
@@ -20,6 +21,7 @@ import java.util.Collection;
 import java.util.Comparator;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.UUID;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -43,17 +45,19 @@ public class UpdateMemoryUseCase {
     private final MemoryRepository memories;
     private final RelatedPersons relatedPersons;
     private final MemoryAuthors authors;
+    private final MemoryPhotoViews photoViews;
     private final AuditLog auditLog;
     private final Clock clock;
 
     public UpdateMemoryUseCase(CurrentUserAccessor currentUserAccessor, MemoryEditors editors,
-            MemoryRepository memories, RelatedPersons relatedPersons, MemoryAuthors authors, AuditLog auditLog,
-            Clock clock) {
+            MemoryRepository memories, RelatedPersons relatedPersons, MemoryAuthors authors,
+            MemoryPhotoViews photoViews, AuditLog auditLog, Clock clock) {
         this.currentUserAccessor = currentUserAccessor;
         this.editors = editors;
         this.memories = memories;
         this.relatedPersons = relatedPersons;
         this.authors = authors;
+        this.photoViews = photoViews;
         this.auditLog = auditLog;
         this.clock = clock;
     }
@@ -84,7 +88,7 @@ public class UpdateMemoryUseCase {
 
         Memory updated = memories.update(changed);
         audit(memory, updated, callerId, now);
-        return MemoryView.of(updated, persons, authors.author(updated.createdBy()));
+        return MemoryView.of(updated, persons, authors.author(updated.createdBy()), photoViews.of(updated));
     }
 
     /** The new Persons, when they change: at least one stays ACTIVE (OQ-035, OQ-043). */
@@ -102,7 +106,7 @@ public class UpdateMemoryUseCase {
         for (String field : List.of("title", "content")) {
             boolean changed = field.equals("title")
                     ? !before.title().equals(after.title())
-                    : !before.content().equals(after.content());
+                    : !Objects.equals(before.content(), after.content());
             if (changed) {
                 // Only the name of the field: family texts are never copied into the audit.
                 append(after, callerId, Map.of(), Map.of("field", field), now);
@@ -130,6 +134,6 @@ public class UpdateMemoryUseCase {
 
     private MemoryView view(Memory memory) {
         return MemoryView.of(memory, relatedPersons.describe(memory.familyId(), memory.relatedPersonIds()).values(),
-                authors.author(memory.createdBy()));
+                authors.author(memory.createdBy()), photoViews.of(memory));
     }
 }

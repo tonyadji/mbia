@@ -89,7 +89,13 @@ public final class MediaFixtures {
      * (a JPEG fixture): its derivatives exist in storage.
      */
     public UUID readyPhoto(TestJwts.Token token, UUID familyId) {
-        Slot slot = uploaded(token, familyId, "image/jpeg", MediaImages.fixture(MediaImages.JPEG_ORIENTATION_6));
+        return readyPhoto(token, familyId, "PROFILE_PICTURE");
+    }
+
+    /** A READY photo of this purpose, as {@link #readyPhoto(TestJwts.Token, UUID)}. */
+    public UUID readyPhoto(TestJwts.Token token, UUID familyId, String purpose) {
+        Slot slot = uploaded(token, familyId, purpose, "image/jpeg",
+                MediaImages.fixture(MediaImages.JPEG_ORIENTATION_6));
         assertThat(complete(token, familyId, slot.mediaAssetId())).hasStatusOk();
         return slot.mediaAssetId();
     }

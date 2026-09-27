@@ -32,8 +32,11 @@ class ListFamilyMemoriesSmokeTest extends ApiTestSupport {
 
     private static final int COUNT = 250;
 
-    /** Current User, membership, page, count, Persons of the page, Persons' details, authors. */
-    private static final long MAX_STATEMENTS = 7;
+    /**
+     * Current User, membership, page, count, Persons of the page, Persons' details, authors, photos of
+     * the page (PR-41; none here, so their assets are not read).
+     */
+    private static final long MAX_STATEMENTS = 8;
 
     @Autowired
     EntityManagerFactory entityManagerFactory;

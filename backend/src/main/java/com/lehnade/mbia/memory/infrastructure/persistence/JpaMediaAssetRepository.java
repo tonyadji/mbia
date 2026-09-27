@@ -7,6 +7,7 @@ import com.lehnade.mbia.memory.domain.MediaFailureReason;
 import com.lehnade.mbia.memory.domain.MediaPurpose;
 import com.lehnade.mbia.memory.domain.MediaStatus;
 import java.time.Instant;
+import java.util.Collection;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
@@ -34,6 +35,14 @@ class JpaMediaAssetRepository implements MediaAssetRepository {
     @Override
     public Optional<MediaAsset> lockInFamily(UUID familyId, MediaAssetId id) {
         return jpa.lockByIdAndFamilyId(id.value(), familyId).map(JpaMediaAssetRepository::toDomain);
+    }
+
+    @Override
+    public List<MediaAsset> findAllInFamily(UUID familyId, Collection<UUID> ids) {
+        if (ids.isEmpty()) {
+            return List.of();
+        }
+        return jpa.findByFamilyIdAndIdIn(familyId, ids).stream().map(JpaMediaAssetRepository::toDomain).toList();
     }
 
     @Override

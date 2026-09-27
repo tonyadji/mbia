@@ -1,11 +1,13 @@
 package com.lehnade.mbia.memory.application.createstorymemory;
 
+import com.lehnade.mbia.memory.domain.MemoryPhoto;
+import java.util.List;
 import java.util.Set;
 import java.util.UUID;
 
 /**
- * @param withPhotos whether the request carries {@code photos}, refused until photos can be attached
- *     (Phase 4 plan, PR-40)
+ * @param content {@code null} when the story has no text, allowed only with a photo
+ * @param photos in the order of the request; empty when there is none
  */
 public record CreateStoryMemoryCommand(UUID familyId, String title, String content, Set<UUID> relatedPersonIds,
-        boolean withPhotos) {}
+        List<MemoryPhoto.New> photos) {}

@@ -3,17 +3,21 @@ package com.lehnade.mbia.memory.domain;
 import com.lehnade.mbia.shared.domain.DomainException;
 import com.lehnade.mbia.shared.domain.FieldValidationException;
 import java.time.Instant;
+import java.util.ArrayList;
 import java.util.Collection;
+import java.util.Comparator;
+import java.util.HashSet;
+import java.util.List;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
 
 /**
- * A Family Memory linked to one or more Persons (mvp.md §17, data-model.md §14, §15). In this
- * iteration every Memory is a STORY: a title and a written text, both required (Phase 3 plan
- * §3.1). The status of the related Persons is checked by the use cases, since it belongs to the
- * genealogy module.
+ * A Family Memory linked to one or more Persons (mvp.md §17, data-model.md §14, §14bis, §15). Every
+ * Memory is a STORY: a title, a text and 0 to a few photos; the text is required when it has no
+ * photo (OQ-042). The status of the related Persons, the photo limit and the media assets are
+ * checked by the use cases.
  */
 public final class Memory {
 
@@ -27,6 +31,7 @@ public final class Memory {
     private final String title;
     private final String content;
     private final Set<UUID> relatedPersonIds;
+    private final List<MemoryPhoto> photos;
     private final UUID createdBy;
     private final UUID updatedBy;
     private final Instant createdAt;
@@ -34,15 +39,16 @@ public final class Memory {
     private final long version;
 
     private Memory(MemoryId id, UUID familyId, MemoryType type, MemoryStatus status, String title, String content,
-            Collection<UUID> relatedPersonIds, UUID createdBy, UUID updatedBy, Instant createdAt, Instant updatedAt,
-            long version) {
+            Collection<UUID> relatedPersonIds, List<MemoryPhoto> photos, UUID createdBy, UUID updatedBy,
+            Instant createdAt, Instant updatedAt, long version) {
         this.id = Objects.requireNonNull(id, "id");
         this.familyId = Objects.requireNonNull(familyId, "familyId");
         this.type = Objects.requireNonNull(type, "type");
         this.status = Objects.requireNonNull(status, "status");
         this.title = Objects.requireNonNull(title, "title");
-        this.content = Objects.requireNonNull(content, "content");
+        this.content = content;
         this.relatedPersonIds = Set.copyOf(relatedPersonIds);
+        this.photos = photos.stream().sorted(Comparator.comparingInt(MemoryPhoto::position)).toList();
         this.createdBy = Objects.requireNonNull(createdBy, "createdBy");
         this.updatedBy = Objects.requireNonNull(updatedBy, "updatedBy");
         this.createdAt = Objects.requireNonNull(createdAt, "createdAt");
@@ -52,14 +58,23 @@ public final class Memory {
 
     /**
      * A new ACTIVE story. The title is trimmed; the text is kept as written, line breaks included.
+     * The photos take the positions 1 to n in the given order (data-model.md §14bis).
      *
-     * @throws DomainException {@code VALIDATION_FAILED} when the title or the text is missing,
-     *     blank or too long, or when no Person is related
+     * @param content {@code null} for a Memory without text, allowed only with a photo
+     * @throws DomainException {@code VALIDATION_FAILED} when the title is missing, blank or too
+     *     long, when the text is blank or too long, or missing without a photo, when no Person is
+     *     related, or when a photo is given twice or has a caption too long
      */
     public static Memory createStory(MemoryId id, UUID familyId, String title, String content,
-            Collection<UUID> relatedPersonIds, UUID createdBy, Instant now) {
-        return new Memory(id, familyId, MemoryType.STORY, MemoryStatus.ACTIVE, validTitle(title),
-                validContent(content), validPersons(relatedPersonIds), createdBy, createdBy, now, now, 0);
+            Collection<UUID> relatedPersonIds, List<MemoryPhoto.New> photos, UUID createdBy, Instant now) {
+        String validTitle = validTitle(title);
+        List<MemoryPhoto> numbered = validPhotos(photos);
+        if (content == null && numbered.isEmpty()) {
+            throw invalid("content", "NOT_BLANK", "A memory without photo needs a story.");
+        }
+        return new Memory(id, familyId, MemoryType.STORY, MemoryStatus.ACTIVE, validTitle,
+                content == null ? null : validContent(content), validPersons(relatedPersonIds), numbered, createdBy,
+                createdBy, now, now, 0);
     }
 
     /**
@@ -75,18 +90,18 @@ public final class Memory {
         String newTitle = title.map(Memory::validTitle).orElse(this.title);
         String newContent = content.map(Memory::validContent).orElse(this.content);
         Set<UUID> newPersons = relatedPersonIds.map(Memory::validPersons).orElse(this.relatedPersonIds);
-        if (newTitle.equals(this.title) && newContent.equals(this.content)
+        if (newTitle.equals(this.title) && Objects.equals(newContent, this.content)
                 && newPersons.equals(this.relatedPersonIds)) {
             return this;
         }
-        return new Memory(id, familyId, type, status, newTitle, newContent, newPersons, createdBy, updatedBy,
-                createdAt, now, version);
+        return new Memory(id, familyId, type, status, newTitle, newContent, newPersons, photos, createdBy,
+                updatedBy, createdAt, now, version);
     }
 
     /** This Memory, ARCHIVED: hidden everywhere, kept for support (mvp.md §17). */
     public Memory archive(UUID archivedBy, Instant now) {
-        return new Memory(id, familyId, type, MemoryStatus.ARCHIVED, title, content, relatedPersonIds, createdBy,
-                archivedBy, createdAt, now, version);
+        return new Memory(id, familyId, type, MemoryStatus.ARCHIVED, title, content, relatedPersonIds, photos,
+                createdBy, archivedBy, createdAt, now, version);
     }
 
     public boolean isCreatedBy(UUID userId) {
@@ -123,12 +138,30 @@ public final class Memory {
         return Set.copyOf(relatedPersonIds);
     }
 
+    /** Each asset once; a blank caption is no caption (data-model.md §14bis). */
+    private static List<MemoryPhoto> validPhotos(List<MemoryPhoto.New> photos) {
+        Set<MediaAssetId> seen = new HashSet<>();
+        List<MemoryPhoto> numbered = new ArrayList<>();
+        for (MemoryPhoto.New photo : photos) {
+            if (!seen.add(photo.mediaAssetId())) {
+                throw invalid("photos", "UNIQUE", "The same photo is given twice.");
+            }
+            String caption = photo.caption() == null || photo.caption().isBlank() ? null : photo.caption();
+            if (caption != null && caption.length() > MemoryPhoto.CAPTION_MAX_LENGTH) {
+                throw invalid("photos", "SIZE",
+                        "A caption must not exceed " + MemoryPhoto.CAPTION_MAX_LENGTH + " characters.");
+            }
+            numbered.add(new MemoryPhoto(photo.mediaAssetId(), numbered.size() + 1, caption, photo.takenAt()));
+        }
+        return numbered;
+    }
+
     /** Rebuilds a stored Memory. */
     public static Memory restore(MemoryId id, UUID familyId, MemoryType type, MemoryStatus status, String title,
-            String content, Set<UUID> relatedPersonIds, UUID createdBy, UUID updatedBy, Instant createdAt,
-            Instant updatedAt, long version) {
-        return new Memory(id, familyId, type, status, title, content, relatedPersonIds, createdBy, updatedBy,
-                createdAt, updatedAt, version);
+            String content, Set<UUID> relatedPersonIds, List<MemoryPhoto> photos, UUID createdBy, UUID updatedBy,
+            Instant createdAt, Instant updatedAt, long version) {
+        return new Memory(id, familyId, type, status, title, content, relatedPersonIds, photos, createdBy,
+                updatedBy, createdAt, updatedAt, version);
     }
 
     private static DomainException invalid(String field, String fieldCode, String detail) {
@@ -155,6 +188,7 @@ public final class Memory {
         return title;
     }
 
+    /** {@code null} for a Memory without text, which has a photo. */
     public String content() {
         return content;
     }
@@ -162,6 +196,11 @@ public final class Memory {
     /** No duplicate, at least one (data-model.md §15). */
     public Set<UUID> relatedPersonIds() {
         return relatedPersonIds;
+    }
+
+    /** In position order, the order of addition (data-model.md §14bis). */
+    public List<MemoryPhoto> photos() {
+        return photos;
     }
 
     public UUID createdBy() {

@@ -6,6 +6,7 @@ import com.lehnade.mbia.family.FamilyFixtures;
 import java.sql.Timestamp;
 import java.time.Instant;
 import java.util.Arrays;
+import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
@@ -43,6 +44,35 @@ public final class MemoryFixtures {
                 {"title": "%s", "content": "%s", "relatedPersonIds": [%s]}
                 """.formatted(title, content, Arrays.stream(relatedPersonIds)
                 .map(id -> "\"" + id + "\"").collect(Collectors.joining(", "))));
+    }
+
+    /**
+     * A story with these photos, given as the JSON items of {@code photos}.
+     *
+     * @param content without JSON escaping, or {@code null} for a story without text
+     */
+    public MvcTestResult createStoryWithPhotos(TestJwts.Token token, UUID familyId, String content,
+            List<String> photos, UUID... relatedPersonIds) {
+        return createStory(token, familyId, """
+                {"title": "Le marché", "content": %s, "photos": [%s], "relatedPersonIds": [%s]}
+                """.formatted(content == null ? "null" : "\"" + content + "\"", String.join(", ", photos),
+                Arrays.stream(relatedPersonIds).map(id -> "\"" + id + "\"").collect(Collectors.joining(", "))));
+    }
+
+    /** The JSON of a photo without caption nor taken date. */
+    public static String photo(UUID mediaAssetId) {
+        return "{\"mediaAssetId\": \"" + mediaAssetId + "\"}";
+    }
+
+    /** @return the ids of the photos of the Memory, in position order */
+    public List<UUID> photos(UUID memoryId) {
+        return jdbc.sql("SELECT media_asset_id FROM memory_photos WHERE memory_id = ? ORDER BY position")
+                .param(memoryId).query(UUID.class).list();
+    }
+
+    public long countPhotos(UUID familyId) {
+        return jdbc.sql("SELECT count(*) FROM memory_photos WHERE family_id = ?").param(familyId)
+                .query(Long.class).single();
     }
 
     /** @return the id of a story created by {@code token}, which must be allowed to create it */
@@ -109,11 +139,7 @@ public final class MemoryFixtures {
         return id;
     }
 
-    /** Sets when the Memory was added, to test the list order. */
-    /**
-     * A photo of a Memory written straight to the database (data-model.md §14bis), before the API
-     * can attach one (Phase 4 plan, PR-40).
-     */
+    /** A photo of a Memory written straight to the database (data-model.md §14bis), for large fixtures. */
     public void insertPhoto(UUID familyId, UUID memoryId, UUID mediaAssetId, int position) {
         jdbc.sql("""
                 INSERT INTO memory_photos (family_id, memory_id, media_asset_id, position, created_at)
@@ -121,6 +147,7 @@ public final class MemoryFixtures {
                 """).params(familyId, memoryId, mediaAssetId, position).update();
     }
 
+    /** Sets when the Memory was added, to test the list order. */
     public void createdAt(UUID memoryId, Instant createdAt) {
         jdbc.sql("UPDATE memories SET created_at = ? WHERE id = ?").params(Timestamp.from(createdAt), memoryId)
                 .update();

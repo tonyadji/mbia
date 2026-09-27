@@ -2,6 +2,7 @@ package com.lehnade.mbia.memory.infrastructure.persistence;
 
 import jakarta.persistence.LockModeType;
 import java.time.Instant;
+import java.util.Collection;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
@@ -14,6 +15,8 @@ interface MediaAssetJpaRepository extends JpaRepository<MediaAssetJpaEntity, UUI
     @Lock(LockModeType.PESSIMISTIC_WRITE)
     @Query("SELECT m FROM MediaAssetJpaEntity m WHERE m.id = :id AND m.familyId = :familyId")
     Optional<MediaAssetJpaEntity> lockByIdAndFamilyId(UUID id, UUID familyId);
+
+    List<MediaAssetJpaEntity> findByFamilyIdAndIdIn(UUID familyId, Collection<UUID> ids);
 
     @Query(nativeQuery = true, value = """
             SELECT m.*
