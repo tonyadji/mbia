@@ -18,5 +18,9 @@
   "MEDIA_INVALID": "This file cannot be used as a photo. Choose another one.",
   "MEDIA_NOT_READY": "This photo is not ready yet. Choose it again.",
   "MEDIA_ALREADY_USED": "This photo is already used. Choose it again.",
-  "MEDIA_NOT_FOUND": "This photo cannot be found. Choose it again."
+  "MEDIA_NOT_FOUND": "This photo cannot be found. Choose it again.",
+  "INVITATION_ALREADY_PENDING": "An invitation for this person is already waiting. Renew it instead.",
+  "INVITATION_ALREADY_USED": "This invitation has already been used.",
+  "INVITATION_REVOKED": "This invitation was revoked.",
+  "INVITATION_NOT_FOUND": "This invitation cannot be found."
 }

@@ -1,0 +1,52 @@
+{
+  "invite": {
+    "title": "Inviter un proche",
+    "titlePerson": "Inviter {{name}}",
+    "intro": "Mbia crée un lien que vous envoyez vous-même, par exemple sur WhatsApp.",
+    "role": "Permission",
+    "roles": {
+      "CONTRIBUTOR": "Peut contribuer",
+      "VIEWER": "Lecture seule"
+    },
+    "roleHelp": {
+      "CONTRIBUTOR": "Peut ajouter des personnes, des liens et des souvenirs.",
+      "VIEWER": "Peut consulter la famille, sans rien modifier."
+    },
+    "submit": "Créer le lien",
+    "notAdmin": "Seul l'administrateur de la famille peut inviter des proches.",
+    "backToProfile": "Retour au profil de {{name}}",
+    "cannot": {
+      "linked": "{{name}} est déjà lié(e) à un membre de la famille : il n'y a personne à inviter.",
+      "deceased": "{{name}} est indiqué(e) comme décédé(e) : cette personne ne peut pas être invitée.",
+      "inactive": "{{name}} a été archivé(e) ou fusionné(e) : cette personne ne peut pas être invitée.",
+      "pending": "Une invitation pour {{name}} est déjà en attente. Renouvelez-la depuis son profil pour obtenir un nouveau lien."
+    }
+  },
+  "share": {
+    "done": "Le lien est prêt",
+    "link": "Lien d'invitation",
+    "copy": "Copier le lien",
+    "copied": "Lien copié.",
+    "copyFailed": "Le lien n'a pas pu être copié. Sélectionnez-le et copiez-le vous-même.",
+    "share": "Partager",
+    "message": "Message à envoyer",
+    "withPerson": "{{inviter}} t'invite dans la famille {{family}} sur Mbia, ton profil {{person}} t'y attend : {{link}}",
+    "withoutPerson": "{{inviter}} t'invite dans la famille {{family}} sur Mbia : {{link}}",
+    "once": "Ce lien ne fonctionne qu'une fois et expire dans 14 jours.",
+    "notShownAgain": "Il ne sera plus affiché : si besoin, renouvelez l'invitation pour obtenir un nouveau lien.",
+    "inviteSomeoneElse": "Inviter quelqu'un d'autre"
+  },
+  "profile": {
+    "invite": "Inviter {{name}}",
+    "pending": "Invitation en attente",
+    "expires": "Expire le {{date}}",
+    "renew": "Renouveler",
+    "renewFor": "Renouveler l'invitation de {{name}}",
+    "renewed": "Nouveau lien créé. L'ancien lien ne fonctionne plus.",
+    "refused": {
+      "INVITATION_ALREADY_USED": "Cette invitation vient d'être utilisée : {{name}} a sans doute rejoint la famille.",
+      "INVITATION_REVOKED": "Cette invitation a été révoquée.",
+      "CONCURRENT_MODIFICATION": "Cette invitation a changé entre-temps. Vérifiez-la et réessayez."
+    }
+  }
+}

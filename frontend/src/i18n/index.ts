@@ -4,6 +4,7 @@ import enAuth from './en/auth.json';
 import enCommon from './en/common.json';
 import enErrors from './en/errors.json';
 import enFamily from './en/family.json';
+import enInvitation from './en/invitation.json';
 import enMemory from './en/memory.json';
 import enPerson from './en/person.json';
 import enSettings from './en/settings.json';
@@ -12,6 +13,7 @@ import frAuth from './fr/auth.json';
 import frCommon from './fr/common.json';
 import frErrors from './fr/errors.json';
 import frFamily from './fr/family.json';
+import frInvitation from './fr/invitation.json';
 import frMemory from './fr/memory.json';
 import frPerson from './fr/person.json';
 import frSettings from './fr/settings.json';
@@ -27,6 +29,7 @@ export const resources = {
     auth: frAuth,
     settings: frSettings,
     family: frFamily,
+    invitation: frInvitation,
     memory: frMemory,
     person: frPerson,
     tree: frTree,
@@ -37,6 +40,7 @@ export const resources = {
     auth: enAuth,
     settings: enSettings,
     family: enFamily,
+    invitation: enInvitation,
     memory: enMemory,
     person: enPerson,
     tree: enTree,
@@ -55,7 +59,7 @@ void i18n.use(initReactI18next).init({
   lng: detectLanguage(null, navigator.languages),
   fallbackLng: DEFAULT_LANGUAGE,
   supportedLngs: SUPPORTED_LANGUAGES,
-  ns: ['common', 'errors', 'auth', 'settings', 'family', 'memory', 'person', 'tree'],
+  ns: ['common', 'errors', 'auth', 'settings', 'family', 'invitation', 'memory', 'person', 'tree'],
   defaultNS,
   interpolation: { escapeValue: false },
 });
