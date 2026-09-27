@@ -2,34 +2,25 @@ package com.lehnade.mbia.memory.application.createstorymemory;
 
 import com.lehnade.mbia.family.application.FamilyAccess;
 import com.lehnade.mbia.family.application.FamilyRole;
-import com.lehnade.mbia.genealogy.application.ProfilePictures;
 import com.lehnade.mbia.genealogy.application.RelatedPerson;
 import com.lehnade.mbia.genealogy.application.RelatedPersons;
 import com.lehnade.mbia.identity.application.CurrentUser;
 import com.lehnade.mbia.identity.application.CurrentUserAccessor;
 import com.lehnade.mbia.memory.application.MemoryAuthors;
 import com.lehnade.mbia.memory.application.MemoryPhotoViews;
+import com.lehnade.mbia.memory.application.MemoryPhotos;
 import com.lehnade.mbia.memory.application.MemorySettings;
 import com.lehnade.mbia.memory.application.MemoryView;
-import com.lehnade.mbia.memory.domain.MediaAsset;
-import com.lehnade.mbia.memory.domain.MediaAssetId;
-import com.lehnade.mbia.memory.domain.MediaAssetRepository;
-import com.lehnade.mbia.memory.domain.MediaPurpose;
 import com.lehnade.mbia.memory.domain.Memory;
 import com.lehnade.mbia.memory.domain.MemoryId;
 import com.lehnade.mbia.memory.domain.MemoryPhoto;
 import com.lehnade.mbia.memory.domain.MemoryRepository;
 import com.lehnade.mbia.shared.application.audit.AuditEntry;
 import com.lehnade.mbia.shared.application.audit.AuditLog;
-import com.lehnade.mbia.shared.domain.DomainException;
-import com.lehnade.mbia.shared.domain.ErrorCode;
 import java.time.Clock;
 import java.time.Instant;
-import java.util.Comparator;
-import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
-import java.util.Set;
 import java.util.UUID;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -52,24 +43,21 @@ public class CreateStoryMemoryUseCase {
     private final CurrentUserAccessor currentUserAccessor;
     private final FamilyAccess familyAccess;
     private final RelatedPersons relatedPersons;
-    private final ProfilePictures profilePictures;
     private final MemoryRepository memories;
-    private final MediaAssetRepository mediaAssets;
+    private final MemoryPhotos memoryPhotos;
     private final MemoryPhotoViews photoViews;
     private final MemorySettings settings;
     private final AuditLog auditLog;
     private final Clock clock;
 
     public CreateStoryMemoryUseCase(CurrentUserAccessor currentUserAccessor, FamilyAccess familyAccess,
-            RelatedPersons relatedPersons, ProfilePictures profilePictures, MemoryRepository memories,
-            MediaAssetRepository mediaAssets, MemoryPhotoViews photoViews, MemorySettings settings,
-            AuditLog auditLog, Clock clock) {
+            RelatedPersons relatedPersons, MemoryRepository memories, MemoryPhotos memoryPhotos,
+            MemoryPhotoViews photoViews, MemorySettings settings, AuditLog auditLog, Clock clock) {
         this.currentUserAccessor = currentUserAccessor;
         this.familyAccess = familyAccess;
         this.relatedPersons = relatedPersons;
-        this.profilePictures = profilePictures;
         this.memories = memories;
-        this.mediaAssets = mediaAssets;
+        this.memoryPhotos = memoryPhotos;
         this.photoViews = photoViews;
         this.settings = settings;
         this.auditLog = auditLog;
@@ -85,11 +73,11 @@ public class CreateStoryMemoryUseCase {
         Memory memory = Memory.createStory(MemoryId.newId(), command.familyId(), command.title(),
                 command.content(), command.relatedPersonIds(), command.photos(), caller.id(), now);
         if (memory.photos().size() > settings.maxPhotos()) {
-            throw new DomainException(ErrorCode.MEMORY_PHOTO_LIMIT_REACHED,
-                    "A memory can have at most " + settings.maxPhotos() + " photos.");
+            throw MemoryPhotos.limitReached(settings.maxPhotos());
         }
         List<RelatedPerson> persons = relatedPersons.requireLinkable(memory.familyId(), memory.relatedPersonIds());
-        requireAttachable(memory, caller.id());
+        memoryPhotos.requireAttachable(memory.familyId(),
+                memory.photos().stream().map(MemoryPhoto::mediaAssetId).toList(), caller.id());
 
         memories.insert(memory);
         List<UUID> photoIds = memory.photos().stream().map(photo -> photo.mediaAssetId().value()).toList();
@@ -100,34 +88,5 @@ public class CreateStoryMemoryUseCase {
                 now));
         return MemoryView.of(memory, persons, new MemoryAuthors.Author(caller.id(), caller.displayName(), false),
                 photoViews.of(memory));
-    }
-
-    /**
-     * Locks the photo assets, in id order so that two requests cannot deadlock, until the end of the
-     * transaction: the media cleanup and another attachment wait, then see them attached (OQ-036).
-     *
-     * @throws DomainException {@code MEDIA_NOT_FOUND} for an asset unknown or of another Family,
-     *     then as {@link MediaAsset#requireAttachableBy}, then {@code MEDIA_ALREADY_USED} for an
-     *     asset that is the photo of a Memory or of a Person
-     */
-    private void requireAttachable(Memory memory, UUID callerId) {
-        List<MediaAssetId> ids = memory.photos().stream()
-                .map(MemoryPhoto::mediaAssetId)
-                .sorted(Comparator.comparing(id -> id.value().toString()))
-                .toList();
-        for (MediaAssetId id : ids) {
-            mediaAssets.lockInFamily(memory.familyId(), id)
-                    .orElseThrow(MediaAsset::notFound)
-                    .requireAttachableBy(callerId, MediaPurpose.MEMORY_PHOTO, "photos");
-        }
-        if (ids.isEmpty()) {
-            return;
-        }
-        List<UUID> values = ids.stream().map(MediaAssetId::value).toList();
-        Set<UUID> used = new HashSet<>(memories.findPhotosAmong(values));
-        used.addAll(profilePictures.inUse(values));
-        if (!used.isEmpty()) {
-            throw new DomainException(ErrorCode.MEDIA_ALREADY_USED, "This photo is already used.");
-        }
     }
 }

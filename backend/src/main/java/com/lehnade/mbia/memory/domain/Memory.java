@@ -6,8 +6,10 @@ import java.time.Instant;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Comparator;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.Set;
@@ -68,7 +70,12 @@ public final class Memory {
     public static Memory createStory(MemoryId id, UUID familyId, String title, String content,
             Collection<UUID> relatedPersonIds, List<MemoryPhoto.New> photos, UUID createdBy, Instant now) {
         String validTitle = validTitle(title);
-        List<MemoryPhoto> numbered = validPhotos(photos);
+        List<MemoryPhoto.New> valid = validPhotos(photos);
+        List<MemoryPhoto> numbered = new ArrayList<>();
+        for (MemoryPhoto.New photo : valid) {
+            numbered.add(new MemoryPhoto(photo.mediaAssetId(), numbered.size() + 1, photo.caption(),
+                    photo.takenAt()));
+        }
         if (content == null && numbered.isEmpty()) {
             throw invalid("content", "NOT_BLANK", "A memory without photo needs a story.");
         }
@@ -78,24 +85,52 @@ public final class Memory {
     }
 
     /**
-     * This story with the given changes; an absent value keeps the current one (OQ-008). The
-     * version is the one read: the repository increments it when writing.
+     * This story with the given changes; an absent value keeps the current one (OQ-008). A blank
+     * text empties it. {@code photos} is the complete new list (OQ-042): a photo already on the
+     * Memory keeps its position whatever its place in the list, with the caption and taken date
+     * given; a new one takes the next position, after every current one, in list order; a missing
+     * one is removed. Positions are never renumbered (data-model.md §14bis). The version is the one
+     * read: the repository increments it when writing.
      *
      * @return this same instance when nothing changes, so that nothing is written
-     * @throws DomainException {@code VALIDATION_FAILED} for a blank or too long title or text, or
-     *     an empty list of Persons
+     * @throws DomainException {@code VALIDATION_FAILED} for a blank or too long title, a too long
+     *     text, an empty list of Persons, a photo given twice or with a caption too long, or a
+     *     Memory left without text and without photo
      */
     public Memory updateStory(Optional<String> title, Optional<String> content,
-            Optional<? extends Collection<UUID>> relatedPersonIds, UUID updatedBy, Instant now) {
+            Optional<? extends Collection<UUID>> relatedPersonIds, Optional<List<MemoryPhoto.New>> photos,
+            UUID updatedBy, Instant now) {
         String newTitle = title.map(Memory::validTitle).orElse(this.title);
-        String newContent = content.map(Memory::validContent).orElse(this.content);
+        // Not Optional.map: a text emptied to null would fall back to the current one.
+        String newContent = content.isEmpty() ? this.content
+                : content.get().isBlank() ? null : validContent(content.get());
         Set<UUID> newPersons = relatedPersonIds.map(Memory::validPersons).orElse(this.relatedPersonIds);
+        List<MemoryPhoto> newPhotos = photos.map(this::mergedPhotos).orElse(this.photos);
+        if (newContent == null && newPhotos.isEmpty()) {
+            throw content.isPresent() && this.content != null
+                    ? invalid("content", "NOT_BLANK", "A memory without photo needs a story.")
+                    : invalid("photos", "NOT_EMPTY", "A memory without story needs a photo.");
+        }
         if (newTitle.equals(this.title) && Objects.equals(newContent, this.content)
-                && newPersons.equals(this.relatedPersonIds)) {
+                && newPersons.equals(this.relatedPersonIds) && newPhotos.equals(this.photos)) {
             return this;
         }
-        return new Memory(id, familyId, type, status, newTitle, newContent, newPersons, photos, createdBy,
+        return new Memory(id, familyId, type, status, newTitle, newContent, newPersons, newPhotos, createdBy,
                 updatedBy, createdAt, now, version);
+    }
+
+    /** In position order, as this Memory's photos, so that an unchanged list compares equal. */
+    private List<MemoryPhoto> mergedPhotos(List<MemoryPhoto.New> photos) {
+        Map<MediaAssetId, MemoryPhoto> current = new HashMap<>();
+        this.photos.forEach(photo -> current.put(photo.mediaAssetId(), photo));
+        int next = this.photos.stream().mapToInt(MemoryPhoto::position).max().orElse(0);
+        List<MemoryPhoto> merged = new ArrayList<>();
+        for (MemoryPhoto.New photo : validPhotos(photos)) {
+            MemoryPhoto kept = current.get(photo.mediaAssetId());
+            merged.add(new MemoryPhoto(photo.mediaAssetId(), kept != null ? kept.position() : ++next,
+                    photo.caption(), photo.takenAt()));
+        }
+        return merged.stream().sorted(Comparator.comparingInt(MemoryPhoto::position)).toList();
     }
 
     /** This Memory, ARCHIVED: hidden everywhere, kept for support (mvp.md §17). */
@@ -139,9 +174,9 @@ public final class Memory {
     }
 
     /** Each asset once; a blank caption is no caption (data-model.md §14bis). */
-    private static List<MemoryPhoto> validPhotos(List<MemoryPhoto.New> photos) {
+    private static List<MemoryPhoto.New> validPhotos(List<MemoryPhoto.New> photos) {
         Set<MediaAssetId> seen = new HashSet<>();
-        List<MemoryPhoto> numbered = new ArrayList<>();
+        List<MemoryPhoto.New> valid = new ArrayList<>();
         for (MemoryPhoto.New photo : photos) {
             if (!seen.add(photo.mediaAssetId())) {
                 throw invalid("photos", "UNIQUE", "The same photo is given twice.");
@@ -151,9 +186,9 @@ public final class Memory {
                 throw invalid("photos", "SIZE",
                         "A caption must not exceed " + MemoryPhoto.CAPTION_MAX_LENGTH + " characters.");
             }
-            numbered.add(new MemoryPhoto(photo.mediaAssetId(), numbered.size() + 1, caption, photo.takenAt()));
+            valid.add(new MemoryPhoto.New(photo.mediaAssetId(), caption, photo.takenAt()));
         }
-        return numbered;
+        return valid;
     }
 
     /** Rebuilds a stored Memory. */

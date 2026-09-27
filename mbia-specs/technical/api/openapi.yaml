@@ -2364,7 +2364,8 @@ components:
           type: [string, 'null']
           maxLength: 50000
           description: |
-            `null` or `""` empties the text, allowed only if a photo remains (OQ-042).
+            An absent or `null` value keeps the text (OQ-008, OQ-049); a blank string empties it,
+            allowed only if a photo remains (OQ-042).
         photos:
           type: array
           maxItems: 10

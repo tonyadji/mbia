@@ -80,7 +80,7 @@ The Phase 4 contract changes are **additive**: `api-breaking` must stay green wi
 | `MemoryPhotoInput` (new) | `mediaAssetId` (uuid, required), `caption` (`[string, null]`, ≤ 5000), `takenAt` (`PartialDate` or null) |
 | `MemoryPhotoResponse` (new) | `mediaAssetId`, `caption`, `takenAt`, `url` (display, pre-signed 60 min), `thumbnailUrl`, `widthPx`, `heightPx`; required: `mediaAssetId`, `url`, `thumbnailUrl` |
 | `CreateStoryMemoryRequest` | `content` no longer required, type `[string, null]` (≤ 50,000, not blank when present); new optional `photos: MemoryPhotoInput[]`, `maxItems: 10` |
-| `UpdateMemoryRequest` | new optional `photos: MemoryPhotoInput[]` (`maxItems: 10`): the complete new list. Absent means unchanged (OQ-008). Photos already on the Memory keep their position whatever their order in the list; new ones are added after them in list order; missing ones are removed. `content: null` or `""` empties the text, allowed only if a photo remains |
+| `UpdateMemoryRequest` | new optional `photos: MemoryPhotoInput[]` (`maxItems: 10`): the complete new list. Absent means unchanged (OQ-008). Photos already on the Memory keep their position whatever their order in the list; new ones are added after them in list order; missing ones are removed. `content: ""` (blank) empties the text, allowed only if a photo remains; `content: null` keeps it (OQ-008, OQ-049) |
 | `MemoryResponse.photos` | `MemoryPhotoResponse[]`, required, in position order, empty for a Memory without photo |
 | `createStoryMemory` responses | document `404` (Person, media) and `409` (`PERSON_NOT_ACTIVE`, `MEDIA_NOT_READY`, `MEDIA_ALREADY_USED`, `MEMORY_PHOTO_LIMIT_REACHED`) |
 | `ProblemDetails.code` | example `MEMORY_PHOTO_LIMIT_REACHED` |

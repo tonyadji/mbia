@@ -52,7 +52,7 @@ import org.springframework.web.bind.annotation.RestController;
 /**
  * Memories of a Family. Every Memory is a story (OQ-042): the deprecated photo Memories answer like
  * a route that does not exist ({@code RESOURCE_NOT_FOUND}). Photos are attached when a story is
- * created; changing them arrives with PR-42 (Phase 4 plan).
+ * created or edited.
  */
 @RestController
 class MemoriesController implements MemoriesApi {
@@ -112,7 +112,10 @@ class MemoriesController implements MemoriesApi {
                 page, size))));
     }
 
-    /** An absent or {@code null} field keeps its value (OQ-008). */
+    /**
+     * An absent or {@code null} field keeps its value, a blank text empties it (OQ-008); {@code photos}
+     * is the complete new list (OQ-042).
+     */
     @Override
     public ResponseEntity<MemoryResponse> updateMemory(String ifMatch, UUID familyId, UUID memoryId,
             UpdateMemoryRequest request) {
@@ -126,7 +129,8 @@ class MemoriesController implements MemoriesApi {
         MemoryView memory = updateMemory.update(new UpdateMemoryCommand(familyId, memoryId,
                 ETags.parseIfMatch(ifMatch), Optional.ofNullable(request.getTitle()),
                 Optional.ofNullable(request.getContent()), Optional.ofNullable(request.getRelatedPersonIds()),
-                photoFields, request.getPhotos() != null));
+                photoFields, Optional.ofNullable(request.getPhotos())
+                        .map(photos -> photos.stream().map(MemoriesController::toNewPhoto).toList())));
         return ResponseEntity.ok().eTag(ETags.of(memory.memory().version())).body(toResponse(memory));
     }
 

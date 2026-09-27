@@ -8,6 +8,7 @@ import com.lehnade.mbia.memory.domain.MemoryRepository;
 import com.lehnade.mbia.memory.domain.MemoryStatus;
 import com.lehnade.mbia.memory.domain.MemoryType;
 import com.lehnade.mbia.memory.domain.TakenDate;
+import java.time.Instant;
 import java.util.Collection;
 import java.util.List;
 import java.util.Map;
@@ -43,9 +44,7 @@ class JpaMemoryRepository implements MemoryRepository {
                 .map(personId -> new MemoryPersonJpaEntity(familyId, memoryId, personId, memory.createdAt()))
                 .toList());
         photos.saveAllAndFlush(memory.photos().stream()
-                .map(photo -> new MemoryPhotoJpaEntity(familyId, memoryId, photo.mediaAssetId().value(),
-                        photo.position(), photo.caption(), photo.takenAt().date(), photo.takenAt().year(),
-                        photo.takenAt().precision().name(), memory.createdAt()))
+                .map(photo -> row(familyId, memoryId, photo, memory.createdAt()))
                 .toList());
     }
 
@@ -77,7 +76,38 @@ class JpaMemoryRepository implements MemoryRepository {
                 .filter(personId -> !linked.contains(personId))
                 .map(personId -> new MemoryPersonJpaEntity(familyId, memoryId, personId, memory.updatedAt()))
                 .toList());
-        return toDomain(jpa.saveAndFlush(entity), memory.relatedPersonIds(), memory.photos());
+        MemoryJpaEntity saved = jpa.saveAndFlush(entity);
+        updatePhotos(memory);
+        return toDomain(saved, memory.relatedPersonIds(), memory.photos());
+    }
+
+    /**
+     * Removes, describes and adds photos after the Memory row is written, so that a concurrent edit
+     * fails on its version first. A new photo takes a position no current row holds (§14bis).
+     */
+    private void updatePhotos(Memory memory) {
+        UUID familyId = memory.familyId();
+        UUID memoryId = memory.id().value();
+        Map<UUID, MemoryPhoto> stored = photos.findByFamilyIdAndMemoryIdIn(familyId, List.of(memoryId)).stream()
+                .map(JpaMemoryRepository::toDomain)
+                .collect(Collectors.toMap(photo -> photo.mediaAssetId().value(), photo -> photo));
+        Set<UUID> kept = memory.photos().stream().map(photo -> photo.mediaAssetId().value())
+                .collect(Collectors.toSet());
+        Set<UUID> removed = stored.keySet().stream().filter(id -> !kept.contains(id)).collect(Collectors.toSet());
+        if (!removed.isEmpty()) {
+            photos.deletePhotos(memoryId, familyId, removed);
+        }
+        for (MemoryPhoto photo : memory.photos()) {
+            MemoryPhoto current = stored.get(photo.mediaAssetId().value());
+            if (current != null && !current.equals(photo)) {
+                photos.describe(memoryId, familyId, photo.mediaAssetId().value(), photo.caption(),
+                        photo.takenAt().date(), photo.takenAt().year(), photo.takenAt().precision().name());
+            }
+        }
+        photos.saveAllAndFlush(memory.photos().stream()
+                .filter(photo -> !stored.containsKey(photo.mediaAssetId().value()))
+                .map(photo -> row(familyId, memoryId, photo, memory.updatedAt()))
+                .toList());
     }
 
     @Override
@@ -137,6 +167,12 @@ class JpaMemoryRepository implements MemoryRepository {
         return Memory.restore(new MemoryId(entity.id()), entity.familyId(), MemoryType.valueOf(entity.type()),
                 MemoryStatus.valueOf(entity.status()), entity.title(), entity.content(), relatedPersonIds, photos,
                 entity.createdBy(), entity.updatedBy(), entity.createdAt(), entity.updatedAt(), entity.version());
+    }
+
+    private static MemoryPhotoJpaEntity row(UUID familyId, UUID memoryId, MemoryPhoto photo, Instant createdAt) {
+        return new MemoryPhotoJpaEntity(familyId, memoryId, photo.mediaAssetId().value(), photo.position(),
+                photo.caption(), photo.takenAt().date(), photo.takenAt().year(), photo.takenAt().precision().name(),
+                createdAt);
     }
 
     private static MemoryPhoto toDomain(MemoryPhotoJpaEntity row) {

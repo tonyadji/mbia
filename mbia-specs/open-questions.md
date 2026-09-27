@@ -537,3 +537,13 @@ When a question is answered, update the relevant spec, then move the entry to **
 - **Recommendation:** A, the rule of OQ-028; a photo stays attached to one Person.
 - **Blocking:** the merge of PR-37.
 - **Answer:** A (human, 2026-09-26). Documented in `data-model.md` §19 and `openapi.yaml` (`mergePerson` description, text only); implemented in PR-37.
+
+### OQ-049 — `content: null` in `updateMemory`
+
+- **Raised by / date:** coding agent (PR-42), 2026-09-27
+- **Context:** the Phase 4 contract describes `UpdateMemoryRequest.content` as "`null` or `""` empties the text" (OQ-042), while OQ-008 says that in every partial update an absent or `null` field is left unchanged and a blank string clears an optional text. The generated server models (`openApiNullable = false`) cannot tell `null` from absent, and `UpdateMemoryApiTest` already checks that `content: null` changes nothing.
+- **Question:** does `content: null` empty the text of a Memory?
+- **Options:** A — no: OQ-008 applies, `null` keeps the text and a blank string empties it (allowed only while a photo remains); the description is corrected, text only / B — yes: `null` empties, which needs `JsonNullable` (a new library, ADR) and changes the rule of OQ-008 for this field.
+- **Recommendation:** A.
+- **Blocking:** the text rule of PR-42.
+- **Answer:** A (human, 2026-09-27). Documented in `openapi.yaml` (`UpdateMemoryRequest.content`, text only); implemented in PR-42.
