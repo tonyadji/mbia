@@ -12,6 +12,7 @@ import { useFamily } from '../families/useFamily';
 import { formatDate } from '../i18n/formatDate';
 import { DEFAULT_LANGUAGE, isSupportedLanguage } from '../i18n/language';
 import { ArchiveMemoryDialog } from '../memories/ArchiveMemoryDialog';
+import { MemoryPhotos } from '../memories/MemoryPhotos';
 import { useArchiveMemory } from '../memories/useArchiveMemory';
 import { useMemory } from '../memories/useMemory';
 import { familyHomePath } from './FamilyHomePage';
@@ -106,10 +107,10 @@ export function MemoryRoute({
 }
 
 /**
- * SCREEN-013 — Memory, for any ACTIVE member: the story's title and full text as plain text with
- * line breaks kept (OQ-032), its Persons (an archived one marked, and a link only for the ADMIN,
- * OQ-035), who added it and when. Its creator or an ADMIN may edit it (SCREEN-014) or archive it
- * after a confirmation (OQ-041).
+ * SCREEN-013 — Memory, for any ACTIVE member: the story's title, its photos stacked in order
+ * (OQ-048), its full text when there is one, as plain text with line breaks kept (OQ-032), its
+ * Persons (an archived one marked, and a link only for the ADMIN, OQ-035), who added it and when.
+ * Its creator or an ADMIN may edit it (SCREEN-014) or archive it after a confirmation (OQ-041).
  */
 export function MemoryPage() {
   return (
@@ -194,8 +195,11 @@ function MemoryView({
       {canChange && (
         <MemoryActions familyId={familyId} memory={memory} reload={reload} onArchived={leave} />
       )}
+      <MemoryPhotos photos={memory.photos} language={language} />
       {/* Plain text: rendered as a text node, never as HTML or Markdown (OQ-032). */}
-      <p className="text-body break-words whitespace-pre-wrap text-text">{memory.content}</p>
+      {memory.content?.trim() && (
+        <p className="text-body break-words whitespace-pre-wrap text-text">{memory.content}</p>
+      )}
       <section aria-labelledby="memory-persons" className="flex flex-col gap-2">
         <h2 id="memory-persons" className="text-section text-text">
           {t('screen.persons')}

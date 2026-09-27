@@ -86,7 +86,13 @@
       "back": "Retour à la famille"
     },
     "edit": "Modifier",
-    "archive": "Archiver"
+    "archive": "Archiver",
+    "photos": {
+      "label": "Photos",
+      "alt": "Photo {{n}} sur {{total}}",
+      "takenAt": "Prise : {{date}}",
+      "unavailable": "Cette photo ne peut pas être affichée pour le moment."
+    }
   },
   "saved": "Vos modifications de « {{title}} » ont été enregistrées.",
   "edit": {

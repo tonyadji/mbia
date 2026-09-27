@@ -75,6 +75,7 @@ function memory(overrides: Record<string, unknown> = {}) {
     id: MEMORY_ID,
     familyId: ADJI_ID,
     type: 'STORY',
+    photos: [],
     status: 'ACTIVE',
     title: 'Le marché de Yaoundé',
     content: 'Grand-mère vendait du plantain.',

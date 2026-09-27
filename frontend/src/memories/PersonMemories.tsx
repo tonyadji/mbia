@@ -49,7 +49,8 @@ export function PersonMemories({
               <li key={memory.id}>
                 <MemoryCard
                   title={memory.title ?? ''}
-                  content={memory.content ?? ''}
+                  content={memory.content ?? null}
+                  thumbnailUrl={memory.photos[0]?.thumbnailUrl ?? null}
                   to={memoryPath(familyId, memory.id)}
                 />
               </li>

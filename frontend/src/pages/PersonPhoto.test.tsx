@@ -482,6 +482,7 @@ describe('Person photo screens', () => {
               id: MEMORY_ID,
               familyId: ADJI_ID,
               type: 'STORY',
+              photos: [],
               status: 'ACTIVE',
               title: 'Le marché',
               content: 'Une histoire.',

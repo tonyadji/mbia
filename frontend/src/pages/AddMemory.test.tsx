@@ -1,4 +1,6 @@
+import { QueryClientProvider } from '@tanstack/react-query';
 import { act, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
+import type { ReactNode } from 'react';
 import { createMemoryRouter, MemoryRouter } from 'react-router';
 import { App } from '../app/App';
 import { createQueryClient } from '../app/queryClient';
@@ -89,6 +91,7 @@ function memoryFrom(body: { title: string; content: string; relatedPersonIds: st
     id: MEMORY_ID,
     familyId: ADJI_ID,
     type: 'STORY',
+    photos: [],
     status: 'ACTIVE',
     title: body.title,
     content: body.content,
@@ -430,9 +433,17 @@ describe('MemoryCard', () => {
       <MemoryCard
         title="Le marché"
         content={'Chaque samedi,\n<b>grand-mère</b> allait au marché.'}
+        thumbnailUrl={null}
         to="/families/f/memories/m"
       />,
-      { wrapper: MemoryRouter },
+      {
+        // The card reloads an expired thumbnail through the query client.
+        wrapper: ({ children }: { children: ReactNode }) => (
+          <QueryClientProvider client={createQueryClient()}>
+            <MemoryRouter>{children}</MemoryRouter>
+          </QueryClientProvider>
+        ),
+      },
     );
     const card = screen.getByRole('link', { name: /Le marché/ });
     expect(card).toHaveAttribute('href', '/families/f/memories/m');
