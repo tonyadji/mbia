@@ -1,9 +1,11 @@
+import { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Link, useLocation, useParams } from 'react-router';
+import { Link, useLocation, useNavigate, useParams } from 'react-router';
 import { ApiError } from '../api/client';
 import { AccountLink } from '../components/AccountLink';
 import { buttonClassName } from '../components/Button';
 import { ErrorState } from '../components/ErrorState';
+import { IconButton } from '../components/IconButton';
 import { NavigationBar } from '../components/NavigationBar';
 import { Skeleton } from '../components/Skeleton';
 import { useFamily } from '../families/useFamily';
@@ -30,12 +32,14 @@ export interface FamilyHomeState {
    * `existing` when a Person already in the Family was linked rather than added.
    */
   personAdded?: { id: string; name: string; self: boolean; linkedTo?: string; existing?: boolean };
+  /** The first arrival after joining the Family (SCREEN-010): the welcome is shown once. */
+  joined?: boolean;
 }
 
 /**
  * SCREEN-002 — Family Home: the Person and Memory counts, the search entry (SCREEN-007),
  * `View family tree` as primary action, then `Add a relative` and `Add a memory`. No activity in
- * Phase 3 (phase-3-family-memories.md §3.2).
+ * Phase 3 (phase-3-family-memories.md §3.2). The welcome after joining comes first (OQ-050).
  */
 export function FamilyHomePage() {
   const { familyId = '' } = useParams();
@@ -64,6 +68,7 @@ function FamilyContent({ family }: { family: Family }) {
   const state = useLocation().state as FamilyHomeState | null;
   const created = state?.created === true;
   const personAdded = state?.personAdded;
+  const joined = useJoinedOnce(state);
   const canAddPersons = family.myRole === 'ADMIN' || family.myRole === 'CONTRIBUTOR';
   const isEmpty = family.stats.personCount === 0;
 
@@ -82,6 +87,7 @@ function FamilyContent({ family }: { family: Family }) {
         </div>
         <AccountLink />
       </header>
+      {joined && <JoinedWelcome family={family} />}
       {created && (
         <p role="status" className="rounded-xl border border-border bg-surface px-4 py-3 text-body">
           {t('home.created', { name: family.name })}
@@ -139,6 +145,78 @@ function FamilyContent({ family }: { family: Family }) {
         </>
       )}
     </>
+  );
+}
+
+/**
+ * `joined` of the navigation state, read once: it is removed from the history entry at once, so the
+ * welcome is not shown again on reload or when coming back (SCREEN-002, "shown once").
+ */
+function useJoinedOnce(state: FamilyHomeState | null) {
+  const navigate = useNavigate();
+  const { pathname } = useLocation();
+  const [joined] = useState(state?.joined === true);
+
+  useEffect(() => {
+    if (state?.joined) {
+      void navigate(pathname, { replace: true, state: { ...state, joined: undefined } });
+    }
+  }, [state, navigate, pathname]);
+  return joined;
+}
+
+/**
+ * "Welcome to the {familyName} family" on the first arrival after joining (SCREEN-002, OQ-050):
+ * `View the family tree`, centred on the member's Person when linked, and `Add a memory` for a
+ * CONTRIBUTOR. It can be closed.
+ */
+function JoinedWelcome({ family }: { family: Family }) {
+  const { t } = useTranslation('family');
+  const [open, setOpen] = useState(true);
+  if (!open) return null;
+  return (
+    <section
+      aria-labelledby="joined-welcome"
+      className="flex flex-col gap-3 rounded-xl border border-border bg-surface px-4 py-3"
+    >
+      <div className="flex items-start justify-between gap-3">
+        <h2 id="joined-welcome" className="text-section break-words text-text">
+          {t('home.welcome.title', { name: family.name })}
+        </h2>
+        <IconButton
+          label={t('home.welcome.close')}
+          onClick={() => {
+            setOpen(false);
+          }}
+        >
+          <svg
+            aria-hidden="true"
+            viewBox="0 0 24 24"
+            className="size-5"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="2"
+            strokeLinecap="round"
+          >
+            <path d="M6 6l12 12M18 6 6 18" />
+          </svg>
+        </IconButton>
+      </div>
+      <Link
+        to={familyTreePath(family.id, family.myLinkedPersonId ?? undefined)}
+        className={buttonClassName('primary', 'sm:w-auto sm:self-start')}
+      >
+        {t('home.welcome.viewTree')}
+      </Link>
+      {family.myRole === 'CONTRIBUTOR' && (
+        <Link
+          to={addMemoryPath(family.id)}
+          className={buttonClassName('secondary', 'sm:w-auto sm:self-start')}
+        >
+          {t('home.addMemory')}
+        </Link>
+      )}
+    </section>
   );
 }
 

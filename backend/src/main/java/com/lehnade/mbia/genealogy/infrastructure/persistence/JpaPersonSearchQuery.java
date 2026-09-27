@@ -20,12 +20,22 @@ class JpaPersonSearchQuery implements PersonSearchQuery {
 
     @Override
     public Result search(UUID familyId, PersonStatus status, String text, int page, int size) {
+        return search(familyId, status, false, text, page, size);
+    }
+
+    @Override
+    public Result searchClaimable(UUID familyId, String text, int page, int size) {
+        return search(familyId, PersonStatus.ACTIVE, true, text, page, size);
+    }
+
+    private Result search(UUID familyId, PersonStatus status, boolean unlinkedOnly, String text, int page,
+            int size) {
         String pattern = "%" + escapeLike(text) + "%";
         return new Result(
-                persons.search(familyId, status.name(), pattern, size, (long) page * size).stream()
+                persons.search(familyId, status.name(), unlinkedOnly, pattern, size, (long) page * size).stream()
                         .map(JpaPersonRepository::toDomain)
                         .toList(),
-                persons.countSearch(familyId, status.name(), pattern));
+                persons.countSearch(familyId, status.name(), unlinkedOnly, pattern));
     }
 
     /** The typed text matches literally: {@code %} and {@code _} are not wildcards. */

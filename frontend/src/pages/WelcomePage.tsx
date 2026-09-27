@@ -1,15 +1,22 @@
 import { useTranslation } from 'react-i18next';
-import { useNavigate } from 'react-router';
+import { Navigate, useNavigate } from 'react-router';
 import { CREATE_FAMILY_PATH, HOME_PATH, useAuth } from '../auth/AuthProvider';
 import { Button } from '../components/Button';
 import { Logo } from '../components/Logo';
+import { invitationPath, pendingInvitation } from '../invitations/pendingInvitation';
 
-/** SCREEN-001 — Welcome (public). */
+/**
+ * SCREEN-001 — Welcome (public). While an invitation is pending in this browser, it leads back to
+ * it: the email verification page of Keycloak sends the User here (mvp.md §18, OQ-050).
+ */
 export function WelcomePage() {
   const { t } = useTranslation('auth');
   const { user, signIn, signUp } = useAuth();
   const navigate = useNavigate();
   const signedIn = user !== null;
+  const invitation = pendingInvitation();
+
+  if (invitation !== null) return <Navigate to={invitationPath(invitation)} replace />;
 
   return (
     <div className="flex flex-1 flex-col gap-6">

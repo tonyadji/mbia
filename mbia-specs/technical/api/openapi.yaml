@@ -514,6 +514,40 @@ paths:
         '409':
           $ref: '#/components/responses/Conflict'
 
+  /families/{familyId}/claimable-persons:
+    parameters:
+      - $ref: '#/components/parameters/FamilyId'
+    get:
+      tags: [Persons]
+      operationId: listClaimablePersons
+      summary: List the persons the current user can claim as "me", each with one parent
+      description: |
+        Any ACTIVE member, VIEWER included; another family answers 404. ACTIVE Persons linked
+        to no user, with the matching and order of `searchPersons`, for "Are you already in this
+        tree?" (mvp.md §18, SCREEN-010). `parent` is one ACTIVE parent reached through an ACTIVE
+        `PARENT_OF` relationship, the first in the order of the tree (OQ-015: birth, a year-only
+        date counting as the start of that year and an unknown birth last, then creation, then
+        id); null when no parent is known, and the client shows the birth year instead (OQ-050).
+      parameters:
+        - name: search
+          in: query
+          required: false
+          description: Same matching as `searchPersons`.
+          schema:
+            type: string
+            maxLength: 200
+        - $ref: '#/components/parameters/Page'
+        - $ref: '#/components/parameters/Size'
+      responses:
+        '200':
+          description: Persons that can be claimed
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ClaimablePersonPage'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
   /families/{familyId}/persons/{personId}:
     parameters:
       - $ref: '#/components/parameters/FamilyId'
@@ -1997,6 +2031,39 @@ components:
         totalPages:
           type: integer
           minimum: 0
+
+    ClaimablePersonPage:
+      type: object
+      required: [items, page]
+      properties:
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/ClaimablePerson'
+        page:
+          $ref: '#/components/schemas/PageMeta'
+
+    ClaimablePerson:
+      allOf:
+        - $ref: '#/components/schemas/PersonSummary'
+        - type: object
+          required: [parent]
+          properties:
+            parent:
+              description: One known parent, to tell apart two Persons with the same name (OQ-050); null when none is known.
+              oneOf:
+                - $ref: '#/components/schemas/ClaimablePersonParent'
+                - type: 'null'
+
+    ClaimablePersonParent:
+      type: object
+      required: [id, displayName]
+      properties:
+        id:
+          type: string
+          format: uuid
+        displayName:
+          type: string
 
     PersonPage:
       type: object

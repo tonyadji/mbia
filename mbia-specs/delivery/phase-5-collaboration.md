@@ -90,7 +90,7 @@ The Phase 5 contract changes are **additive** and already in `openapi.yaml` 0.4.
 | `inviteFamilyMember` | `404` documented |
 | `ProblemDetails.code` | example `INVITATION_ALREADY_PENDING` |
 
-Still to decide in its PR, additively: the parent shown next to each Person in "Are you already in this tree?" (PR-50).
+Decided in PR-50, additively: `listClaimablePersons` (`GET /families/{familyId}/claimable-persons`), the ACTIVE Persons linked to no user with the matching and order of `searchPersons`, each with `parent` (`ClaimablePersonParent { id, displayName }` or null), the first in the order of the tree (OQ-015).
 
 ### 3.3 Schema
 

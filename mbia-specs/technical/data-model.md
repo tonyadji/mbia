@@ -1005,6 +1005,8 @@ Matching is case- and accent-insensitive (`product/mvp.md` §19). The `unaccent`
 
 If usage requires it, PostgreSQL `pg_trgm` can be enabled later without changing the domain model.
 
+`listClaimablePersons` ("Are you already in this tree?", `mvp.md` §18) is the same query with `linked_user_id IS NULL`, plus one query for the page: the first ACTIVE parent of each Person through an ACTIVE `PARENT_OF` relationship (`DISTINCT ON` the child, ordered like the tree, OQ-015), through `idx_rel_target_active` (§23.2).
+
 ### 23.2 Tree local graph
 
 Typical queries:

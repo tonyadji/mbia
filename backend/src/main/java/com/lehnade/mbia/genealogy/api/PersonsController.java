@@ -1,6 +1,9 @@
 package com.lehnade.mbia.genealogy.api;
 
 import com.lehnade.mbia.api.generated.PersonsApi;
+import com.lehnade.mbia.api.generated.model.ClaimablePerson;
+import com.lehnade.mbia.api.generated.model.ClaimablePersonPage;
+import com.lehnade.mbia.api.generated.model.ClaimablePersonParent;
 import com.lehnade.mbia.api.generated.model.CreatePersonRequest;
 import com.lehnade.mbia.api.generated.model.Gender;
 import com.lehnade.mbia.api.generated.model.KinshipCode;
@@ -32,6 +35,9 @@ import com.lehnade.mbia.genealogy.application.mergepersons.MergePersonsCommand;
 import com.lehnade.mbia.genealogy.application.mergepersons.MergePersonsUseCase;
 import com.lehnade.mbia.genealogy.application.restoreperson.RestorePersonCommand;
 import com.lehnade.mbia.genealogy.application.restoreperson.RestorePersonUseCase;
+import com.lehnade.mbia.genealogy.application.listclaimablepersons.ClaimablePersonsView;
+import com.lehnade.mbia.genealogy.application.listclaimablepersons.ListClaimablePersonsCommand;
+import com.lehnade.mbia.genealogy.application.listclaimablepersons.ListClaimablePersonsUseCase;
 import com.lehnade.mbia.genealogy.application.searchpersons.PersonSearchView;
 import com.lehnade.mbia.genealogy.application.searchpersons.SearchPersonsCommand;
 import com.lehnade.mbia.genealogy.application.searchpersons.SearchPersonsUseCase;
@@ -67,6 +73,7 @@ class PersonsController implements PersonsApi {
     private final ClaimPersonUseCase claimPerson;
     private final UnclaimPersonUseCase unclaimPerson;
     private final SearchPersonsUseCase searchPersons;
+    private final ListClaimablePersonsUseCase listClaimablePersons;
     private final ArchivePersonUseCase archivePerson;
     private final RestorePersonUseCase restorePerson;
     private final MergePersonsUseCase mergePersons;
@@ -75,7 +82,8 @@ class PersonsController implements PersonsApi {
 
     PersonsController(CreatePersonUseCase createPerson, GetPersonUseCase getPerson,
             UpdatePersonUseCase updatePerson, ClaimPersonUseCase claimPerson, UnclaimPersonUseCase unclaimPerson,
-            SearchPersonsUseCase searchPersons, ArchivePersonUseCase archivePerson,
+            SearchPersonsUseCase searchPersons, ListClaimablePersonsUseCase listClaimablePersons,
+            ArchivePersonUseCase archivePerson,
             RestorePersonUseCase restorePerson, MergePersonsUseCase mergePersons,
             GetPersonHistoryUseCase getPersonHistory, ProfilePictureUrls profilePictureUrls) {
         this.createPerson = createPerson;
@@ -84,6 +92,7 @@ class PersonsController implements PersonsApi {
         this.claimPerson = claimPerson;
         this.unclaimPerson = unclaimPerson;
         this.searchPersons = searchPersons;
+        this.listClaimablePersons = listClaimablePersons;
         this.archivePerson = archivePerson;
         this.restorePerson = restorePerson;
         this.mergePersons = mergePersons;
@@ -117,6 +126,15 @@ class PersonsController implements PersonsApi {
         PersonSearchView result = searchPersons.search(new SearchPersonsCommand(familyId, toSearchStatus(status),
                 search, page, size));
         return ResponseEntity.ok(new PersonPage(result.items().stream().map(this::toSummary).toList(),
+                new PageMeta(result.page(), result.size(), result.totalElements(), result.totalPages())));
+    }
+
+    @Override
+    public ResponseEntity<ClaimablePersonPage> listClaimablePersons(UUID familyId, String search, Integer page,
+            Integer size) {
+        ClaimablePersonsView result = listClaimablePersons.list(
+                new ListClaimablePersonsCommand(familyId, search, page, size));
+        return ResponseEntity.ok(new ClaimablePersonPage(result.items().stream().map(this::toClaimable).toList(),
                 new PageMeta(result.page(), result.size(), result.totalElements(), result.totalPages())));
     }
 
@@ -201,6 +219,22 @@ class PersonsController implements PersonsApi {
             return com.lehnade.mbia.genealogy.domain.PersonStatus.ARCHIVED;
         }
         throw new DomainException(ErrorCode.VALIDATION_FAILED, "status must be ACTIVE or ARCHIVED.");
+    }
+
+    private ClaimablePerson toClaimable(ClaimablePersonsView.Item item) {
+        PersonSummary summary = toSummary(item.person());
+        return new ClaimablePerson(summary.getId(), summary.getFamilyId(), summary.getFirstName(), summary.getGender(),
+                summary.getBirth(), summary.getIsDeceased(), summary.getDeath(), summary.getStatus(),
+                summary.getVersion(),
+                item.parent().map(parent -> new ClaimablePersonParent(parent.id().value(),
+                        parent.details().displayName())).orElse(null))
+                .middleNames(summary.getMiddleNames())
+                .lastName(summary.getLastName())
+                .preferredName(summary.getPreferredName())
+                .displayName(summary.getDisplayName())
+                .profilePictureUrl(summary.getProfilePictureUrl())
+                .linkedUserId(summary.getLinkedUserId())
+                .relationshipToCurrentUser(summary.getRelationshipToCurrentUser());
     }
 
     private PersonSummary toSummary(PersonView view) {

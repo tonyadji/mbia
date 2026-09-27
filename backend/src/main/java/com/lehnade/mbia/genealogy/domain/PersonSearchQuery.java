@@ -16,6 +16,9 @@ public interface PersonSearchQuery {
      */
     Result search(UUID familyId, PersonStatus status, String text, int page, int size);
 
+    /** The same search over the ACTIVE Persons linked to no User (openapi {@code listClaimablePersons}). */
+    Result searchClaimable(UUID familyId, String text, int page, int size);
+
     /** @param totalElements the number of matching Persons over all pages */
     record Result(List<Person> items, long totalElements) {}
 }

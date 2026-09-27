@@ -15,6 +15,7 @@ import static org.mockito.Mockito.when;
 import com.lehnade.mbia.family.application.FamilyAccess;
 import com.lehnade.mbia.family.application.FamilyRole;
 import com.lehnade.mbia.genealogy.application.PersonView;
+import com.lehnade.mbia.genealogy.application.RelationshipsToCurrentUser;
 import com.lehnade.mbia.genealogy.domain.Gender;
 import com.lehnade.mbia.genealogy.domain.KinshipGraph;
 import com.lehnade.mbia.genealogy.domain.KinshipGraphQuery;
@@ -60,7 +61,8 @@ class SearchPersonsUseCaseTest {
     @BeforeEach
     void setUp() {
         CurrentUserAccessor currentUser = () -> new CurrentUser(CALLER, "caller@example.com", null, "fr");
-        useCase = new SearchPersonsUseCase(currentUser, familyAccess, persons, searchQuery, graphQuery);
+        useCase = new SearchPersonsUseCase(currentUser, familyAccess, searchQuery,
+                new RelationshipsToCurrentUser(persons, graphQuery));
         when(persons.findLinkedTo(FAMILY, CALLER)).thenReturn(Optional.of(tony));
         when(searchQuery.search(eq(FAMILY), eq(PersonStatus.ACTIVE), anyString(), anyInt(), anyInt()))
                 .thenReturn(new PersonSearchQuery.Result(List.of(awa, marie, tony), 43));

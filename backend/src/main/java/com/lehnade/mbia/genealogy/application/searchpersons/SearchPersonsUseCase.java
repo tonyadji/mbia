@@ -2,22 +2,12 @@ package com.lehnade.mbia.genealogy.application.searchpersons;
 
 import com.lehnade.mbia.family.application.FamilyAccess;
 import com.lehnade.mbia.family.application.FamilyRole;
-import com.lehnade.mbia.genealogy.application.PersonView;
-import com.lehnade.mbia.genealogy.domain.Gender;
-import com.lehnade.mbia.genealogy.domain.KinshipCode;
-import com.lehnade.mbia.genealogy.domain.KinshipGraphQuery;
-import com.lehnade.mbia.genealogy.domain.Person;
-import com.lehnade.mbia.genealogy.domain.PersonId;
-import com.lehnade.mbia.genealogy.domain.PersonRepository;
+import com.lehnade.mbia.genealogy.application.RelationshipsToCurrentUser;
 import com.lehnade.mbia.genealogy.domain.PersonSearchQuery;
 import com.lehnade.mbia.genealogy.domain.PersonStatus;
 import com.lehnade.mbia.identity.application.CurrentUserAccessor;
 import com.lehnade.mbia.shared.domain.DomainException;
 import com.lehnade.mbia.shared.domain.ErrorCode;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.Optional;
 import java.util.UUID;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -36,17 +26,15 @@ public class SearchPersonsUseCase {
 
     private final CurrentUserAccessor currentUserAccessor;
     private final FamilyAccess familyAccess;
-    private final PersonRepository persons;
     private final PersonSearchQuery searchQuery;
-    private final KinshipGraphQuery graphQuery;
+    private final RelationshipsToCurrentUser relationships;
 
     public SearchPersonsUseCase(CurrentUserAccessor currentUserAccessor, FamilyAccess familyAccess,
-            PersonRepository persons, PersonSearchQuery searchQuery, KinshipGraphQuery graphQuery) {
+            PersonSearchQuery searchQuery, RelationshipsToCurrentUser relationships) {
         this.currentUserAccessor = currentUserAccessor;
         this.familyAccess = familyAccess;
-        this.persons = persons;
         this.searchQuery = searchQuery;
-        this.graphQuery = graphQuery;
+        this.relationships = relationships;
     }
 
     @Transactional(readOnly = true)
@@ -60,32 +48,7 @@ public class SearchPersonsUseCase {
         String text = command.search() == null ? "" : command.search().strip();
         PersonSearchQuery.Result result = searchQuery.search(command.familyId(), command.status(), text,
                 command.page(), command.size());
-        Map<PersonId, KinshipCode> relationships = relationshipsTo(
-                persons.findLinkedTo(command.familyId(), callerId), result.items());
-        List<PersonView> items = result.items().stream()
-                .map(person -> new PersonView(person,
-                        Optional.ofNullable(relationships.get(person.id())).map(KinshipCode::name)))
-                .toList();
-        return new PersonSearchView(items, command.page(), command.size(), result.totalElements());
-    }
-
-    /**
-     * Paths use ACTIVE Persons only (OQ-013): a linked Person that is not ACTIVE has no known
-     * kinship with the results, and ARCHIVED results have none with anyone.
-     */
-    private Map<PersonId, KinshipCode> relationshipsTo(Optional<Person> me, List<Person> results) {
-        if (me.isEmpty() || results.isEmpty()) {
-            return Map.of();
-        }
-        Map<PersonId, Gender> targets = new HashMap<>();
-        results.forEach(person -> targets.put(person.id(), person.details().gender()));
-        Map<PersonId, KinshipCode> codes = new HashMap<>();
-        if (me.get().isActive()) {
-            graphQuery.activeGraph(me.get().familyId()).kinshipsFrom(me.get().id(), targets)
-                    .forEach((person, kinship) -> codes.put(person, kinship.code()));
-        } else {
-            targets.keySet().forEach(person -> codes.put(person, KinshipCode.NONE_KNOWN));
-        }
-        return codes;
+        return new PersonSearchView(relationships.of(command.familyId(), callerId, result.items()),
+                command.page(), command.size(), result.totalElements());
     }
 }
