@@ -18,7 +18,9 @@ import com.lehnade.mbia.memory.MediaImages;
 import com.lehnade.mbia.memory.MemoryFixtures;
 import java.net.URI;
 import java.net.http.HttpResponse;
+import java.util.ArrayList;
 import java.util.LinkedHashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.TreeSet;
@@ -33,14 +35,16 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.test.system.CapturedOutput;
 import org.springframework.boot.test.system.OutputCaptureExtension;
 import org.springframework.http.HttpHeaders;
+import org.springframework.http.HttpStatus;
 import org.springframework.test.web.servlet.assertj.MvcTestResult;
 
 /**
- * PR-39: what Phase 3 serves of a photo, across every response that carries one (mvp.md §23;
- * ADR-007; Phase 3 plan §3.5). For each image fixture with a location, uploaded as the browser
- * does and given to a Person: every image URL returned by the API serves a JPEG without any
- * metadata, and no storage key, bucket or original file name appears in a response outside the
- * short-lived pre-signed URLs, nor in the logs with the story text.
+ * PR-39 and PR-46: what Phases 3 and 4 serve of a photo, across every response that carries one
+ * (mvp.md §23; ADR-007; Phase 3 plan §3.5; Phase 4 plan §PR-46). For each image fixture with a
+ * location, uploaded as the browser does and given to a Person or to a Memory: every image URL
+ * returned by the API serves a JPEG without any metadata, and no storage key, bucket or original
+ * file name appears in a response outside the short-lived pre-signed URLs, nor in the logs with
+ * the story text or a caption.
  */
 @ExtendWith(OutputCaptureExtension.class)
 class ServedMediaApiTest extends ApiTestSupport {
@@ -49,6 +53,8 @@ class ServedMediaApiTest extends ApiTestSupport {
     private static final Pattern URL = Pattern.compile("https?://[^\"\\s]+X-Amz-[^\"\\s]+");
     private static final String FILE_NAME = "grand-mere.jpg";
     private static final String STORY = "Grand-mère vendait du plantain.";
+    private static final String CAPTION = "Grand-mère au marché de Mokolo";
+    private static final String ADDED_CAPTION = "Le puits du village";
 
     @Value("${mbia.storage.bucket}")
     String bucket;
@@ -107,6 +113,91 @@ class ServedMediaApiTest extends ApiTestSupport {
                 .doesNotContain("X-Amz-", FILE_NAME, STORY)
                 .doesNotContain(urls.toArray(String[]::new))
                 .doesNotContain(slot(responses));
+    }
+
+    @ParameterizedTest(name = "{0}")
+    @CsvSource({MediaImages.JPEG_ORIENTATION_6 + ", image/jpeg", MediaImages.PNG_WITH_GPS + ", image/png",
+            MediaImages.WEBP_WITH_GPS + ", image/webp", MediaImages.LARGE_WITH_GPS + ", image/jpeg"})
+    void everyPhotoOfAMemoryIsServedAsAJpegWithoutMetadataAndNothingLeaksInTheLogs(String name, String mimeType,
+            CapturedOutput output) {
+        byte[] photo = fixture(name);
+        assertHasGpsAndXmp(photo);
+
+        Map<String, String> responses = servedInAMemory(photo, mimeType);
+
+        // Every photo of the Memory, wherever the Memory is returned.
+        Set<String> urls = new TreeSet<>();
+        for (String operation : List.of("createStoryMemory", "updateMemory", "getMemory", "listPersonMemories",
+                "listFamilyMemories")) {
+            String body = responses.get(operation);
+            List<String> photoUrls = JsonPath.read(body, "$..photos[*].url");
+            List<String> thumbnailUrls = JsonPath.read(body, "$..photos[*].thumbnailUrl");
+            assertThat(photoUrls).as(operation).hasSize(operation.equals("createStoryMemory") ? 2 : 3);
+            assertThat(thumbnailUrls).as(operation).hasSameSizeAs(photoUrls);
+            urls.addAll(photoUrls);
+            urls.addAll(thumbnailUrls);
+        }
+        assertThat(urls.stream().map(url -> URI.create(url).getPath().replaceAll(".*/", "")).distinct())
+                .containsExactlyInAnyOrder("display", "thumbnail");
+        for (String url : urls) {
+            HttpResponse<byte[]> served = MediaFixtures.get(URI.create(url));
+            assertThat(served.statusCode()).as(url).isEqualTo(200);
+            assertThat(isJpeg(served.body())).as(url).isTrue();
+            assertHasNoMetadata(served.body());
+        }
+
+        String[] keys = jdbc.sql("SELECT id FROM media_assets WHERE family_id = ?").param(family.familyId())
+                .query(UUID.class).list().stream()
+                .map(id -> MediaFixtures.key(family.familyId(), id, ""))
+                .toArray(String[]::new);
+        assertThat(keys).hasSize(3);
+        responses.forEach((operation, body) -> assertThat(withoutUrls(body)).as(operation)
+                .doesNotContain(keys)
+                .doesNotContain("/display", "/thumbnail", bucket + "/", "X-Amz-", FILE_NAME));
+        assertThat(output.getAll())
+                .doesNotContain(keys)
+                .doesNotContain(bucket + "/", "X-Amz-", FILE_NAME, STORY, CAPTION, ADDED_CAPTION)
+                .doesNotContain(urls.toArray(String[]::new));
+    }
+
+    /**
+     * Three Memory photos uploaded and completed by the ADMIN: a story about Marie is published with
+     * two of them, the first captioned, and the third is added with a caption; returns every response
+     * of the phase that may show them, by operation.
+     */
+    private Map<String, String> servedInAMemory(byte[] photo, String mimeType) {
+        Map<String, String> responses = new LinkedHashMap<>();
+        List<UUID> assets = new ArrayList<>();
+        for (int i = 1; i <= 3; i++) {
+            Slot slot = media.uploaded(family.admin(), family.familyId(), "MEMORY_PHOTO", mimeType, photo);
+            responses.put("createMediaUpload " + i, slot.body());
+            responses.put("completeMediaUpload " + i, body(media.complete(family.admin(), family.familyId(),
+                    slot.mediaAssetId())));
+            assets.add(slot.mediaAssetId());
+        }
+        UUID marie = persons.createId(family.admin(), family.familyId(), "{\"firstName\": \"Marie\"}");
+
+        MvcTestResult created = memories.createStoryWithPhotos(family.admin(), family.familyId(), STORY,
+                List.of(captioned(assets.get(0), CAPTION), MemoryFixtures.photo(assets.get(1))), marie);
+        assertThat(created).hasStatus(HttpStatus.CREATED);
+        responses.put("createStoryMemory", body(created));
+        UUID story = MemoryFixtures.idOf(created);
+        MvcTestResult updated = memories.update(family.admin(), family.familyId(), story, "\"0\"",
+                "{\"photos\": [" + captioned(assets.get(0), CAPTION) + ", " + MemoryFixtures.photo(assets.get(1))
+                        + ", " + captioned(assets.get(2), ADDED_CAPTION) + "]}");
+        assertThat(updated).hasStatusOk();
+        responses.put("updateMemory", body(updated));
+
+        responses.put("getMemory", body(memories.get(family.viewer(), family.familyId(), story)));
+        responses.put("listPersonMemories", body(memories.listForPerson(family.viewer(), family.familyId(), marie,
+                "")));
+        responses.put("listFamilyMemories", body(memories.listForFamily(family.viewer(), family.familyId(), "")));
+        return responses;
+    }
+
+    /** The JSON of a photo with this caption, which must need no JSON escaping. */
+    private static String captioned(UUID mediaAssetId, String caption) {
+        return "{\"mediaAssetId\": \"" + mediaAssetId + "\", \"caption\": \"" + caption + "\"}";
     }
 
     /**

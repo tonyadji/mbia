@@ -1,4 +1,4 @@
-import type { ButtonHTMLAttributes } from 'react';
+import type { ComponentPropsWithRef } from 'react';
 
 type Variant = 'primary' | 'secondary';
 
@@ -12,7 +12,7 @@ export function buttonClassName(variant: Variant = 'primary', className = '') {
   return `inline-flex min-h-12 w-full items-center justify-center rounded-full px-6 text-center text-body font-semibold transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary ${variants[variant]} ${className}`;
 }
 
-interface ButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
+interface ButtonProps extends ComponentPropsWithRef<'button'> {
   variant?: Variant;
 }
 

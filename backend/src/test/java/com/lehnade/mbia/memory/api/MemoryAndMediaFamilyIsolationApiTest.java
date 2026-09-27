@@ -24,14 +24,15 @@ import org.springframework.http.MediaType;
 import org.springframework.test.web.servlet.assertj.MvcTestResult;
 
 /**
- * PR-39: Family isolation across every Memory and media operation of Phase 3 (mvp.md §22;
- * technical-specification.md §17; AGENTS.md §5). A member of another Family gets 404 on each of
- * them, learns nothing of the Family and changes nothing in it, whether they call the Family
- * itself or use its ids through their own Family.
+ * PR-39 and PR-46: Family isolation across every Memory and media operation of Phases 3 and 4
+ * (mvp.md §22; technical-specification.md §17; AGENTS.md §5), Memory photos included. A member of
+ * another Family gets 404 on each of them, learns nothing of the Family and changes nothing in it,
+ * whether they call the Family itself or use its ids through their own Family.
  */
 class MemoryAndMediaFamilyIsolationApiTest extends ApiTestSupport {
 
     private static final String TITLE = "Le marché de Yaoundé";
+    private static final String CAPTION = "Grand-mère au marché";
 
     private FamilyWithMembers family;
     private PersonFixtures persons;
@@ -70,6 +71,13 @@ class MemoryAndMediaFamilyIsolationApiTest extends ApiTestSupport {
                         test.theirs.familyId(), test.theirs.personId(), "")),
                 operation("createMediaUpload", test -> test.media.createUpload(test.mine.token(),
                         test.theirs.familyId(), "PROFILE_PICTURE", "image/jpeg", 1000)),
+                operation("createMediaUpload: a memory photo", test -> test.media.createUpload(test.mine.token(),
+                        test.theirs.familyId(), "MEMORY_PHOTO", "image/jpeg", 1000)),
+                operation("createStoryMemory: with a photo", test -> test.memories.createStoryWithPhotos(
+                        test.mine.token(), test.theirs.familyId(), "Texte",
+                        List.of(MemoryFixtures.photo(test.theirs.freeMemoryPhotoId())), test.theirs.personId())),
+                operation("updateMemory: its photos", test -> test.memories.update(test.mine.token(),
+                        test.theirs.familyId(), test.theirs.memoryId(), "\"0\"", "{\"photos\": []}")),
                 operation("completeMediaUpload", test -> test.media.complete(test.mine.token(),
                         test.theirs.familyId(), test.theirs.pendingUploadId())));
     }
@@ -106,6 +114,23 @@ class MemoryAndMediaFamilyIsolationApiTest extends ApiTestSupport {
                         test.mine.familyId(), test.theirs.memoryId(), "\"0\"")),
                 withIds("listPersonMemories", "PERSON_NOT_FOUND", test -> test.memories.listForPerson(
                         test.mine.token(), test.mine.familyId(), test.theirs.personId(), "")),
+                withIds("createStoryMemory: a free memory photo", "MEDIA_NOT_FOUND", test ->
+                        test.memories.createStoryWithPhotos(test.mine.token(), test.mine.familyId(), "Texte",
+                                List.of(MemoryFixtures.photo(test.theirs.freeMemoryPhotoId())),
+                                test.mine.personId())),
+                withIds("createStoryMemory: a photo of their Memory", "MEDIA_NOT_FOUND", test ->
+                        test.memories.createStoryWithPhotos(test.mine.token(), test.mine.familyId(), "Texte",
+                                List.of(MemoryFixtures.photo(test.theirs.memoryPhotoId())), test.mine.personId())),
+                withIds("updateMemory: a free memory photo", "MEDIA_NOT_FOUND", test -> test.memories.update(
+                        test.mine.token(), test.mine.familyId(), test.mine.memoryId(), "\"0\"",
+                        "{\"photos\": [" + MemoryFixtures.photo(test.mine.memoryPhotoId()) + ", "
+                                + MemoryFixtures.photo(test.theirs.freeMemoryPhotoId()) + "]}")),
+                withIds("updateMemory: a photo of their Memory", "MEDIA_NOT_FOUND", test -> test.memories.update(
+                        test.mine.token(), test.mine.familyId(), test.mine.memoryId(), "\"0\"",
+                        "{\"photos\": [" + MemoryFixtures.photo(test.mine.memoryPhotoId()) + ", "
+                                + MemoryFixtures.photo(test.theirs.memoryPhotoId()) + "]}")),
+                withIds("completeMediaUpload: a memory photo", "MEDIA_NOT_FOUND", test -> test.media.complete(
+                        test.mine.token(), test.mine.familyId(), test.theirs.freeMemoryPhotoId())),
                 withIds("completeMediaUpload: a pending upload", "MEDIA_NOT_FOUND", test -> test.media.complete(
                         test.mine.token(), test.mine.familyId(), test.theirs.pendingUploadId())),
                 withIds("completeMediaUpload: a ready photo", "MEDIA_NOT_FOUND", test -> test.media.complete(
@@ -133,13 +158,21 @@ class MemoryAndMediaFamilyIsolationApiTest extends ApiTestSupport {
         assertThat(snapshot(mine.familyId())).isEqualTo(mineBefore);
     }
 
-    /** A Person, a story about them, a READY photo and a pending upload, created by the Family's ADMIN. */
+    /**
+     * A Person, a story about them with a captioned photo, a READY photo, a READY Memory photo not
+     * used yet and a pending upload, created by the Family's ADMIN.
+     */
     private Resources resources(UUID familyId, TestJwts.Token admin) {
         UUID person = persons.createId(admin, familyId, "{\"firstName\": \"Awa\"}");
         UUID memory = memories.createStoryId(admin, familyId, person);
         UUID adminId = families().userId(admin);
+        UUID memoryPhoto = MediaFixtures.insertRow(jdbc, familyId, adminId, "MEMORY_PHOTO", "READY");
+        memories.insertPhoto(familyId, memory, memoryPhoto, 1);
+        jdbc.sql("UPDATE memory_photos SET caption = ? WHERE media_asset_id = ?").params(CAPTION, memoryPhoto)
+                .update();
         return new Resources(familyId, admin, person, memory, media.row(familyId, adminId, "READY"),
-                media.row(familyId, adminId, "PENDING_UPLOAD"));
+                media.row(familyId, adminId, "PENDING_UPLOAD"), memoryPhoto,
+                MediaFixtures.insertRow(jdbc, familyId, adminId, "MEMORY_PHOTO", "READY"));
     }
 
     private MvcTestResult createPhotoMemory(TestJwts.Token token, UUID familyId, UUID mediaAssetId, UUID personId) {
@@ -152,7 +185,10 @@ class MemoryAndMediaFamilyIsolationApiTest extends ApiTestSupport {
                 .exchange();
     }
 
-    /** What a Family holds: its Persons, Memories, their links and its media, with versions and statuses. */
+    /**
+     * What a Family holds: its Persons, Memories, their links and photos, and its media, with versions
+     * and statuses.
+     */
     private Snapshot snapshot(UUID familyId) {
         return new Snapshot(
                 jdbc.sql("SELECT id, status, version, title, content FROM memories WHERE family_id = ? ORDER BY id")
@@ -162,7 +198,9 @@ class MemoryAndMediaFamilyIsolationApiTest extends ApiTestSupport {
                 jdbc.sql("SELECT id, status, version, profile_media_asset_id FROM persons WHERE family_id = ? "
                         + "ORDER BY id").param(familyId).query().listOfRows(),
                 jdbc.sql("SELECT id, status FROM media_assets WHERE family_id = ? ORDER BY id")
-                        .param(familyId).query().listOfRows());
+                        .param(familyId).query().listOfRows(),
+                jdbc.sql("SELECT memory_id, media_asset_id, position, caption FROM memory_photos WHERE family_id = ? "
+                        + "ORDER BY 1, 3").param(familyId).query().listOfRows());
     }
 
     private static void assertNotFound(MvcTestResult result, String code) {
@@ -173,9 +211,10 @@ class MemoryAndMediaFamilyIsolationApiTest extends ApiTestSupport {
     }
 
     private static void assertLeaksNothingOf(MvcTestResult result, Resources family) {
-        assertThat(FamilyFixtures.body(result)).doesNotContain(TITLE, "plantain", "Awa",
+        assertThat(FamilyFixtures.body(result)).doesNotContain(TITLE, "plantain", "Awa", CAPTION,
                 family.personId().toString(), family.memoryId().toString(), family.readyPhotoId().toString(),
-                family.pendingUploadId().toString(), "families/" + family.familyId() + "/media/");
+                family.pendingUploadId().toString(), family.memoryPhotoId().toString(),
+                family.freeMemoryPhotoId().toString(), "families/" + family.familyId() + "/media/");
     }
 
     private static Arguments operation(String name, Function<MemoryAndMediaFamilyIsolationApiTest,
@@ -189,8 +228,9 @@ class MemoryAndMediaFamilyIsolationApiTest extends ApiTestSupport {
     }
 
     private record Resources(UUID familyId, TestJwts.Token token, UUID personId, UUID memoryId, UUID readyPhotoId,
-            UUID pendingUploadId) {}
+            UUID pendingUploadId, UUID memoryPhotoId, UUID freeMemoryPhotoId) {}
 
     private record Snapshot(List<Map<String, Object>> memories, List<Map<String, Object>> links,
-            List<Map<String, Object>> persons, List<Map<String, Object>> media) {}
+            List<Map<String, Object>> persons, List<Map<String, Object>> media,
+            List<Map<String, Object>> photos) {}
 }

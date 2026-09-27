@@ -493,4 +493,22 @@ describe('Photos in Edit Memory (SCREEN-014)', () => {
       expect(router.state.location.pathname).toBe(MEMORY);
     });
   });
+
+  it('moves the focus to the photo that takes a removed one’s place, or to the previous one', async () => {
+    fakeApi();
+    renderApp();
+    await openForm();
+    const group = (position: number) =>
+      screen.getByRole('group', { name: `Photo ${String(position)}` });
+
+    fireEvent.click(removePhoto(2));
+    await waitFor(() => {
+      expect(group(1)).toHaveFocus();
+    });
+    expect(caption(1)).toHaveValue('Grand-mère au marché');
+    fireEvent.click(removePhoto(1));
+    await waitFor(() => {
+      expect(addPhoto()).toHaveFocus();
+    });
+  });
 });
