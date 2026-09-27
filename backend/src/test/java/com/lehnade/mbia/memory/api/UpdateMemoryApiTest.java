@@ -177,7 +177,8 @@ class UpdateMemoryApiTest extends ApiTestSupport {
             json.assertThat().extractingPath("$.fieldErrors[0].field").isEqualTo("photos");
         });
         assertThat(memories.row(contributorsMemory)).containsEntry("version", 0L);
-        assertThat(jdbc.sql("SELECT count(*) FROM memory_photos").query(Long.class).single()).isZero();
+        assertThat(jdbc.sql("SELECT count(*) FROM memory_photos WHERE family_id = ?").param(family.familyId())
+                .query(Long.class).single()).isZero();
     }
 
     @ParameterizedTest
