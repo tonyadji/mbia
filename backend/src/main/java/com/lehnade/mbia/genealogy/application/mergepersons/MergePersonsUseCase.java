@@ -1,5 +1,7 @@
 package com.lehnade.mbia.genealogy.application.mergepersons;
 
+import com.lehnade.mbia.activity.application.Activity;
+import com.lehnade.mbia.activity.application.ActivityLog;
 import com.lehnade.mbia.family.application.FamilyAccess;
 import com.lehnade.mbia.family.application.FamilyRole;
 import com.lehnade.mbia.genealogy.application.MemoryLinksPort;
@@ -63,12 +65,13 @@ public class MergePersonsUseCase {
     private final MemoryLinksPort memoryLinks;
     private final ProfilePictures profilePictures;
     private final AuditLog auditLog;
+    private final ActivityLog activityLog;
     private final Clock clock;
 
     public MergePersonsUseCase(CurrentUserAccessor currentUserAccessor, FamilyAccess familyAccess,
             PersonRepository persons, RelationshipRepository relationships, ParentalCycleCheck cycleCheck,
             RelationshipToCurrentUser relationshipToCurrentUser, FamilyGraphLock graphLock, MemoryLinksPort memoryLinks,
-            ProfilePictures profilePictures, AuditLog auditLog, Clock clock) {
+            ProfilePictures profilePictures, AuditLog auditLog, ActivityLog activityLog, Clock clock) {
         this.currentUserAccessor = currentUserAccessor;
         this.familyAccess = familyAccess;
         this.persons = persons;
@@ -79,6 +82,7 @@ public class MergePersonsUseCase {
         this.memoryLinks = memoryLinks;
         this.profilePictures = profilePictures;
         this.auditLog = auditLog;
+        this.activityLog = activityLog;
         this.clock = clock;
     }
 
@@ -140,6 +144,8 @@ public class MergePersonsUseCase {
         auditLog.append(new AuditEntry(kept.familyId(), callerId, "PERSONS_MERGED", AuditEntry.PERSON,
                 sourceId.value(), Map.of("status", PersonStatus.ACTIVE.name()),
                 Map.of("status", PersonStatus.MERGED.name(), "mergedIntoPersonId", targetId.value()), now));
+        activityLog.record(Activity.personMerged(kept.familyId(), callerId, kept.id().value(),
+                kept.details().displayName(), source.details().displayName(), now));
         return new PersonView(kept, relationshipToCurrentUser.of(kept, callerId));
     }
 

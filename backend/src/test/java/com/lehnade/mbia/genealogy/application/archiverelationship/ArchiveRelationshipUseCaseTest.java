@@ -9,10 +9,12 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 
+import com.lehnade.mbia.activity.application.ActivityLog;
 import com.lehnade.mbia.family.application.FamilyAccess;
 import com.lehnade.mbia.family.application.FamilyRole;
 import com.lehnade.mbia.genealogy.domain.FamilyRelationship;
 import com.lehnade.mbia.genealogy.domain.PersonId;
+import com.lehnade.mbia.genealogy.domain.PersonRepository;
 import com.lehnade.mbia.genealogy.domain.RelationshipId;
 import com.lehnade.mbia.genealogy.domain.RelationshipRepository;
 import com.lehnade.mbia.genealogy.domain.RelationshipStatus;
@@ -49,6 +51,7 @@ class ArchiveRelationshipUseCaseTest {
     private final FamilyAccess familyAccess = mock(FamilyAccess.class);
     private final RelationshipRepository relationships = mock(RelationshipRepository.class);
     private final AuditLog auditLog = mock(AuditLog.class);
+    private final ActivityLog activityLog = mock(ActivityLog.class);
     private ArchiveRelationshipUseCase useCase;
 
     private final FamilyRelationship active = FamilyRelationship.restore(RelationshipId.newId(), FAMILY,
@@ -58,8 +61,8 @@ class ArchiveRelationshipUseCaseTest {
     @BeforeEach
     void setUp() {
         CurrentUserAccessor currentUser = () -> new CurrentUser(CALLER, "caller@example.com", null, "fr");
-        useCase = new ArchiveRelationshipUseCase(currentUser, familyAccess, relationships, auditLog,
-                Clock.fixed(NOW, ZoneOffset.UTC));
+        useCase = new ArchiveRelationshipUseCase(currentUser, familyAccess, mock(PersonRepository.class),
+                relationships, auditLog, activityLog, Clock.fixed(NOW, ZoneOffset.UTC));
         when(relationships.findInFamily(FAMILY, active.id())).thenReturn(Optional.of(active));
         when(relationships.update(any())).thenAnswer(call -> call.getArgument(0));
     }
@@ -108,14 +111,14 @@ class ArchiveRelationshipUseCaseTest {
         useCase.archive(command(active.id(), 4));
 
         verify(relationships, never()).update(any());
-        verifyNoInteractions(auditLog);
+        verifyNoInteractions(auditLog, activityLog);
     }
 
     private void assertRefused(ThrowingCallable call, ErrorCode code) {
         assertThatThrownBy(call).isInstanceOfSatisfying(DomainException.class,
                 e -> assertThat(e.code()).isEqualTo(code));
         verify(relationships, never()).update(any());
-        verifyNoInteractions(auditLog);
+        verifyNoInteractions(auditLog, activityLog);
     }
 
     private static ArchiveRelationshipCommand command(RelationshipId id, long version) {

@@ -1,9 +1,13 @@
 package com.lehnade.mbia.genealogy.application.archiverelationship;
 
+import com.lehnade.mbia.activity.application.ActivityLog;
+import com.lehnade.mbia.activity.application.ActivityType;
 import com.lehnade.mbia.family.application.FamilyAccess;
 import com.lehnade.mbia.family.application.FamilyRole;
+import com.lehnade.mbia.genealogy.application.RelationshipActivities;
 import com.lehnade.mbia.genealogy.application.RelationshipNotFound;
 import com.lehnade.mbia.genealogy.domain.FamilyRelationship;
+import com.lehnade.mbia.genealogy.domain.PersonRepository;
 import com.lehnade.mbia.genealogy.domain.RelationshipId;
 import com.lehnade.mbia.genealogy.domain.RelationshipRepository;
 import com.lehnade.mbia.genealogy.domain.RelationshipStatus;
@@ -31,14 +35,17 @@ public class ArchiveRelationshipUseCase {
     private final FamilyAccess familyAccess;
     private final RelationshipRepository relationships;
     private final AuditLog auditLog;
+    private final RelationshipActivities activities;
     private final Clock clock;
 
     public ArchiveRelationshipUseCase(CurrentUserAccessor currentUserAccessor, FamilyAccess familyAccess,
-            RelationshipRepository relationships, AuditLog auditLog, Clock clock) {
+            PersonRepository persons, RelationshipRepository relationships, AuditLog auditLog,
+            ActivityLog activityLog, Clock clock) {
         this.currentUserAccessor = currentUserAccessor;
         this.familyAccess = familyAccess;
         this.relationships = relationships;
         this.auditLog = auditLog;
+        this.activities = new RelationshipActivities(persons, activityLog);
         this.clock = clock;
     }
 
@@ -60,5 +67,6 @@ public class ArchiveRelationshipUseCase {
                 AuditEntry.RELATIONSHIP, archived.id().value(),
                 Map.of("status", RelationshipStatus.ACTIVE.name()),
                 Map.of("status", RelationshipStatus.ARCHIVED.name()), now));
+        activities.record(ActivityType.RELATIONSHIP_ARCHIVED, archived, callerId, now);
     }
 }

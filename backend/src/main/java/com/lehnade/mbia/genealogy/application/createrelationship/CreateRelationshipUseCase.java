@@ -1,7 +1,10 @@
 package com.lehnade.mbia.genealogy.application.createrelationship;
 
+import com.lehnade.mbia.activity.application.ActivityLog;
+import com.lehnade.mbia.activity.application.ActivityType;
 import com.lehnade.mbia.family.application.FamilyAccess;
 import com.lehnade.mbia.family.application.FamilyRole;
+import com.lehnade.mbia.genealogy.application.RelationshipActivities;
 import com.lehnade.mbia.genealogy.application.RelationshipRules;
 import com.lehnade.mbia.genealogy.domain.FamilyGraphLock;
 import com.lehnade.mbia.genealogy.domain.FamilyRelationship;
@@ -39,17 +42,19 @@ public class CreateRelationshipUseCase {
     private final RelationshipRules rules;
     private final FamilyGraphLock graphLock;
     private final AuditLog auditLog;
+    private final RelationshipActivities activities;
     private final Clock clock;
 
     public CreateRelationshipUseCase(CurrentUserAccessor currentUserAccessor, FamilyAccess familyAccess,
             PersonRepository persons, RelationshipRepository relationships, ParentalCycleCheck cycleCheck,
-            FamilyGraphLock graphLock, AuditLog auditLog, Clock clock) {
+            FamilyGraphLock graphLock, AuditLog auditLog, ActivityLog activityLog, Clock clock) {
         this.currentUserAccessor = currentUserAccessor;
         this.familyAccess = familyAccess;
         this.relationships = relationships;
         this.rules = new RelationshipRules(persons, relationships, cycleCheck);
         this.graphLock = graphLock;
         this.auditLog = auditLog;
+        this.activities = new RelationshipActivities(persons, activityLog);
         this.clock = clock;
     }
 
@@ -77,6 +82,7 @@ public class CreateRelationshipUseCase {
                 relationship.id().value(), Map.of(), Map.of("type", relationship.type().name(),
                         "sourcePersonId", relationship.source().value(),
                         "targetPersonId", relationship.target().value()), now));
+        activities.record(ActivityType.RELATIONSHIP_CREATED, relationship, callerId, now);
         return new CreatedRelationship(relationship, warnings);
     }
 

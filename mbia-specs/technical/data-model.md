@@ -816,6 +816,18 @@ Rules (OQ-054):
 - each item links to its resource only while it is ACTIVE: the API returns whether it still is;
 - no activity is rebuilt from `audit_entries`: the feed starts empty when the table is created.
 
+Resource and `payload` of each type (a name that is unknown is left out):
+
+| `activity_type` | `resource_type` / `resource_id` | `payload` keys |
+|---|---|---|
+| `PERSON_CREATED`, `PERSON_ARCHIVED`, `PERSON_RESTORED` | `PERSON` / the Person | `personDisplayName` |
+| `PERSON_MERGED` | `PERSON` / the Person kept | `personDisplayName` (the Person kept, after the merge), `mergedPersonDisplayName` (the duplicate) |
+| `RELATIONSHIP_CREATED`, `RELATIONSHIP_ARCHIVED` | `RELATIONSHIP` / the relationship | `relationshipType`, `sourcePersonId`, `sourcePersonDisplayName`, `targetPersonId`, `targetPersonDisplayName` |
+| `MEMORY_CREATED` | `MEMORY` / the Memory | `memoryTitle` |
+| `INVITATION_ACCEPTED`, `MEMBER_LEFT`, `MEMBER_REMOVED` | `MEMBERSHIP` / the membership | `memberDisplayName` (the member's account name) |
+
+`actor_user_id` is the User who acted: the new member for `INVITATION_ACCEPTED` and `MEMBER_LEFT`, the ADMIN for `MEMBER_REMOVED`. A merge writes only `PERSON_MERGED`: the duplicate relationships it archives and the Person released when a member leaves write no activity of their own. An operation that changes nothing (archiving an archived Person, an ACTIVE member opening an invitation) writes none.
+
 Recommended index:
 
 ```sql
