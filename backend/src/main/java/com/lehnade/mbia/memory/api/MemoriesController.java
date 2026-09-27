@@ -4,15 +4,20 @@ import com.lehnade.mbia.api.generated.MemoriesApi;
 import com.lehnade.mbia.api.generated.model.ActivityActor;
 import com.lehnade.mbia.api.generated.model.CreatePhotoMemoryRequest;
 import com.lehnade.mbia.api.generated.model.CreateStoryMemoryRequest;
+import com.lehnade.mbia.api.generated.model.DatePrecision;
+import com.lehnade.mbia.api.generated.model.MemoryPhotoInput;
+import com.lehnade.mbia.api.generated.model.MemoryPhotoResponse;
 import com.lehnade.mbia.api.generated.model.MemoryPage;
 import com.lehnade.mbia.api.generated.model.MemoryResponse;
 import com.lehnade.mbia.api.generated.model.MemoryStatus;
 import com.lehnade.mbia.api.generated.model.MemoryType;
 import com.lehnade.mbia.api.generated.model.PageMeta;
+import com.lehnade.mbia.api.generated.model.PartialDate;
 import com.lehnade.mbia.api.generated.model.PersonStatus;
 import com.lehnade.mbia.api.generated.model.RelatedPersonReference;
 import com.lehnade.mbia.api.generated.model.UpdateMemoryRequest;
 import com.lehnade.mbia.memory.application.MemoryPageView;
+import com.lehnade.mbia.memory.application.MemoryPhotoView;
 import com.lehnade.mbia.memory.application.MemoryView;
 import com.lehnade.mbia.memory.application.archivememory.ArchiveMemoryCommand;
 import com.lehnade.mbia.memory.application.archivememory.ArchiveMemoryUseCase;
@@ -25,7 +30,10 @@ import com.lehnade.mbia.memory.application.listpersonmemories.ListPersonMemories
 import com.lehnade.mbia.memory.application.listpersonmemories.ListPersonMemoriesUseCase;
 import com.lehnade.mbia.memory.application.updatememory.UpdateMemoryCommand;
 import com.lehnade.mbia.memory.application.updatememory.UpdateMemoryUseCase;
+import com.lehnade.mbia.memory.domain.MediaAssetId;
 import com.lehnade.mbia.memory.domain.Memory;
+import com.lehnade.mbia.memory.domain.MemoryPhoto;
+import com.lehnade.mbia.memory.domain.TakenDate;
 import com.lehnade.mbia.shared.api.web.ETags;
 import com.lehnade.mbia.shared.domain.DomainException;
 import com.lehnade.mbia.shared.domain.ErrorCode;
@@ -43,8 +51,8 @@ import org.springframework.web.bind.annotation.RestController;
 
 /**
  * Memories of a Family. Every Memory is a story (OQ-042): the deprecated photo Memories answer like
- * a route that does not exist ({@code RESOURCE_NOT_FOUND}). Photos of a Memory are not attached yet
- * (Phase 4 plan, PR-40): {@code photos} is always empty.
+ * a route that does not exist ({@code RESOURCE_NOT_FOUND}). Photos are attached when a story is
+ * created; changing them arrives with PR-42 (Phase 4 plan).
  */
 @RestController
 class MemoriesController implements MemoriesApi {
@@ -70,7 +78,10 @@ class MemoriesController implements MemoriesApi {
     @Override
     public ResponseEntity<MemoryResponse> createStoryMemory(UUID familyId, CreateStoryMemoryRequest request) {
         MemoryView memory = createStoryMemory.create(new CreateStoryMemoryCommand(familyId, request.getTitle(),
-                request.getContent(), request.getRelatedPersonIds(), request.getPhotos() != null));
+                request.getContent(), request.getRelatedPersonIds(),
+                Optional.ofNullable(request.getPhotos()).orElse(List.of()).stream()
+                        .map(MemoriesController::toNewPhoto)
+                        .toList()));
         return ResponseEntity.status(HttpStatus.CREATED)
                 .eTag(ETags.of(memory.memory().version()))
                 .body(toResponse(memory));
@@ -134,7 +145,7 @@ class MemoriesController implements MemoriesApi {
         Memory memory = view.memory();
         return new MemoryResponse(memory.id().value(), memory.familyId(), MemoryType.valueOf(memory.type().name()),
                 MemoryStatus.valueOf(memory.status().name()),
-                List.of(),
+                view.photos().stream().map(MemoriesController::toResponse).toList(),
                 view.relatedPersons().stream()
                         .map(person -> new RelatedPersonReference(person.id(), person.displayName(),
                                 PersonStatus.valueOf(person.status().name()))
@@ -145,6 +156,24 @@ class MemoriesController implements MemoriesApi {
                 toDateTime(memory.createdAt()), toDateTime(memory.updatedAt()), memory.version())
                 .title(memory.title())
                 .content(memory.content());
+    }
+
+    private static MemoryPhoto.New toNewPhoto(MemoryPhotoInput photo) {
+        PartialDate takenAt = photo.getTakenAt();
+        return new MemoryPhoto.New(new MediaAssetId(photo.getMediaAssetId()), photo.getCaption(),
+                takenAt == null ? null : TakenDate.of(TakenDate.Precision.valueOf(takenAt.getPrecision().name()),
+                        takenAt.getDate(), takenAt.getYear()));
+    }
+
+    private static MemoryPhotoResponse toResponse(MemoryPhotoView photo) {
+        TakenDate takenAt = photo.takenAt();
+        return new MemoryPhotoResponse(photo.mediaAssetId().value(), photo.url(), photo.thumbnailUrl())
+                .caption(photo.caption())
+                .takenAt(new PartialDate(DatePrecision.fromValue(takenAt.precision().name()))
+                        .date(takenAt.date())
+                        .year(takenAt.year()))
+                .widthPx(photo.widthPx())
+                .heightPx(photo.heightPx());
     }
 
     private static OffsetDateTime toDateTime(Instant instant) {

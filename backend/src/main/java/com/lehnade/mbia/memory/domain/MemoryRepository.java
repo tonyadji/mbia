@@ -8,7 +8,7 @@ import java.util.UUID;
 
 public interface MemoryRepository {
 
-    /** Writes the Memory and its Person associations (data-model.md §14, §15). */
+    /** Writes the Memory, its Person associations and its photos (data-model.md §14, §14bis, §15). */
     void insert(Memory memory);
 
     /**

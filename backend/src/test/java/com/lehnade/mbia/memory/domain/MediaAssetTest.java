@@ -215,6 +215,28 @@ class MediaAssetTest {
                 .isInstanceOf(IllegalStateException.class);
     }
 
+    // --- PR-41: a READY upload becomes the photo of a Memory (data-model.md §14bis, OQ-042) ---
+
+    @Test
+    void aReadyMemoryPhotoOfItsUploaderIsAttachableToAMemoryOnly() {
+        MediaAsset photo = upload(MediaPurpose.MEMORY_PHOTO, "image/jpeg", 1_000).markReady(10, 10, NOW);
+        MediaAsset profile = upload(MediaPurpose.PROFILE_PICTURE, "image/jpeg", 1_000).markReady(10, 10, NOW);
+
+        photo.requireAttachableBy(USER, MediaPurpose.MEMORY_PHOTO, "photos");
+        assertInvalid(() -> profile.requireAttachableBy(USER, MediaPurpose.MEMORY_PHOTO, "photos"), "photos");
+        assertInvalid(() -> photo.requireAttachableAsProfilePictureBy(USER), "profileMediaAssetId");
+    }
+
+    @Test
+    void aMemoryPhotoIsCheckedForItsUploaderThenItsStatusThenItsPurpose() {
+        MediaAsset pending = upload(MediaPurpose.PROFILE_PICTURE, "image/jpeg", 1_000);
+
+        assertRefused(() -> pending.requireAttachableBy(UUID.randomUUID(), MediaPurpose.MEMORY_PHOTO, "photos"),
+                ErrorCode.PERMISSION_DENIED);
+        assertRefused(() -> pending.requireAttachableBy(USER, MediaPurpose.MEMORY_PHOTO, "photos"),
+                ErrorCode.MEDIA_NOT_READY);
+    }
+
     private static void assertRefused(ThrowingCallable call, ErrorCode code) {
         assertThatThrownBy(call).isInstanceOfSatisfying(DomainException.class,
                 e -> assertThat(e.code()).isEqualTo(code));

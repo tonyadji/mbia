@@ -1,6 +1,7 @@
 package com.lehnade.mbia.memory.domain;
 
 import java.time.Instant;
+import java.util.Collection;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
@@ -17,6 +18,9 @@ public interface MediaAssetRepository {
      * @return the asset, whatever its status; empty when unknown or of another Family
      */
     Optional<MediaAsset> lockInFamily(UUID familyId, MediaAssetId id);
+
+    /** @return these assets of this Family, whatever their status; another Family's are absent */
+    List<MediaAsset> findAllInFamily(UUID familyId, Collection<UUID> ids);
 
     /** Writes the status, the derivatives, the dimensions and the failure reason of the asset. */
     void update(MediaAsset asset);

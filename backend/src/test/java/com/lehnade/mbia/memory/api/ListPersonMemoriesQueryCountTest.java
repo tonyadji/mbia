@@ -28,8 +28,11 @@ import org.springframework.test.web.servlet.assertj.MvcTestResult;
 @TestPropertySource(properties = "spring.jpa.properties.hibernate.generate_statistics=true")
 class ListPersonMemoriesQueryCountTest extends ApiTestSupport {
 
-    /** Current User, membership, Person, page, count, Persons of the page, Persons' details, authors. */
-    private static final long MAX_STATEMENTS = 8;
+    /**
+     * Current User, membership, Person, page, count, Persons of the page, Persons' details, authors,
+     * photos of the page (PR-41; none here, so their assets are not read).
+     */
+    private static final long MAX_STATEMENTS = 9;
 
     @Autowired
     EntityManagerFactory entityManagerFactory;

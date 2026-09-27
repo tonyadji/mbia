@@ -137,6 +137,76 @@ class MemoryTest {
         assertThat(archived.updatedBy()).isEqualTo(EDITOR);
     }
 
+    // --- PR-41: photos (mvp.md §17, data-model.md §14, §14bis, OQ-042) ---
+
+    @Test
+    void photosTakeThePositionsOneToNInTheOrderGiven() {
+        MemoryPhoto.New first = photo("Au marché");
+        MemoryPhoto.New second = new MemoryPhoto.New(MediaAssetId.newId(), null, TakenDate.of(
+                TakenDate.Precision.YEAR_ONLY, null, 1974));
+        MemoryPhoto.New third = photo(null);
+
+        Memory memory = withPhotos("Titre", "Texte", List.of(first, second, third));
+
+        assertThat(memory.photos()).extracting(MemoryPhoto::mediaAssetId)
+                .containsExactly(first.mediaAssetId(), second.mediaAssetId(), third.mediaAssetId());
+        assertThat(memory.photos()).extracting(MemoryPhoto::position).containsExactly(1, 2, 3);
+        assertThat(memory.photos().getFirst().caption()).isEqualTo("Au marché");
+        assertThat(memory.photos().get(1).takenAt()).isEqualTo(TakenDate.of(TakenDate.Precision.YEAR_ONLY, null,
+                1974));
+        assertThat(memory.photos().getLast().takenAt()).isEqualTo(TakenDate.UNKNOWN);
+    }
+
+    @Test
+    void aStoryWithAPhotoNeedsNoText() {
+        Memory memory = withPhotos("Titre", null, List.of(photo(null)));
+
+        assertThat(memory.content()).isNull();
+        assertThat(memory.photos()).hasSize(1);
+    }
+
+    @Test
+    void aStoryWithoutPhotoNeedsAText() {
+        assertInvalid(() -> withPhotos("Titre", null, List.of()));
+    }
+
+    @ParameterizedTest
+    @ValueSource(strings = {"", "  \n  "})
+    void aTextGivenWithAPhotoIsNeverBlank(String content) {
+        assertInvalid(() -> withPhotos("Titre", content, List.of(photo(null))));
+    }
+
+    @Test
+    void theSamePhotoTwiceIsRefused() {
+        MediaAssetId id = MediaAssetId.newId();
+
+        assertInvalid(() -> withPhotos("Titre", "Texte", List.of(new MemoryPhoto.New(id, null, null),
+                new MemoryPhoto.New(id, "Encore", null))));
+    }
+
+    @Test
+    void aCaptionIsKeptAsWrittenUpTo5000CharactersAndABlankOneIsNoCaption() {
+        Memory memory = withPhotos("Titre", "Texte", List.of(photo("  Mamie\n1974  "), photo("   "),
+                photo("x".repeat(5000))));
+
+        assertThat(memory.photos()).extracting(MemoryPhoto::caption)
+                .containsExactly("  Mamie\n1974  ", null, "x".repeat(5000));
+        assertInvalid(() -> withPhotos("Titre", "Texte", List.of(photo("x".repeat(5001)))));
+    }
+
+    @Test
+    void aTitleEditOfAStoryWithoutTextKeepsItWithoutText() {
+        Memory memory = withPhotos("Titre", null, List.of(photo(null)));
+
+        Memory changed = memory.updateStory(Optional.of("Nouveau"), Optional.empty(), Optional.empty(), EDITOR,
+                LATER);
+
+        assertThat(changed.content()).isNull();
+        assertThat(changed.photos()).isEqualTo(memory.photos());
+        assertThat(memory.updateStory(Optional.of("Titre"), Optional.empty(), Optional.empty(), EDITOR, LATER))
+                .isSameAs(memory);
+    }
+
     @Test
     void onlyItsCreatorIsTheCreator() {
         Memory memory = story("Titre", "Texte", List.of(PERSON));
@@ -146,7 +216,15 @@ class MemoryTest {
     }
 
     private static Memory story(String title, String content, List<UUID> persons) {
-        return Memory.createStory(MemoryId.newId(), FAMILY, title, content, persons, USER, NOW);
+        return Memory.createStory(MemoryId.newId(), FAMILY, title, content, persons, List.of(), USER, NOW);
+    }
+
+    private static Memory withPhotos(String title, String content, List<MemoryPhoto.New> photos) {
+        return Memory.createStory(MemoryId.newId(), FAMILY, title, content, List.of(PERSON), photos, USER, NOW);
+    }
+
+    private static MemoryPhoto.New photo(String caption) {
+        return new MemoryPhoto.New(MediaAssetId.newId(), caption, null);
     }
 
     private static void assertInvalid(Runnable creation) {

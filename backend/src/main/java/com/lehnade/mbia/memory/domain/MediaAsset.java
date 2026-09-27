@@ -11,7 +11,7 @@ import java.util.UUID;
 
 /**
  * An image uploaded directly by the browser to object storage (data-model.md §13, ADR-004,
- * ADR-007). In this iteration only Person photos are uploaded (Phase 3 plan §3.3, OQ-040).
+ * ADR-007): the photo of a Person (OQ-040) or of a Memory (OQ-042).
  *
  * <p>Storage keys are internal: they are never returned, logged or audited (Phase 3 plan §3.5).
  */
@@ -134,6 +134,19 @@ public final class MediaAsset {
      *     {@code MEDIA_NOT_READY} unless READY, then {@code VALIDATION_FAILED} for another purpose
      */
     public void requireAttachableAsProfilePictureBy(UUID userId) {
+        requireAttachableBy(userId, MediaPurpose.PROFILE_PICTURE, "profileMediaAssetId");
+    }
+
+    /**
+     * Checks that {@code userId} may attach this asset for {@code expected} (data-model.md §13,
+     * §14bis, OQ-036, OQ-042): only its uploader, only a READY asset of that purpose. Whether it is
+     * already used is the caller's check.
+     *
+     * @param field the request field named by a {@code VALIDATION_FAILED}
+     * @throws DomainException {@code PERMISSION_DENIED} for another member's upload, then
+     *     {@code MEDIA_NOT_READY} unless READY, then {@code VALIDATION_FAILED} for another purpose
+     */
+    public void requireAttachableBy(UUID userId, MediaPurpose expected, String field) {
         if (!uploadedBy.equals(userId)) {
             throw new DomainException(ErrorCode.PERMISSION_DENIED,
                     "Only the member who uploaded this file can use it.");
@@ -141,9 +154,10 @@ public final class MediaAsset {
         if (status != MediaStatus.READY) {
             throw new DomainException(ErrorCode.MEDIA_NOT_READY, "This file is not ready to be used.");
         }
-        if (purpose != MediaPurpose.PROFILE_PICTURE) {
-            throw new FieldValidationException("profileMediaAssetId", "NOT_SUPPORTED",
-                    "This file is not a profile picture.");
+        if (purpose != expected) {
+            throw new FieldValidationException(field, "NOT_SUPPORTED",
+                    expected == MediaPurpose.PROFILE_PICTURE ? "This file is not a profile picture."
+                            : "This file is not a memory photo.");
         }
     }
 

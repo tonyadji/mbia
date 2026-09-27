@@ -31,6 +31,7 @@ public enum ErrorCode {
     MEDIA_NOT_READY(409, "Media not ready"),
     MEDIA_ALREADY_USED(409, "Media already used"),
     PERSON_MERGE_CONFLICT(409, "Person merge conflict"),
+    MEMORY_PHOTO_LIMIT_REACHED(409, "Memory photo limit reached"),
     RELATIONSHIP_ALREADY_EXISTS(409, "Relationship already exists"),
     RELATIONSHIP_CREATES_CYCLE(409, "Relationship creates a cycle"),
     UNSUPPORTED_MEDIA_TYPE(415, "Unsupported media type"),
