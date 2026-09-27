@@ -120,6 +120,8 @@ V007 and V008 are immutable: their unnamed checks are dropped and replaced by na
 
 PR-44 ships the provisional layout: `display` versions stacked at full width, each with its caption and taken date. The human confirms it at PR-44's human check, or reopens OQ-048; a different layout then becomes its own PR in this phase, before PR-46.
 
+At PR-44's human check (2026-09-27), the stacked layout was **not satisfactory**. The human chose to try option B of OQ-048, a grid of thumbnails with a photo viewer: it is PR-45b. OQ-048 stays open until the human has inspected B.
+
 ### 3.8 Still out of this phase
 
 No invitation, member, role change, activity or analytics work (as `phase-3-family-memories.md` §3.2). No `activities` table. No analytics event.
@@ -136,6 +138,7 @@ No invitation, member, role change, activity or analytics work (as `phase-3-fami
 | PR-43 | Photos in Add Memory | add photos from a phone while writing |
 | PR-44 | Photos on the Memory and its cards | see the photos of a story |
 | PR-45 | Photos in Edit Memory | correct the photos of a story |
+| PR-45b | Photo grid and viewer on SCREEN-013 (OQ-048) | browse the photos of a story |
 | PR-46 | Phase 4 hardening | release |
 
 ---
@@ -310,6 +313,32 @@ No invitation, member, role change, activity or analytics work (as `phase-3-fami
 
 ---
 
+## PR-45b — Photo grid and viewer on SCREEN-013 (OQ-048)
+
+**Goal:** browse the photos of a story, as the human asked after seeing the stacked layout (§3.7).
+
+**Scope**
+
+- SCREEN-013: the photos as a grid of square thumbnails without text (2 columns on a phone, 3 from tablet width), each a button named by the alternative text of SCREEN-013.
+- The photo viewer of SCREEN-013: the display version large, caption, taken date, "Photo {n} of {count}", `Previous photo`, `Next photo`, `Close`, swipe, arrow keys and Escape; focus kept inside and returned to the thumbnail.
+- Expired URLs reload with fresh ones, in the grid and in the viewer (PR-44).
+- OQ-048 status, `screens.md` SCREEN-013 and this plan updated.
+
+**Out of scope:** zoom, download, share, reordering; any change to Memory cards, SCREEN-006 or SCREEN-014; the API.
+
+**Specs:** `product/ux/screens.md` SCREEN-013; OQ-048; `product/ux/design-guidelines.md` §7, §9; `product/mvp.md` §23.
+
+**Acceptance criteria**
+
+- The thumbnails are in position order and named by caption, otherwise "Photo {n} of {count}"; nothing scrolls sideways at 375 px, in portrait and landscape.
+- The viewer opens on the tapped photo, shows its caption and taken date, moves with the buttons, a swipe and the arrow keys, never past the first or the last photo, and closes with `Close` or Escape, focus back on its thumbnail.
+- Every control has an accessible name and a 44 px target; a VIEWER browses the photos, without any other action.
+- An expired URL is shown again after a reload of the Memory.
+
+**Human check:** open a Memory with three real photos (portrait and landscape, a long caption) at 375 px in FR and EN, browse them in the viewer, and **decide OQ-048**: confirm B, or describe the change wanted.
+
+---
+
 ## PR-46 — Phase 4 hardening
 
 **Goal:** the phase is releasable.
@@ -343,7 +372,7 @@ No invitation, member, role change, activity or analytics work (as `phase-3-fami
 - activity feed;
 - analytics events;
 - reordering photos, replacing a photo in place, cropping or editing a photo;
-- a photo viewer or gallery, unless OQ-048 decides it;
+- a photo viewer or gallery beyond the viewer of a Memory tried for OQ-048 (PR-45b);
 - albums or more photos per Memory than the setting allows (maximum 10);
 - using a Memory photo as a Person's photo, or the reverse (OQ-040);
 - removing the deprecated contract items (`createPhotoMemory`, `PHOTO`, Memory-level `media`, `caption`, `takenAt`, the `type` filter);
@@ -357,7 +386,7 @@ No invitation, member, role change, activity or analytics work (as `phase-3-fami
 
 ## 6. Phase 4 exit criteria
 
-- [ ] PR-40 to PR-46 merged into `develop`, CI green.
+- [ ] PR-40 to PR-46 (with PR-45b) merged into `develop`, CI green.
 - [ ] The §1 journey passes in Playwright, and manually at 375 px in FR and EN with real phone photos.
 - [ ] OQ-048 decided by the human (layout confirmed, or changed in its own PR).
 - [ ] Every Memory photo rule has automated tests:

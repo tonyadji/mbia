@@ -357,10 +357,14 @@ Any ACTIVE Family member. An archived Memory is not found (OQ-037).
 ## Display
 
 - its title;
-- its photos, in the order they were added: the display version of each at full width, stacked, with its caption and when it was taken if known. Each image's alternative text is its caption, otherwise "Photo {n} of {count}". This layout is provisional until the human has seen it rendered (OQ-048);
+- its photos, in the order they were added, as a grid of square thumbnails without text (2 columns on a phone, 3 from tablet width). Each thumbnail is a button named by the photo's alternative text: its caption, otherwise "Photo {n} of {count}". A tap opens the photo viewer on that photo. This layout is provisional until the human has confirmed it (OQ-048: the stacked layout was not kept);
 - its full text, as plain text with line breaks kept, when there is one;
 - the related Persons, each linking to their profile; an archived Person is shown by name, marked "archived", and links to their profile only for the ADMIN (OQ-035);
 - who added it and when ("Former member" when the account was deleted).
+
+## Photo viewer
+
+Over the whole screen, for every member (VIEWER included): the display version of the photo, as large as the screen allows without cropping, then its caption, when it was taken if known, and "Photo {n} of {count}". `Previous photo` and `Next photo` move between the photos in their order, disabled on the first and the last (no wrap-around); a horizontal swipe does the same. `Close` and Escape close it. The arrow keys move between photos on a keyboard. Focus stays inside the viewer and comes back to the thumbnail it was opened from. No zoom, download, share or edit action (OQ-048, provisional).
 
 ## Actions
 

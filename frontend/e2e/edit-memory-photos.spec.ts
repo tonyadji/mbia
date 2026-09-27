@@ -79,12 +79,12 @@ for (const { language, locale } of [
 
       // SCREEN-013 shows the result, in order.
       await expect(page).toHaveURL(memoryUrl);
-      const images = page
+      const thumbnails = page
         .getByRole('list', { name: t(language, 'memory:screen.photos.label') })
-        .getByRole('img');
-      await expect(images).toHaveCount(2);
-      await expect(images.nth(0)).toHaveAttribute('alt', first);
-      await expect(images.nth(1)).toHaveAttribute('alt', third);
+        .getByRole('button');
+      await expect(thumbnails).toHaveCount(2);
+      await expect(thumbnails.nth(0)).toHaveAccessibleName(first);
+      await expect(thumbnails.nth(1)).toHaveAccessibleName(third);
       await expectNoPageScroll(page);
     });
   });

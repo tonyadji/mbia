@@ -171,6 +171,10 @@ async function photoList() {
   return screen.findByRole('list', { name: 'Photos' });
 }
 
+async function thumbnail(name: string) {
+  return within(await photoList()).getByRole('button', { name });
+}
+
 describe('Memory photos', () => {
   beforeEach(async () => {
     fetchMock.mockReset();
@@ -178,60 +182,171 @@ describe('Memory photos', () => {
   });
 
   describe('on the Memory (SCREEN-013)', () => {
-    it('shows the photos in order, at full width, with their caption and taken date', async () => {
+    it('shows the photos in order as a grid of thumbnails named by their caption', async () => {
       fakeApi();
       renderApp(MEMORY);
 
       const items = within(await photoList()).getAllByRole('listitem');
       expect(items).toHaveLength(3);
-      const images = items.map((item) => within(item).getByRole('img'));
-      expect(images.map((image) => image.getAttribute('src'))).toEqual([
-        'http://localhost:9000/display-1?sig=1',
-        'http://localhost:9000/display-2?sig=1',
-        'http://localhost:9000/display-3?sig=1',
-      ]);
+      const thumbnails = items.map((item) => within(item).getByRole('button'));
       // The caption, otherwise "Photo {n} of {count}"; a blank caption counts as none.
-      expect(images.map((image) => image.getAttribute('alt'))).toEqual([
+      expect(thumbnails.map((thumbnail) => thumbnail.getAttribute('aria-label'))).toEqual([
         'Maman au marché',
         'Photo 2 sur 3',
         'Photo 3 sur 3',
       ]);
+      const images = items.map((item) => item.querySelector('img'));
+      expect(images.map((image) => image?.getAttribute('src'))).toEqual([
+        'http://localhost:9000/thumb-1?sig=1',
+        'http://localhost:9000/thumb-2?sig=1',
+        'http://localhost:9000/thumb-3?sig=1',
+      ]);
       for (const image of images) {
         expect(image).toHaveAttribute('loading', 'lazy');
-        expect(image).toHaveClass('w-full', 'h-auto');
+        expect(image).toHaveClass('object-cover');
       }
-      // The display size reserves the place of each image.
-      expect(images[1]).toHaveAttribute('width', '1365');
-      expect(images[1]).toHaveAttribute('height', '2048');
-
-      const [first, second, third] = items.map((item) => item.querySelector('figcaption'));
-      expect(first).toHaveTextContent(/^Maman au marché$/);
-      expect(second).toHaveTextContent(/^Prise : 1975$/);
-      expect(third).toHaveTextContent(/^Prise : 12 mars 1980$/);
+      // No text in the grid: caption and date are in the viewer.
+      expect(screen.queryByText('Prise : 1975')).not.toBeInTheDocument();
+      expect(document.querySelector('figcaption')).toBeNull();
     });
 
-    it('writes the alternative text and the taken date in English', async () => {
+    it('opens the viewer on the tapped photo, with its caption, date and position', async () => {
+      fakeApi();
+      renderApp(MEMORY);
+
+      fireEvent.click(await thumbnail('Photo 2 sur 3'));
+
+      const viewer = screen.getByRole('dialog', { name: 'Photo 2 sur 3' });
+      expect(within(viewer).getByRole('img', { name: 'Photo 2 sur 3' })).toHaveAttribute(
+        'src',
+        'http://localhost:9000/display-2?sig=1',
+      );
+      expect(within(viewer).getByText('Prise : 1975')).toBeInTheDocument();
+      expect(viewer).toHaveFocus();
+      for (const name of ['Fermer', 'Photo précédente', 'Photo suivante']) {
+        expect(within(viewer).getByRole('button', { name })).toBeEnabled();
+      }
+    });
+
+    it('moves between the photos with the buttons, never past the first or the last', async () => {
+      fakeApi();
+      renderApp(MEMORY);
+      fireEvent.click(await thumbnail('Maman au marché'));
+
+      const viewer = screen.getByRole('dialog');
+      const previous = within(viewer).getByRole('button', { name: 'Photo précédente' });
+      const next = within(viewer).getByRole('button', { name: 'Photo suivante' });
+      expect(viewer).toHaveAccessibleName('Photo 1 sur 3');
+      expect(within(viewer).getByText('Maman au marché')).toBeInTheDocument();
+      expect(previous).toBeDisabled();
+
+      fireEvent.click(next);
+      fireEvent.click(next);
+      expect(viewer).toHaveAccessibleName('Photo 3 sur 3');
+      expect(within(viewer).getByText('Prise : 12 mars 1980')).toBeInTheDocument();
+      expect(next).toBeDisabled();
+      fireEvent.click(next);
+      expect(viewer).toHaveAccessibleName('Photo 3 sur 3');
+
+      fireEvent.click(previous);
+      expect(viewer).toHaveAccessibleName('Photo 2 sur 3');
+    });
+
+    it('moves with a horizontal swipe and the arrow keys', async () => {
+      fakeApi();
+      renderApp(MEMORY);
+      fireEvent.click(await thumbnail('Maman au marché'));
+      const viewer = screen.getByRole('dialog');
+      const image = within(viewer).getByRole('img');
+      const stage = image.parentElement;
+      if (stage === null) throw new Error('no stage');
+
+      // A swipe to the left shows the next photo.
+      fireEvent.pointerDown(stage, { clientX: 300, clientY: 400 });
+      fireEvent.pointerUp(stage, { clientX: 150, clientY: 410 });
+      expect(viewer).toHaveAccessibleName('Photo 2 sur 3');
+      // A short or mostly vertical move is not a swipe.
+      fireEvent.pointerDown(stage, { clientX: 100, clientY: 400 });
+      fireEvent.pointerUp(stage, { clientX: 130, clientY: 400 });
+      fireEvent.pointerDown(stage, { clientX: 100, clientY: 100 });
+      fireEvent.pointerUp(stage, { clientX: 180, clientY: 400 });
+      expect(viewer).toHaveAccessibleName('Photo 2 sur 3');
+      // A swipe to the right shows the previous photo, and stops at the first.
+      fireEvent.pointerDown(stage, { clientX: 100, clientY: 400 });
+      fireEvent.pointerUp(stage, { clientX: 250, clientY: 400 });
+      fireEvent.pointerDown(stage, { clientX: 100, clientY: 400 });
+      fireEvent.pointerUp(stage, { clientX: 250, clientY: 400 });
+      expect(viewer).toHaveAccessibleName('Photo 1 sur 3');
+
+      fireEvent.keyDown(document, { key: 'ArrowRight' });
+      fireEvent.keyDown(document, { key: 'ArrowRight' });
+      fireEvent.keyDown(document, { key: 'ArrowRight' });
+      expect(viewer).toHaveAccessibleName('Photo 3 sur 3');
+      fireEvent.keyDown(document, { key: 'ArrowLeft' });
+      expect(viewer).toHaveAccessibleName('Photo 2 sur 3');
+    });
+
+    it('closes with Close or Escape, focus back on the thumbnail it was opened from', async () => {
+      fakeApi();
+      renderApp(MEMORY);
+      const second = await thumbnail('Photo 2 sur 3');
+      second.focus();
+      fireEvent.click(second);
+      fireEvent.click(within(screen.getByRole('dialog')).getByRole('button', { name: 'Fermer' }));
+      expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+      expect(second).toHaveFocus();
+
+      const third = screen.getByRole('button', { name: 'Photo 3 sur 3' });
+      third.focus();
+      fireEvent.click(third);
+      fireEvent.keyDown(document, { key: 'Escape' });
+      expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+      expect(third).toHaveFocus();
+    });
+
+    it('keeps the focus inside the viewer on Tab', async () => {
+      fakeApi();
+      renderApp(MEMORY);
+      fireEvent.click(await thumbnail('Photo 2 sur 3'));
+      const viewer = screen.getByRole('dialog');
+      const close = within(viewer).getByRole('button', { name: 'Fermer' });
+      const next = within(viewer).getByRole('button', { name: 'Photo suivante' });
+
+      next.focus();
+      fireEvent.keyDown(document, { key: 'Tab' });
+      expect(close).toHaveFocus();
+      fireEvent.keyDown(document, { key: 'Tab', shiftKey: true });
+      expect(next).toHaveFocus();
+    });
+
+    it('writes the names, the position and the taken date in English', async () => {
       await act(() => i18n.changeLanguage('en'));
       fakeApi({ locale: 'en' });
       renderApp(MEMORY);
 
-      const images = within(await photoList()).getAllByRole('img');
-      expect(images.map((image) => image.getAttribute('alt'))).toEqual([
+      const thumbnails = within(await photoList()).getAllByRole('button');
+      expect(thumbnails.map((button) => button.getAttribute('aria-label'))).toEqual([
         'Maman au marché',
         'Photo 2 of 3',
         'Photo 3 of 3',
       ]);
-      expect(screen.getByText('Taken: 1975')).toBeInTheDocument();
-      expect(screen.getByText('Taken: March 12, 1980')).toBeInTheDocument();
+      fireEvent.click(screen.getByRole('button', { name: 'Photo 3 of 3' }));
+      const viewer = screen.getByRole('dialog', { name: 'Photo 3 of 3' });
+      expect(within(viewer).getByText('Taken: March 12, 1980')).toBeInTheDocument();
+      for (const name of ['Close', 'Previous photo', 'Next photo']) {
+        expect(within(viewer).getByRole('button', { name })).toBeInTheDocument();
+      }
     });
 
-    it('shows no caption block for a photo without caption nor date', async () => {
+    it('shows neither caption nor date in the viewer for a photo without them', async () => {
       fakeApi({ getMemory: () => jsonResponse(memory({ photos: [photo(1)] })) });
       renderApp(MEMORY);
 
-      const item = within(await photoList()).getByRole('listitem');
-      expect(within(item).getByRole('img')).toHaveAttribute('alt', 'Photo 1 sur 1');
-      expect(item.querySelector('figcaption')).toBeNull();
+      fireEvent.click(await thumbnail('Photo 1 sur 1'));
+      const viewer = screen.getByRole('dialog', { name: 'Photo 1 sur 1' });
+      expect(within(viewer).queryByText(/Prise/)).not.toBeInTheDocument();
+      expect(within(viewer).getByRole('button', { name: 'Photo précédente' })).toBeDisabled();
+      expect(within(viewer).getByRole('button', { name: 'Photo suivante' })).toBeDisabled();
     });
 
     it('places the photos after the title and before the text', async () => {
@@ -264,20 +379,24 @@ describe('Memory photos', () => {
       expect(screen.queryByRole('list', { name: 'Photos' })).not.toBeInTheDocument();
     });
 
-    it('shows the photos to a VIEWER, without any action', async () => {
+    it('lets a VIEWER browse the photos, without any other action', async () => {
       fakeApi({ role: 'VIEWER' });
       renderApp(MEMORY);
 
-      expect(within(await photoList()).getAllByRole('img')).toHaveLength(3);
+      expect(within(await photoList()).getAllByRole('button')).toHaveLength(3);
       expect(screen.queryByRole('link', { name: 'Modifier' })).not.toBeInTheDocument();
       expect(screen.queryByRole('button', { name: 'Archiver' })).not.toBeInTheDocument();
-      // Nothing on the photos can be activated.
-      const list = screen.getByRole('list', { name: 'Photos' });
-      expect(within(list).queryAllByRole('button')).toHaveLength(0);
-      expect(within(list).queryAllByRole('link')).toHaveLength(0);
+      fireEvent.click(screen.getByRole('button', { name: 'Maman au marché' }));
+      const viewer = screen.getByRole('dialog');
+      expect(
+        within(viewer)
+          .getAllByRole('button')
+          .map((button) => button.getAttribute('aria-label')),
+      ).toEqual(['Fermer', 'Photo précédente', 'Photo suivante']);
+      expect(within(viewer).queryAllByRole('link')).toHaveLength(0);
     });
 
-    it('shows a photo again with a fresh URL after its URL expired', async () => {
+    it('shows a thumbnail again with a fresh URL after its URL expired', async () => {
       let sig = 1;
       const api = fakeApi({
         getMemory: () => jsonResponse(memory({ photos: threePhotos(sig) })),
@@ -285,28 +404,52 @@ describe('Memory photos', () => {
       renderApp(MEMORY);
       const getMemory = `GET /families/${ADJI_ID}/memories/${MEMORY_ID}`;
 
-      const expired = within(await photoList()).getByRole('img', { name: 'Maman au marché' });
+      const expired = (await thumbnail('Maman au marché')).querySelector('img');
+      if (expired === null) throw new Error('no thumbnail');
       expect(api.count(getMemory)).toBe(1);
       sig = 2;
       // The pre-signed URL expired: S3 answers 403 and the image fails to load.
       fireEvent.error(expired);
 
       await waitFor(() => {
-        expect(screen.getByRole('img', { name: 'Maman au marché' })).toHaveAttribute(
-          'src',
-          'http://localhost:9000/display-1?sig=2',
-        );
+        expect(
+          screen.getByRole('button', { name: 'Maman au marché' }).querySelector('img'),
+        ).toHaveAttribute('src', 'http://localhost:9000/thumb-1?sig=2');
       });
       expect(api.count(getMemory)).toBe(2);
 
       // The fresh URL fails too: the place of the photo says so, without reloading again.
-      fireEvent.error(screen.getByRole('img', { name: 'Maman au marché' }));
-      const unavailable = await screen.findByText(
-        'Cette photo ne peut pas être affichée pour le moment.',
-      );
-      expect(unavailable).toHaveAttribute('role', 'img');
-      expect(unavailable).toHaveAccessibleName('Maman au marché');
+      const fresh = screen.getByRole('button', { name: 'Maman au marché' }).querySelector('img');
+      if (fresh === null) throw new Error('no thumbnail');
+      fireEvent.error(fresh);
+      const button = screen.getByRole('button', { name: 'Maman au marché' });
+      expect(
+        await within(button).findByText('Cette photo ne peut pas être affichée pour le moment.'),
+      ).toBeInTheDocument();
       expect(api.count(getMemory)).toBe(2);
+    });
+
+    it('shows the photo of the viewer again with a fresh URL after its URL expired', async () => {
+      let sig = 1;
+      const api = fakeApi({
+        getMemory: () => jsonResponse(memory({ photos: threePhotos(sig) })),
+      });
+      renderApp(MEMORY);
+      const getMemory = `GET /families/${ADJI_ID}/memories/${MEMORY_ID}`;
+      fireEvent.click(await thumbnail('Photo 2 sur 3'));
+
+      sig = 2;
+      fireEvent.error(within(screen.getByRole('dialog')).getByRole('img'));
+
+      await waitFor(() => {
+        expect(within(screen.getByRole('dialog')).getByRole('img')).toHaveAttribute(
+          'src',
+          'http://localhost:9000/display-2?sig=2',
+        );
+      });
+      expect(api.count(getMemory)).toBe(2);
+      // Still on the same photo.
+      expect(screen.getByRole('dialog')).toHaveAccessibleName('Photo 2 sur 3');
     });
   });
 

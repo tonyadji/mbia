@@ -14,10 +14,11 @@ const ROTATED_PHOTO = fixture('exif-gps-orientation-6.jpg');
 const PNG_PHOTO = fixture('gps.png');
 
 /**
- * PR-44 (phase-4-memory-photos.md): at phone width, a Memory shows its photos after its title,
- * stacked at full width in the order they were added, each with its caption and taken date, and an
- * alternative text (SCREEN-013, OQ-048). Nothing scrolls sideways, in portrait or landscape. An
- * expired photo URL is shown again. Its card shows the thumbnail of the first photo on the profile
+ * PR-44 and PR-45b (phase-4-memory-photos.md): at phone width, a Memory shows its photos after its
+ * title as a grid of thumbnails in the order they were added, each named by its alternative text;
+ * the viewer shows each photo large with its caption and taken date, and moves with its buttons and
+ * a swipe (SCREEN-013, OQ-048). Nothing scrolls sideways, in portrait or landscape. An expired
+ * photo URL is shown again. Its card shows the thumbnail of the first photo on the profile
  * (SCREEN-005) and in the Family Memories (SCREEN-015); a Memory without text shows its title only.
  */
 for (const { language, locale } of [
@@ -67,42 +68,67 @@ for (const { language, locale } of [
       await expect(page).toHaveURL(/\/memories\/[0-9a-f-]{36}$/);
       const memoryUrl = page.url();
 
-      // SCREEN-013: title, then the photos in order, then the story.
+      // SCREEN-013: title, then the photos in order as a grid of thumbnails, then the story.
       const title1 = page.getByRole('heading', { level: 1 });
       await expect(title1).toHaveText(title);
       const photos = page.getByRole('list', { name: t(language, 'memory:screen.photos.label') });
-      const images = photos.getByRole('img');
-      await expect(images).toHaveCount(3);
+      const thumbnails = photos.getByRole('button');
+      await expect(thumbnails).toHaveCount(3);
       const alts = [
         caption,
         t(language, 'memory:screen.photos.alt', { n: '2', total: '3' }),
         t(language, 'memory:screen.photos.alt', { n: '3', total: '3' }),
       ];
       for (const [index, alt] of alts.entries()) {
-        await expect(images.nth(index)).toHaveAttribute('alt', alt);
-        await expect(images.nth(index)).toHaveAttribute('loading', 'lazy');
+        await expect(thumbnails.nth(index)).toHaveAccessibleName(alt);
+        await expect(thumbnails.nth(index).locator('img')).toHaveAttribute('loading', 'lazy');
       }
-      await expect(photos.locator('figcaption').nth(0)).toHaveText(caption);
-      await expect(photos.locator('figcaption').nth(1)).toHaveText(
-        t(language, 'memory:screen.photos.takenAt', { date: '1975' }),
-      );
-      await expect(photos.locator('figcaption')).toHaveCount(2);
       await expectBefore(title1, photos);
       await expectBefore(photos, page.getByText(story));
-      for (const index of [0, 1, 2]) await expectLoadedImage(images.nth(index));
+      for (const index of [0, 1, 2]) await expectLoadedImage(thumbnails.nth(index).locator('img'));
 
       // At 375 px, nothing scrolls sideways, in portrait then in landscape (812 × 375).
       await expectAccessibleControls(page);
-      await expectFullWidth(page, images);
+      await expectFullWidth(page, thumbnails);
       const viewport = page.viewportSize();
       await page.setViewportSize({ width: 812, height: 375 });
-      await expectFullWidth(page, images);
+      await expectFullWidth(page, thumbnails);
       if (viewport) await page.setViewportSize(viewport);
+
+      // The viewer: the tapped photo large, its caption and date, previous and next, a swipe.
+      await thumbnails.nth(0).click();
+      // Named by the position of its photo, which changes: found by its role.
+      const viewer = page.getByRole('dialog');
+      await expect(viewer).toHaveAccessibleName(
+        t(language, 'memory:screen.photos.alt', { n: '1', total: '3' }),
+      );
+      await expectLoadedImage(viewer.getByRole('img', { name: caption }));
+      await expect(viewer.getByText(caption)).toBeVisible();
+      await expect(
+        viewer.getByRole('button', { name: t(language, 'memory:screen.photos.previous') }),
+      ).toBeDisabled();
+      await expectAccessibleControls(page);
+      await expectFullWidth(page, viewer.getByRole('img'));
+      await viewer.getByRole('button', { name: t(language, 'memory:screen.photos.next') }).click();
+      await expect(viewer.getByRole('img', { name: alts[1] })).toBeVisible();
+      await expect(
+        viewer.getByText(t(language, 'memory:screen.photos.takenAt', { date: '1975' })),
+      ).toBeVisible();
+      await swipe(page, viewer.getByRole('img'), -150);
+      await expect(viewer.getByRole('img', { name: alts[2] })).toBeVisible();
+      await expect(
+        viewer.getByRole('button', { name: t(language, 'memory:screen.photos.next') }),
+      ).toBeDisabled();
+      await swipe(page, viewer.getByRole('img'), 150);
+      await expect(viewer.getByRole('img', { name: alts[1] })).toBeVisible();
+      await page.keyboard.press('Escape');
+      await expect(page.getByRole('dialog')).toHaveCount(0);
+      await expect(thumbnails.nth(0)).toBeFocused();
 
       // An expired pre-signed URL (S3 answers 403): the photo comes back with a fresh URL.
       let expired = false;
       await page.route(
-        (url) => url.pathname.endsWith('/display'),
+        (url) => url.pathname.endsWith('/thumbnail'),
         async (route) => {
           if (expired) return route.continue();
           expired = true;
@@ -112,9 +138,11 @@ for (const { language, locale } of [
         },
       );
       await page.goto(memoryUrl);
-      await expectLoadedImage(page.getByRole('img', { name: caption }));
+      await expectLoadedImage(
+        page.getByRole('button', { name: caption, exact: true }).locator('img'),
+      );
       expect(expired).toBe(true);
-      await page.unroute((url) => url.pathname.endsWith('/display'));
+      await page.unroute((url) => url.pathname.endsWith('/thumbnail'));
 
       // The card shows the first photo, decorative, on the profile and in the Family Memories.
       await page.getByRole('link', { name: 'Alice' }).click();
@@ -142,7 +170,7 @@ for (const { language, locale } of [
       await page.getByRole('button', { name: t(language, 'memory:form.publish') }).click();
       await expect(page.getByRole('heading', { level: 1 })).toHaveText(textless);
       await expect(
-        page.getByRole('img', {
+        page.getByRole('button', {
           name: t(language, 'memory:screen.photos.alt', { n: '1', total: '1' }),
         }),
       ).toBeVisible();
@@ -209,6 +237,18 @@ async function expectBefore(first: Locator, second: Locator) {
   const [a, b] = await Promise.all([first.boundingBox(), second.boundingBox()]);
   if (!a || !b) throw new Error('not on the page');
   expect(a.y + a.height).toBeLessThanOrEqual(b.y);
+}
+
+/** A horizontal swipe with a finger (a mouse drag here): negative to the left. */
+async function swipe(page: Page, target: Locator, dx: number) {
+  const box = await target.boundingBox();
+  if (!box) throw new Error('not on the page');
+  const x = box.x + box.width / 2;
+  const y = box.y + box.height / 2;
+  await page.mouse.move(x, y);
+  await page.mouse.down();
+  await page.mouse.move(x + dx, y, { steps: 5 });
+  await page.mouse.up();
 }
 
 /** Every photo fits the width of the page, which never scrolls sideways. */
