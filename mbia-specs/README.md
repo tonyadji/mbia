@@ -38,7 +38,8 @@ mbia-specs/
 ├── delivery/
 │   ├── phase-1-walking-skeleton.md
 │   ├── phase-2-core-family-graph.md
-│   └── phase-3-family-memories.md
+│   ├── phase-3-family-memories.md
+│   └── phase-4-memory-photos.md
 ├── product/
 │   ├── vision.md
 │   ├── mvp.md
@@ -68,6 +69,19 @@ mbia-specs/
 The visual mockup is a design reference. Product rules and screen behavior are defined in text and remain authoritative.
 
 ## Changelog
+
+### 0.5 — 2026-09-26
+
+Photos in Memories, from the answer to OQ-042:
+
+- one kind of Memory: a title, a text (optional when there is a photo) and up to N photos, N being an application setting (3 at launch, never above 10); a lowered limit never removes photos (`mvp.md` §17);
+- each photo with an optional caption and taken date, in the order of addition, uploaded while the Memory is written or edited (`family-tree-ux.md` §13, `screens.md` SCREEN-006, SCREEN-013, SCREEN-014);
+- Memory cards show the first photo; no type filter on Family Memories (SCREEN-005, SCREEN-015);
+- `memory_photos` table, `MEMORY_PHOTO` media, Memory audit of photos (`data-model.md` §3, §13, §14, §14bis, §17);
+- error code `MEMORY_PHOTO_LIMIT_REACHED` and the Memory transaction with its photos (`technical-specification.md` §12, §14);
+- `mvp.md` §28 now reads "add a Memory with a photo and its story";
+- delivery plan `delivery/phase-4-memory-photos.md`, including the additive contract changes applied in PR-40;
+- OQ-048 opened: the stacked photo layout of SCREEN-013 is provisional until the human has seen it rendered.
 
 ### 0.4 — 2026-09-26
 

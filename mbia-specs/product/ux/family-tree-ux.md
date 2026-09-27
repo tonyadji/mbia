@@ -49,7 +49,7 @@ Critical actions must work comfortably on a phone:
 - navigate family;
 - open Person;
 - add Person;
-- add photo;
+- add a memory (with photos);
 - invite relative.
 
 Desktop mainly provides more room for the tree and may replace bottom sheets with side panels.
@@ -269,34 +269,21 @@ The profile should feel like family memory, not a database record.
 
 Use the User-facing term **Souvenir** / **Memory** depending on locale.
 
-MVP actions:
-
-```text
-Add a photo
-Tell a story
-```
+MVP action: `Add a memory`. A Memory is a story with up to a few photos (`mvp.md` §17, OQ-042); there is no separate photo flow.
 
 Every Memory must be linked to at least one Person. When the flow starts from a Person, that Person is preselected; otherwise, the User's linked Person is preselected when it exists. "Publish" stays disabled until at least one Person is selected.
 
-Photo flow:
-
-```text
-choose/take photo
-→ optional caption
-→ identify people in photo (at least one)
-→ publish
-```
-
-While the photo is uploaded and processed, show progress; on failure, explain in human language and allow retry.
-
-Story flow:
+Flow:
 
 ```text
 title
-→ story text
+→ story text (optional when there is a photo)
+→ photos (optional, up to the Family's limit), each with an optional caption and taken date
 → related Persons
 → publish
 ```
+
+Each photo is sent as soon as it is chosen: show its progress; on failure, explain in human language and allow retry or removal. "Publish" waits until every chosen photo is ready.
 
 ## 14. Error language
 

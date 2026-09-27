@@ -255,7 +255,7 @@ History
 
 ## Memories section
 
-The Person's ACTIVE Memories, most recently added first, 20 at a time with `Show more` (OQ-034): photo thumbnails and story cards (title and first lines), each opening SCREEN-013. ADMIN / CONTRIBUTOR see `Add a memory` (SCREEN-006 with this Person preselected).
+The Person's ACTIVE Memories, most recently added first, 20 at a time with `Show more` (OQ-034): Memory cards (the thumbnail of the first photo when there is one, the title and the first lines of the text), each opening SCREEN-013. ADMIN / CONTRIBUTOR see `Add a memory` (SCREEN-006 with this Person preselected).
 
 Empty state: explains that no Memory is linked to this Person yet; ADMIN / CONTRIBUTOR also see `Add a memory`.
 
@@ -312,38 +312,33 @@ Show only when permission rules allow them:
 
 ADMIN / CONTRIBUTOR.
 
-## Initial choice
+## Fields
 
-```text
-Add a photo
-Tell a story
-```
-
-## Photo flow
-
-Fields:
-
-```text
-file *            (JPEG, PNG, WEBP; max 15 MB)
-caption optional
-relatedPersons[] * (at least one)
-```
-
-Behind `More information`: `When was this photo taken?`, as exact date, year only or unknown, like a birth date (OQ-033).
-
-When launched from a Person profile, preselect that Person; otherwise preselect the User's linked Person when it exists.
-
-## Story flow
-
-Fields:
+One form, with no initial choice (OQ-042):
 
 ```text
 title *
-content *
+content            required when no photo is added
+photos[]           0 to the Family's limit (3 at launch)
+  caption          optional
+  takenAt          optional, behind `More information`: `When was this photo taken?`,
+                   as exact date, year only or unknown, like a birth date (OQ-033)
 relatedPersons[] * (at least one)
 ```
 
 A story is plain text: line breaks are kept; no formatting is interpreted (OQ-032).
+
+## Photos
+
+- `Add a photo` opens the file picker (JPEG, PNG, WEBP; max 15 MB), which may select several files. Only the free places are kept, in the order chosen; the others are not added and a message says how many photos a Memory can have.
+- At the limit, `Add a photo` is disabled and the same message explains why.
+- Each photo is reduced in the browser and sent as soon as it is chosen, with its progress; on failure, explain in human language and offer `Try again` or `Remove`. Its thumbnail is shown with its caption field and `More information`.
+- `Publish` stays disabled while a photo is being sent or has failed.
+- Photos keep the order in which they were added; they are not reordered.
+
+## Preselection
+
+When launched from a Person profile, preselect that Person; otherwise preselect the User's linked Person when it exists.
 
 ---
 
@@ -361,8 +356,9 @@ Any ACTIVE Family member. An archived Memory is not found (OQ-037).
 
 ## Display
 
-- a photo: its display version, the caption, and when it was taken if known;
-- a story: its title and full text, as plain text with line breaks kept;
+- its title;
+- its photos, in the order they were added: the display version of each at full width, stacked, with its caption and when it was taken if known. Each image's alternative text is its caption, otherwise "Photo {n} of {count}". This layout is provisional until the human has seen it rendered (OQ-048);
+- its full text, as plain text with line breaks kept, when there is one;
 - the related Persons, each linking to their profile; an archived Person is shown by name, marked "archived", and links to their profile only for the ADMIN (OQ-035);
 - who added it and when ("Former member" when the account was deleted).
 
@@ -385,11 +381,13 @@ The creator or an ADMIN, with a role that can write (OQ-041).
 
 ## Fields
 
-The fields of SCREEN-006 for the Memory's type, including `More information` for a photo. The photo itself cannot be replaced.
+The fields of SCREEN-006, with the Memory's photos: their caption and `More information` can be changed, a photo can be removed, and `Add a photo` adds new ones within the limit. A photo is not replaced in place, nor reordered.
+
+When a lowered limit leaves the Memory with more photos than allowed, its photos stay; `Add a photo` stays disabled until enough are removed (`mvp.md` §17).
 
 ## Behavior
 
-When the related Persons are changed, they must keep at least one ACTIVE Person; the title and text can be corrected without changing them (OQ-043). An archived Person already on the Memory may stay, but cannot be added (OQ-035).
+When the related Persons are changed, they must keep at least one ACTIVE Person; the title and text can be corrected without changing them (OQ-043). The text may be emptied only while the Memory keeps a photo. An archived Person already on the Memory may stay, but cannot be added (OQ-035).
 
 The form sends the version of the Memory it loaded. On `CONCURRENT_MODIFICATION`, it behaves as SCREEN-012: explain and offer `Reload latest version`, never merge values.
 
@@ -413,7 +411,7 @@ Any ACTIVE Family member.
 
 ## Display
 
-The Family's ACTIVE Memories, most recently added first, 20 at a time with `Show more` (OQ-034): photo thumbnails and story cards, each opening SCREEN-013. A filter: `All`, `Photos`, `Stories`.
+The Family's ACTIVE Memories, most recently added first, 20 at a time with `Show more` (OQ-034): Memory cards as on the profile (SCREEN-005), each opening SCREEN-013. No filter (OQ-042).
 
 ADMIN / CONTRIBUTOR see `Add a memory` (SCREEN-006).
 

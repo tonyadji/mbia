@@ -46,20 +46,14 @@ When a question is answered, update the relevant spec, then move the entry to **
 - **Recommendation:** A, the same shape as the archived notice; implemented provisionally in PR-27 and easy to change.
 - **Blocking:** nothing; only the wording and the behaviour of that notice.
 
-### OQ-042 — Adding media to a Memory (future iteration)
+### OQ-048 — Layout of a Memory's photos on SCREEN-013 (provisional)
 
-- **Raised by / date:** human and coding agent (Phase 3 plan), 2026-09-26
-- **Context:** `mvp.md` §17 defines two Memory types, PHOTO and STORY, and `mvp.md` §28 expects "add photo and Story". While planning Phase 3, the human decided that a Memory is **a title and a text only** for this phase. Media will later be **added to a Memory**, rather than being a separate kind of Memory. Uploading a file is a technical action. The product action is "add a file to this Memory", and the moment the upload happens in the journey must be designed.
-- **Question:** in a later iteration, how does a Memory carry media, and when does the upload happen in the journey?
-- **Points to decide:**
-  - the model: a Memory with a title, a text and 0..n media, or one medium per Memory. This decides what becomes of the PHOTO / STORY types, `createPhotoMemory`, `memories.media_asset_id` and `caption` (`data-model.md` §14);
-  - whether title or text become optional when a medium is present;
-  - the moment of upload: when the file is chosen while writing the Memory (published with it), or after the Memory exists ("Add photos to this memory");
-  - per-medium caption and taken date (OQ-033 already answers the date's precision);
-  - the limit on media per Memory, to stay clear of "advanced albums" (`mvp.md` §27);
-  - `mvp.md` §17 and §28 wording.
-- **Recommendation:** decide it in a dedicated product discussion before the phase that adds media. Until then, Phase 3 creates nothing that assumes one model: no photo column in `memories`, and `createPhotoMemory` is not implemented.
-- **Blocking:** nothing in Phase 3.
+- **Raised by / date:** human and coding agent (Phase 4 plan), 2026-09-26
+- **Context:** OQ-042 lets a Memory carry up to N photos (3 at launch). SCREEN-013 must show them. The human chose a first layout but wants to confirm it once they have seen it rendered with real photos, on a phone.
+- **Question:** is the provisional layout right, or should it change?
+- **Options:** A — the `display` versions stacked at full width, one under the other, each with its caption and taken date, no viewer (provisional choice) / B — a grid of thumbnails, a tap opening the photo large with swipe between photos / C — another layout proposed after the review.
+- **Recommendation:** A for the first delivery; propose B or another layout only if the rendering does not work for real family photos (portrait and landscape mixed, captions of several lines).
+- **Blocking:** nothing. SCREEN-013 ships A in Phase 4 (PR-44). The human confirms or reopens it at the human check of PR-44; a change becomes its own PR of the phase.
 
 ## Resolved
 
@@ -467,6 +461,32 @@ When a question is answered, update the relevant spec, then move the entry to **
 - **Recommendation:** A. No uploaded photo stays stored without being visible, and no member can take over another member's upload.
 - **Blocking:** the Person photo PRs (PR-36, PR-37).
 - **Answer:** A (human, 2026-09-26). Documented in `data-model.md` §13, `openapi.yaml` (`completeMediaUpload`, `UpdatePersonRequest`, `ProblemDetails.code`) and `technical-specification.md` §12.
+
+### OQ-042 — Adding media to a Memory
+
+- **Raised by / date:** human and coding agent (Phase 3 plan), 2026-09-26
+- **Context:** `mvp.md` §17 defines two Memory types, PHOTO and STORY, and `mvp.md` §28 expects "add photo and Story". While planning Phase 3, the human decided that a Memory is **a title and a text only** for this phase. Media will later be **added to a Memory**, rather than being a separate kind of Memory. Uploading a file is a technical action. The product action is "add a file to this Memory", and the moment the upload happens in the journey must be designed.
+- **Question:** in a later iteration, how does a Memory carry media, and when does the upload happen in the journey?
+- **Points to decide:**
+  - the model: a Memory with a title, a text and 0..n media, or one medium per Memory. This decides what becomes of the PHOTO / STORY types, `createPhotoMemory`, `memories.media_asset_id` and `caption` (`data-model.md` §14);
+  - whether title or text become optional when a medium is present;
+  - the moment of upload: when the file is chosen while writing the Memory (published with it), or after the Memory exists ("Add photos to this memory");
+  - per-medium caption and taken date (OQ-033 already answers the date's precision);
+  - the limit on media per Memory, to stay clear of "advanced albums" (`mvp.md` §27);
+  - `mvp.md` §17 and §28 wording.
+- **Recommendation:** decide it in a dedicated product discussion before the phase that adds media. Until then, Phase 3 creates nothing that assumes one model: no photo column in `memories`, and `createPhotoMemory` is not implemented.
+- **Blocking:** nothing in Phase 3; the whole of Phase 4.
+- **Answer (human, 2026-09-26):**
+  - **model:** one kind of Memory: a title, a story text and **0 to N photos**, N being the application setting `mbia.memory.max-photos` (3 at launch, never above 10). Photos are added to a Memory; there is no separate photo Memory;
+  - **required fields:** the title is always required; the text is required only when the Memory has no photo;
+  - **moment of upload:** each photo is uploaded as soon as it is chosen while writing the Memory (SCREEN-006) and attached when the Memory is published; SCREEN-014 adds and removes photos the same way;
+  - **per photo:** an optional caption and an optional taken date (precision of OQ-033), in the order the photos were added; no reordering;
+  - **limit:** the backend refuses any addition beyond N (`MEMORY_PHOTO_LIMIT_REACHED`); the interface disables "Add a photo" at N and keeps only the free places when several photos are chosen at once; the frontend reads N from the API. A Memory already above a lowered limit keeps its photos: the limit only applies to additions;
+  - **contract:** additive only. `createStoryMemory` and `updateMemory` accept `photos`, `MemoryResponse` returns them, `FamilyResponse` returns the limit; `createPhotoMemory`, the `PHOTO` type, the Memory-level `media`, `caption` and `takenAt`, and the `type` filter of `listFamilyMemories` stay in the contract, deprecated;
+  - **SCREEN-015:** no type filter; cards show the thumbnail of the first photo;
+  - **SCREEN-013:** photos stacked at full width, provisional until the human sees it rendered (OQ-048).
+  
+  Documented in `mvp.md` §17 and §28, `family-tree-ux.md` §13, `screens.md` SCREEN-005, SCREEN-006, SCREEN-013 to SCREEN-015, `data-model.md` §3, §13, §14, §14bis, §17, `technical-specification.md` §12 and §14, and `delivery/phase-4-memory-photos.md` (contract changes, applied in PR-40).
 
 ### OQ-043 — "At least one ACTIVE Person" on an edit that keeps the Persons
 

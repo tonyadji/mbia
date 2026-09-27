@@ -144,8 +144,8 @@ relationship_status:
   ARCHIVED
 
 memory_type:
-  PHOTO
   STORY
+  PHOTO            (reserved, never created: a Memory carries its photos, OQ-042)
 
 memory_status:
   ACTIVE
@@ -182,8 +182,8 @@ family_memberships     families
                          │
                          ├──────── memories
                          │           │
-                         │           ▼
-                         │      memory_persons
+                         │           ├──▶ memory_persons
+                         │           └──▶ memory_photos ──▶ media_assets
                          │
                          ├──────── media_assets
                          │
@@ -643,33 +643,28 @@ Rules (processing details: ADR-007):
 - only the User who uploaded an asset may complete it and attach it; another member gets `PERMISSION_DENIED` (OQ-036);
 - completing a `READY` asset again returns it unchanged; completing a `FAILED` asset answers `MEDIA_INVALID` again without processing anything, and an `ARCHIVED` one `MEDIA_NOT_READY` (OQ-044);
 - the API describes an asset by the MIME type and size declared at upload (`upload_mime_type`, `upload_size_bytes`), and by the dimensions of its `display` derivative (OQ-045);
-- an asset is attached once, to a single use of its purpose (for example one Person's photo); attaching it again is refused with `MEDIA_ALREADY_USED` (OQ-036);
+- an asset is attached once, to a single use of its purpose: a `PROFILE_PICTURE` to one Person, a `MEMORY_PHOTO` to one Memory; attaching it again is refused with `MEDIA_ALREADY_USED` (OQ-036, OQ-042);
 - a `READY` asset still unattached 24 hours after `ready_at` becomes `FAILED` and its objects are deleted by the same scheduled task (OQ-036);
 - a replaced or removed Person photo becomes `ARCHIVED` and no URL is served for it (OQ-040); its objects are kept, as the rest of the soft lifecycle;
+- a photo removed from a Memory becomes `ARCHIVED` in the same way (OQ-042); the photos of an archived Memory stay attached and `READY`, and are served again if support restores the Memory;
 - a Person's photo is served as the pre-signed URL of its `thumbnail` derivative (`profilePictureUrl`), signed from the Person row without reading `media_assets`: an attached asset is always `READY`;
-- only `READY` media may be attached to a person profile or photo memory;
+- only `READY` media of the matching purpose may be attached: a `PROFILE_PICTURE` to a Person, a `MEMORY_PHOTO` to a Memory;
 - storage keys are internal and must not be exposed as public permanent URLs;
 - views use pre-signed GET URLs valid for 60 minutes.
 
 ## 14. Table: `memories`
 
-Stores both stories and photo memories.
+Stores Memories: a title, an optional story text and, in `memory_photos`, up to a few photos (`mvp.md` §17, OQ-042).
 
 ```sql
 memories (
     id                  UUID PRIMARY KEY,
     family_id           UUID NOT NULL REFERENCES families(id),
-    type                memory_type NOT NULL,
+    type                memory_type NOT NULL DEFAULT 'STORY',
     status              memory_status NOT NULL DEFAULT 'ACTIVE',
 
-    title               VARCHAR(250),
+    title               VARCHAR(250) NOT NULL,
     content             TEXT,
-    caption             TEXT,
-    media_asset_id      UUID,
-
-    taken_date          DATE,
-    taken_year          SMALLINT,
-    taken_date_precision date_precision NOT NULL DEFAULT 'UNKNOWN',
 
     created_by          UUID NOT NULL REFERENCES users(id),
     updated_by          UUID NOT NULL REFERENCES users(id),
@@ -678,30 +673,63 @@ memories (
     archived_at         TIMESTAMPTZ,
     version             BIGINT NOT NULL DEFAULT 0,
 
-    FOREIGN KEY (media_asset_id, family_id)
-        REFERENCES media_assets(id, family_id),
+    CHECK (type = 'STORY'),
 
     UNIQUE (id, family_id)
 )
 ```
 
-Type invariants:
+Invariants (the second one spans `memory_photos` and is enforced in the application transaction):
 
 ```text
-PHOTO:
-  media_asset_id required
-  title optional
-  content must be null
-  caption optional
-
-STORY:
-  title required
-  content required
-  media_asset_id null in MVP
-  caption null
+title    required, not blank, at most 250 characters
+content  at most 50,000 characters; required and not blank when the Memory has no photo
 ```
 
+`V007__memories.sql` created the table without the media columns of the earlier draft (`media_asset_id`, `caption`, taken date): they belong to each photo in `memory_photos`. Its check that a STORY has a title and a text is relaxed by `V009__memory_photos.sql` to the title only; the text rule, which depends on the photos, is the application's.
+
 A memory must be associated with at least one active person in MVP. This is enforced in the application transaction because it spans `memory_persons`.
+
+## 14bis. Table: `memory_photos`
+
+The photos of a Memory, in the order they were added (OQ-042).
+
+```sql
+memory_photos (
+    family_id             UUID NOT NULL,
+    memory_id             UUID NOT NULL,
+    media_asset_id        UUID NOT NULL,
+    position              SMALLINT NOT NULL,
+    caption               TEXT,
+    taken_date            DATE,
+    taken_year            SMALLINT,
+    taken_date_precision  date_precision NOT NULL DEFAULT 'UNKNOWN',
+    created_at            TIMESTAMPTZ NOT NULL,
+
+    PRIMARY KEY (memory_id, media_asset_id),
+    UNIQUE (media_asset_id),
+    UNIQUE (memory_id, position),
+
+    FOREIGN KEY (memory_id, family_id)
+        REFERENCES memories(id, family_id),
+
+    FOREIGN KEY (media_asset_id, family_id)
+        REFERENCES media_assets(id, family_id),
+
+    CHECK (caption IS NULL OR char_length(caption) <= 5000)
+)
+```
+
+The taken date follows the partial-date representation of §9 (OQ-033).
+
+Rules:
+
+- a Memory has at most N photos, N being the application setting `mbia.memory.max-photos` (3 at launch, between 1 and 10); the application refuses an addition beyond N with `MEMORY_PHOTO_LIMIT_REACHED`. A Memory above a lowered N keeps its photos: only additions are refused;
+- an attached asset is `READY`, of purpose `MEMORY_PHOTO`, was uploaded by the member who attaches it, and is attached to no other Memory or Person (§13, OQ-036);
+- `position` is the order of addition: a new photo takes the next position; removing a photo leaves a gap and never renumbers; photos are not reordered;
+- removing a photo from a Memory deletes its row and makes its asset `ARCHIVED` (§13): the photo is a part of the Memory, not a Memory itself, like a Person's photo (§10);
+- merge and Person archival do not touch photos: they belong to the Memory, not to its Persons;
+- photos are signed for the API in one batch per response, from the stored keys, without a query per photo.
 
 ## 15. Table: `memory_persons`
 
@@ -726,7 +754,7 @@ memory_persons (
 
 Rules:
 
-- a photo/story can reference multiple people;
+- a Memory can reference multiple people;
 - no duplicate association;
 - a `MERGED` source person must be replaced with the merge target during merge;
 - archived persons remain historically referenced but are not selectable for new associations: on create, and on an edit that changes the set (OQ-043), the resulting set has at least one ACTIVE Person, and every Person newly added is ACTIVE; archiving a Person leaves its associations and Memories unchanged (OQ-035).
@@ -799,8 +827,8 @@ Rules:
 
 Memories write (OQ-039):
 
-- `MEMORY_CREATED`: the type and the related Person ids;
-- `MEMORY_UPDATED`: one entry per changed field; for `title`, `content` and `caption` only the field name is recorded, never the text; for related Persons, the ids before and after;
+- `MEMORY_CREATED`: the type, the related Person ids and the photo asset ids;
+- `MEMORY_UPDATED`: one entry per changed field; for `title`, `content` and `caption` only the field name is recorded, never the text; for related Persons, the ids before and after; for `photos`, the asset ids before and after when photos are added or removed, and the field `photoDetails` with the asset id only when a caption or taken date changes (OQ-042);
 - `MEMORY_ARCHIVED`.
 
 Media operations are not audited: their state is in `media_assets`. Storage keys and pre-signed URLs are never written. Setting, replacing or removing a Person's photo changes the Person: it is a `PERSON_UPDATED` entry of the field `profilePicture`, whose values are the asset ids, and the Person history shows it without values (OQ-046).
@@ -1108,4 +1136,7 @@ The persistence layer is ready when automated integration tests prove at least:
 10. family-scoped queries cannot leak data across Families;
 11. an invitation token can be accepted only once, and never after expiry, revocation or renewal;
 12. a Family can never be left without an ACTIVE ADMIN;
-13. removing a membership releases the member's linked Person in the same transaction.
+13. removing a membership releases the member's linked Person in the same transaction;
+14. a Memory refuses a photo added beyond the limit, and keeps its photos when the limit is lowered (OQ-042);
+15. a media asset is attached to a single Memory or Person, never twice;
+16. a Memory is created or updated atomically with its Persons and photos.

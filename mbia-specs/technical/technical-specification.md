@@ -262,9 +262,10 @@ MEDIA_TOO_LARGE
 MEDIA_INVALID
 MEDIA_NOT_READY
 MEDIA_ALREADY_USED
+MEMORY_PHOTO_LIMIT_REACHED
 ```
 
-Memories and media (OQ-037): an unknown, other-Family or ARCHIVED Memory → 404 `MEMORY_NOT_FOUND`; an unknown or other-Family media asset → 404 `MEDIA_NOT_FOUND`; a related Person unknown, of another Family or MERGED → 404 `PERSON_NOT_FOUND`, newly added and ARCHIVED → 409 `PERSON_NOT_ACTIVE`; a field irrelevant to the Memory type → 400 `VALIDATION_FAILED`; editing or archiving another member's Memory without being ADMIN → 403 `PERMISSION_DENIED`; completing or attaching another member's upload → 403 `PERMISSION_DENIED`; attaching an asset already used → 409 `MEDIA_ALREADY_USED` (OQ-036).
+Memories and media (OQ-037): an unknown, other-Family or ARCHIVED Memory → 404 `MEMORY_NOT_FOUND`; an unknown or other-Family media asset → 404 `MEDIA_NOT_FOUND`; a related Person unknown, of another Family or MERGED → 404 `PERSON_NOT_FOUND`, newly added and ARCHIVED → 409 `PERSON_NOT_ACTIVE`; a field irrelevant to the Memory type → 400 `VALIDATION_FAILED`; editing or archiving another member's Memory without being ADMIN → 403 `PERMISSION_DENIED`; completing or attaching another member's upload → 403 `PERMISSION_DENIED`; attaching an asset already used → 409 `MEDIA_ALREADY_USED` (OQ-036). Photos of a Memory (OQ-042): an asset of another purpose → 400 `VALIDATION_FAILED`; an asset that is not READY → 409 `MEDIA_NOT_READY`; more photos than the limit after an addition → 409 `MEMORY_PHOTO_LIMIT_REACHED`; a Memory left without text and without photo → 400 `VALIDATION_FAILED`.
 
 The frontend translates stable codes into localized messages. It must not parse English server messages to determine behavior.
 
@@ -298,6 +299,7 @@ Examples:
 - Family creation + creator ADMIN membership;
 - invite acceptance + membership creation;
 - Person merge + relationship deduplication + Memory reassociation + audit;
+- Memory creation or update + its Persons + attaching, updating and removing its photos (removed assets `ARCHIVED`) + audit (OQ-042);
 - relationship archive + audit/activity.
 
 ## 15. Audit and activity

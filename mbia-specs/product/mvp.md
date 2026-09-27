@@ -333,41 +333,30 @@ Display at least:
 
 ## 17. Memories
 
-MVP types:
-
-```text
-PHOTO
-STORY
-```
-
-### Photo
-
-A photo may be linked to multiple Persons.
+A Memory is a story told about one or more Persons: a title, a text and up to a few photos (OQ-042). There is one kind of Memory; photos are added to it rather than being a separate kind of Memory.
 
 Fields include:
 
 ```text
-file/media reference
-caption
-takenAt
-takenAtPrecision
-relatedPersons[]
-createdBy
-createdAt
-```
-
-### Story
-
-Fields include:
-
-```text
-title
-content
+title            required
+content          the story text; required when the Memory has no photo
+photos[]         0 to N, in the order they were added
+  photo          an uploaded image (§23)
+  caption        optional
+  takenAt        optional, with takenAtPrecision (exact date, year only or unknown)
 relatedPersons[]
 createdBy
 createdAt
 updatedAt
 ```
+
+### Photos of a Memory
+
+- N is an application setting, 3 at launch and never above 10. The limit applies only when photos are added: a Memory that already has more photos than a lowered limit keeps them, and may lose some, but gains none until it is below the limit.
+- Photos are uploaded while the Memory is written or edited, and belong to it once it is published or saved.
+- Photos keep the order in which they were added; they are not reordered. A photo can be removed from the Memory; it is not replaced in place.
+- A photo of a Memory is never used as a Person's photo, and a Person's photo is never added to a Memory (OQ-040).
+- More photos per Memory, albums or a gallery of the Family stay out of scope (§27).
 
 ### Common Memory rules
 
@@ -612,7 +601,7 @@ sign up
 → view tree
 → add grandparent
 → see derived kinship
-→ add photo and Story
+→ add a Memory with a photo and its story
 → invite relative
 → relative joins
 → relative links themselves to existing Person

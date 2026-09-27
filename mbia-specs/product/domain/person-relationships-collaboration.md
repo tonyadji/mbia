@@ -31,8 +31,7 @@ Identity fields may be edited by:
 Another CONTRIBUTOR may still:
 
 - add relationships involving the Person;
-- add photos;
-- add Stories;
+- add Memories about them, with their photos (OQ-042);
 - associate existing Memories.
 
 This gives a linked User control of their identity without preventing the family from contributing to their shared history.
