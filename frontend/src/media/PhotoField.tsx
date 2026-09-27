@@ -28,7 +28,7 @@ export function PhotoField({
   disabled = false,
 }: {
   familyId: string;
-  /** The name shown in the avatar's initials. */
+  /** The Person's name: the avatar's initial and the photo's alternative text. */
   name: string;
   /** The Person's saved photo. */
   currentUrl: string | null;
@@ -64,7 +64,7 @@ export function PhotoField({
         {t('photo.label')}
       </span>
       <div className="flex items-center gap-4">
-        <Avatar displayName={name} photoUrl={shownUrl} size="lg" />
+        <Avatar displayName={name} photoUrl={shownUrl} size="lg" alt={name} />
         <div className="flex min-w-0 flex-1 flex-col gap-2">
           <Button variant="secondary" disabled={disabled || busy} onClick={choose}>
             {hasPhoto ? t('photo.change') : t('photo.add')}

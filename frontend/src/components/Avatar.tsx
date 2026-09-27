@@ -16,8 +16,10 @@ const sizes = {
 } as const;
 
 /**
- * Round avatar of a User or a Person (design-guidelines.md §5, §7); decorative, the name is always
- * next to it. A Person's photo is shown centre-cropped (OQ-040), with the initial as the fallback.
+ * Round avatar of a User or a Person (design-guidelines.md §5, §7). A Person's photo is shown
+ * centre-cropped (OQ-040), with the initial as the fallback. It is decorative where the name is the
+ * text of the same card or row; `alt` (the Person's name) describes the photo where it stands for
+ * the Person on its own, as in a profile header.
  *
  * Photo URLs are pre-signed for 60 minutes (data-model.md §13). When one fails to load, most likely
  * because it expired, the Family data on screen is fetched again to get freshly signed URLs; a new
@@ -28,16 +30,20 @@ export function Avatar({
   email = '',
   photoUrl = null,
   size = 'md',
+  alt,
 }: {
   displayName?: string | null;
   email?: string;
   photoUrl?: string | null;
   size?: keyof typeof sizes;
+  /** The Person's name, for a photo that is not decorative. */
+  alt?: string;
 }) {
   const queryClient = useQueryClient();
   // The last URL that failed to load, until a photo loads again.
   const [failed, setFailed] = useState<string | null>(null);
   const showPhoto = photoUrl !== null && failed !== photoUrl;
+  const described = showPhoto && alt !== undefined && alt !== '';
 
   const onError = () => {
     if (photoUrl === null) return;
@@ -53,13 +59,13 @@ export function Avatar({
 
   return (
     <span
-      aria-hidden="true"
+      aria-hidden={described ? undefined : true}
       className={`inline-flex shrink-0 items-center justify-center overflow-hidden rounded-full bg-primary font-semibold text-on-primary ${sizes[size]}`}
     >
       {showPhoto ? (
         <img
           src={photoUrl}
-          alt=""
+          alt={described ? alt : ''}
           loading="lazy"
           onError={onError}
           onLoad={() => {

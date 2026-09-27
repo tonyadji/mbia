@@ -154,6 +154,32 @@ describe('Edit & archive a Memory', () => {
       expect(screen.queryByRole('button', { name: 'Archiver' })).not.toBeInTheDocument();
     });
 
+    it('starts reading at the title of the Memory', async () => {
+      fakeApi();
+      renderApp([MEMORY]);
+
+      expect(await screen.findByRole('heading', { level: 1 })).toHaveFocus();
+    });
+
+    it('gives the focus back to Archive when the confirmation is cancelled', async () => {
+      const api = fakeApi();
+      renderApp([MEMORY]);
+
+      const archive = await screen.findByRole('button', { name: 'Archiver' });
+      archive.focus();
+      fireEvent.click(archive);
+      const dialog = screen.getByRole('dialog');
+      await waitFor(() => {
+        expect(dialog.contains(document.activeElement)).toBe(true);
+      });
+      fireEvent.click(within(dialog).getByRole('button', { name: 'Annuler' }));
+
+      await waitFor(() => {
+        expect(archive).toHaveFocus();
+      });
+      expect(api.sent('DELETE')).toHaveLength(0);
+    });
+
     it('archives after a confirmation, then returns where the User came from', async () => {
       const api = fakeApi();
       const { router } = renderApp([familyMemoriesPath(ADJI_ID), MEMORY]);
@@ -248,6 +274,63 @@ describe('Edit & archive a Memory', () => {
         expect(screen.getByLabelText(/Titre/)).toHaveValue('Titre de quelqu’un d’autre');
       });
       expect(screen.getByRole('button', { name: 'Enregistrer' })).toBeEnabled();
+    });
+
+    it('announces the screen by its title, without opening the keyboard', async () => {
+      fakeApi();
+      renderApp([EDIT]);
+
+      expect(await screen.findByRole('heading', { level: 1 })).toHaveFocus();
+    });
+
+    it('moves the focus to a stale version, then to the title once reloaded', async () => {
+      let latest = memory();
+      fakeApi({
+        getMemory: () => jsonResponse(latest),
+        patchMemory: () => problemResponse('CONCURRENT_MODIFICATION', 409),
+      });
+      renderApp([EDIT]);
+
+      await screen.findByLabelText(/Titre/);
+      latest = memory({ version: 2 });
+      fireEvent.click(screen.getByRole('button', { name: 'Enregistrer' }));
+
+      const alert = await screen.findByRole('alert');
+      await waitFor(() => {
+        expect(alert).toHaveFocus();
+      });
+      fireEvent.click(within(alert).getByRole('button', { name: 'Recharger la dernière version' }));
+      await waitFor(() => {
+        expect(screen.getByLabelText(/Titre/)).toHaveFocus();
+      });
+    });
+
+    it('moves the focus to the first field the server refused', async () => {
+      fakeApi({
+        patchMemory: () =>
+          jsonResponse(
+            {
+              code: 'VALIDATION_FAILED',
+              status: 400,
+              title: 'VALIDATION_FAILED',
+              fieldErrors: [
+                { field: 'content', code: 'INVALID' },
+                { field: 'title', code: 'INVALID' },
+              ],
+            },
+            400,
+            'application/problem+json',
+          ),
+      });
+      renderApp([EDIT]);
+
+      await screen.findByLabelText(/Titre/);
+      fireEvent.click(screen.getByRole('button', { name: 'Enregistrer' }));
+
+      await waitFor(() => {
+        expect(screen.getByLabelText(/Votre histoire/)).toHaveFocus();
+      });
+      expect(screen.getByLabelText(/Titre/)).toHaveAttribute('aria-invalid', 'true');
     });
 
     it('marks an archived Person, who may stay but not be the only one left after a change', async () => {

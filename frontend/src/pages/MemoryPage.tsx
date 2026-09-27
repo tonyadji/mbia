@@ -1,4 +1,4 @@
-import { useState, type ReactNode } from 'react';
+import { useEffect, useRef, useState, type ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link, useLocation, useNavigate, useParams } from 'react-router';
 import { ApiError } from '../api/client';
@@ -143,6 +143,11 @@ function MemoryView({
   const { t, i18n } = useTranslation('memory');
   const navigate = useNavigate();
   const location = useLocation();
+  const heading = useRef<HTMLHeadingElement>(null);
+  // Arriving on a Memory, from a list or after publishing it, starts reading at its title.
+  useEffect(() => {
+    heading.current?.focus();
+  }, [memory.id]);
   const language = isSupportedLanguage(i18n.resolvedLanguage)
     ? i18n.resolvedLanguage
     : DEFAULT_LANGUAGE;
@@ -171,12 +176,17 @@ function MemoryView({
         </Link>
       )}
       {(published || saved) && (
-        <p role="status" className="rounded-xl border border-border bg-surface px-4 py-3 text-body">
+        <p
+          role="status"
+          className="rounded-xl border border-border bg-surface px-4 py-3 text-body break-words"
+        >
           {t(published ? 'published' : 'saved', { title: memory.title ?? '' })}
         </p>
       )}
       <header className="flex flex-col gap-1">
-        <h1 className="text-display break-words text-text">{memory.title}</h1>
+        <h1 ref={heading} tabIndex={-1} className="text-display break-words text-text outline-none">
+          {memory.title}
+        </h1>
         <p className="text-caption text-text-muted">
           {t('screen.addedBy', { actor, date: formatDate(new Date(memory.createdAt), language) })}
         </p>

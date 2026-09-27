@@ -521,6 +521,8 @@ describe('Person photo screens', () => {
 
       const card = await screen.findByRole('button', { name: /Marie Adji/ });
       expect(card.querySelector('img')).toHaveAttribute('src', 'http://localhost:9000/marie');
+      // The name is already the card's text: the photo is decorative there.
+      expect(card.querySelector('img')).toHaveAttribute('alt', '');
       const parent = screen.getByRole('button', { name: /Awa/ });
       expect(parent.querySelector('img')).toBeNull();
       expect(parent).toHaveTextContent('A');
@@ -556,6 +558,26 @@ describe('Person photo screens', () => {
 
       await screen.findByRole('link', { name: 'Marie Adji' });
       expect(document.querySelector('img[src="http://localhost:9000/marie"]')).not.toBeNull();
+    });
+
+    it('names the profile photo after the Person, and keeps the initial decorative', async () => {
+      fakeApi({
+        get: () => jsonResponse(person({ profilePictureUrl: 'http://localhost:9000/marie' })),
+      });
+      renderApp(PROFILE);
+
+      expect(await screen.findByRole('img', { name: 'Marie Adji' })).toHaveAttribute(
+        'src',
+        'http://localhost:9000/marie',
+      );
+    });
+
+    it('hides the initial of a Person without photo from assistive technologies', async () => {
+      fakeApi();
+      renderApp(PROFILE);
+
+      await screen.findByRole('heading', { level: 1, name: 'Marie Adji' });
+      expect(screen.queryByRole('img')).not.toBeInTheDocument();
     });
 
     it('shows a photo again with a fresh URL after its URL expired', async () => {

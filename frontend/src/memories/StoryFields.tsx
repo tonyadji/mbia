@@ -53,12 +53,21 @@ export function StoryFields({ form }: { form: UseFormReturn<StoryFormValues> }) 
   );
 }
 
-/** Marks the title or text the server refused; the text typed stays in the form. */
+/**
+ * Marks the title or text the server refused, and moves the focus to the first of them; the text
+ * typed stays in the form.
+ */
 export function showServerFieldErrors(form: UseFormReturn<StoryFormValues>, failure: unknown) {
   if (!(failure instanceof ApiError)) return;
+  let focused = false;
   for (const fieldError of failure.fieldErrors) {
     if (fieldError.field === 'title' || fieldError.field === 'content') {
-      form.setError(fieldError.field, { type: 'server', message: 'invalid' });
+      form.setError(
+        fieldError.field,
+        { type: 'server', message: 'invalid' },
+        { shouldFocus: !focused },
+      );
+      focused = true;
     }
   }
 }
