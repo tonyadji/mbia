@@ -42,6 +42,7 @@ function family(myRole: string) {
     myRole,
     myLinkedPersonId: null,
     stats: { personCount: 2, memoryCount: 1, activeMemberCount: 1 },
+    limits: { maxPhotosPerMemory: 3 },
     version: 0,
     createdAt: '2026-09-25T10:00:00Z',
     updatedAt: '2026-09-25T10:00:00Z',

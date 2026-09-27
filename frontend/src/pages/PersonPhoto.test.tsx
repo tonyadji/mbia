@@ -41,6 +41,7 @@ function family(myRole = 'ADMIN') {
     name: 'ADJI',
     myRole,
     stats: { personCount: 1, memoryCount: 0, activeMemberCount: 1 },
+    limits: { maxPhotosPerMemory: 3 },
     version: 0,
     createdAt: '2026-09-25T10:00:00Z',
     updatedAt: '2026-09-25T10:00:00Z',

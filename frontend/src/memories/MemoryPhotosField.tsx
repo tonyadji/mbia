@@ -25,14 +25,19 @@ import {
 
 type Precision = components['schemas']['DatePrecision'];
 type MemoryPhotoInput = components['schemas']['MemoryPhotoInput'];
+type MemoryPhoto = components['schemas']['MemoryPhotoResponse'];
 
 /** `MemoryPhotoInput.caption` limit (data-model.md §14bis). */
 const CAPTION_MAX = 5000;
 
-/** A photo chosen for a Memory: its upload, then its caption and taken date (SCREEN-006). */
+/**
+ * A photo of a Memory's form: a file chosen, with its upload, or a photo already on the Memory
+ * (SCREEN-014), then its caption and taken date (SCREEN-006).
+ */
 export interface MemoryPhotoDraft {
   key: string;
-  file: File;
+  /** The file to send; `null` for a photo already on the Memory. */
+  file: File | null;
   status: 'busy' | 'ready' | 'error';
   /** The READY asset, once sent. */
   assetId: string | null;
@@ -58,6 +63,21 @@ function newDraft(file: File): MemoryPhotoDraft {
     date: '',
     year: '',
   };
+}
+
+/** The photos of a Memory, in position order, as a form edits them (SCREEN-014). */
+export function fromMemoryPhotos(photos: MemoryPhoto[]): MemoryPhotoDraft[] {
+  return photos.map((photo) => ({
+    key: `saved-${photo.mediaAssetId}`,
+    file: null,
+    status: 'ready',
+    assetId: photo.mediaAssetId,
+    thumbnailUrl: photo.thumbnailUrl,
+    caption: photo.caption ?? '',
+    precision: photo.takenAt?.precision ?? 'UNKNOWN',
+    date: photo.takenAt?.date ?? '',
+    year: photo.takenAt?.year?.toString() ?? '',
+  }));
 }
 
 /** Why the taken date of a photo cannot be sent, like a birth date (OQ-033). */
@@ -90,10 +110,12 @@ export function toPhotoInputs(photos: MemoryPhotoDraft[]): MemoryPhotoInput[] {
 }
 
 /**
- * The photos section of SCREEN-006 (family-tree-ux.md §13): `Add a photo` picks one or several
+ * The photos section of SCREEN-006 and SCREEN-014 (family-tree-ux.md §13): `Add a photo` picks one or several
  * files, of which only the free places up to the Family's `limit` are kept. Each photo is reduced
  * and sent at once (PR-38 pipeline, purpose `MEMORY_PHOTO`), with its progress, `Try again` after a
- * failure and `Remove`, then gets a caption and, behind `More information`, a taken date.
+ * failure and `Remove`, then gets a caption and, behind `More information`, a taken date. The
+ * photos already on a Memory are described or removed the same way; above a lowered limit, they
+ * stay and `Add a photo` waits until enough are removed (mvp.md §17).
  * `showErrors` shows the invalid taken dates once the User tried to publish.
  */
 export function MemoryPhotosField({
@@ -117,6 +139,8 @@ export function MemoryPhotosField({
   const input = useRef<HTMLInputElement>(null);
   const [leftOut, setLeftOut] = useState(0);
   const atLimit = photos.length >= limit;
+  // A lowered limit leaves the photos of a Memory in place; none can be added until enough are removed.
+  const overLimit = photos.length > limit;
 
   const update = useCallback(
     (key: string, patch: Partial<MemoryPhotoDraft>) => {
@@ -169,7 +193,9 @@ export function MemoryPhotosField({
         {t('form.photos.add')}
       </Button>
       <p id={limitId} role="status" className="text-caption text-text-muted">
-        {(atLimit || leftOut > 0) && t('form.photos.limit', { count: limit })}
+        {overLimit
+          ? t('form.photos.overLimit', { count: limit })
+          : (atLimit || leftOut > 0) && t('form.photos.limit', { count: limit })}
         {leftOut > 0 && ` ${t('form.photos.leftOut', { count: leftOut })}`}
       </p>
       <input
@@ -210,30 +236,7 @@ function MemoryPhotoItem({
   const { t } = useTranslation(['memory', 'person']);
   const detailsId = useId();
   const [open, setOpen] = useState(false);
-  const { state, start, retry } = usePhotoUpload(familyId, 'MEMORY_PHOTO');
   const { key, file } = photo;
-  const busy = state.status !== 'ready' && state.status !== 'error';
-
-  // Sent once, as soon as it is chosen.
-  const started = useRef(false);
-  useEffect(() => {
-    if (started.current) return;
-    started.current = true;
-    void start(file);
-  }, [start, file]);
-
-  useEffect(() => {
-    onUpdate(
-      key,
-      state.status === 'ready'
-        ? {
-            status: 'ready',
-            assetId: state.asset.id,
-            thumbnailUrl: state.asset.thumbnailUrl ?? null,
-          }
-        : { status: state.status === 'error' ? 'error' : 'busy', assetId: null },
-    );
-  }, [state, key, onUpdate]);
 
   const dateError = showErrors ? takenAtError(photo) : null;
   const dateMessage =
@@ -263,38 +266,15 @@ function MemoryPhotoItem({
           <div className="size-20 shrink-0 rounded-xl bg-border" />
         )}
         <div className="flex min-w-0 flex-1 flex-col gap-2">
-          {busy && (
-            <>
-              <UploadProgress
-                percent={state.status === 'uploading' ? state.percent : null}
-                label={t('form.photos.progressLabel', { position })}
-                text={t('form.photos.uploading', {
-                  percent: state.status === 'uploading' ? state.percent : 0,
-                })}
-              />
-              {state.status !== 'uploading' && (
-                <p className="text-caption text-text-muted" aria-live="polite">
-                  {state.status === 'processing'
-                    ? t('form.photos.processing')
-                    : t('form.photos.preparing')}
-                </p>
-              )}
-            </>
-          )}
-          {state.status === 'error' && (
-            <p role="alert" className="text-body text-text">
-              {t(`form.photos.errors.${state.kind}`)}
-            </p>
-          )}
-          {state.status === 'error' && state.kind === 'failed' && (
-            <Button
-              variant="secondary"
+          {file !== null && (
+            <NewPhotoUpload
+              familyId={familyId}
+              photoKey={key}
+              file={file}
+              position={position}
+              onUpdate={onUpdate}
               disabled={disabled}
-              aria-label={t('form.photos.retryLabel', { position })}
-              onClick={() => void retry()}
-            >
-              {t('form.photos.retry')}
-            </Button>
+            />
           )}
           <Button
             variant="secondary"
@@ -368,5 +348,85 @@ function MemoryPhotoItem({
         </div>
       )}
     </fieldset>
+  );
+}
+
+/** The upload of a photo just chosen: sent once, with its progress, its error and `Try again`. */
+function NewPhotoUpload({
+  familyId,
+  photoKey,
+  file,
+  position,
+  onUpdate,
+  disabled,
+}: {
+  familyId: string;
+  photoKey: string;
+  file: File;
+  position: number;
+  onUpdate: (key: string, patch: Partial<MemoryPhotoDraft>) => void;
+  disabled: boolean;
+}) {
+  const { t } = useTranslation('memory');
+  const { state, start, retry } = usePhotoUpload(familyId, 'MEMORY_PHOTO');
+  const busy = state.status !== 'ready' && state.status !== 'error';
+
+  // Sent once, as soon as it is chosen.
+  const started = useRef(false);
+  useEffect(() => {
+    if (started.current) return;
+    started.current = true;
+    void start(file);
+  }, [start, file]);
+
+  useEffect(() => {
+    onUpdate(
+      photoKey,
+      state.status === 'ready'
+        ? {
+            status: 'ready',
+            assetId: state.asset.id,
+            thumbnailUrl: state.asset.thumbnailUrl ?? null,
+          }
+        : { status: state.status === 'error' ? 'error' : 'busy', assetId: null },
+    );
+  }, [state, photoKey, onUpdate]);
+
+  return (
+    <>
+      {busy && (
+        <>
+          <UploadProgress
+            percent={state.status === 'uploading' ? state.percent : null}
+            label={t('form.photos.progressLabel', { position })}
+            text={t('form.photos.uploading', {
+              percent: state.status === 'uploading' ? state.percent : 0,
+            })}
+          />
+          {state.status !== 'uploading' && (
+            <p className="text-caption text-text-muted" aria-live="polite">
+              {state.status === 'processing'
+                ? t('form.photos.processing')
+                : t('form.photos.preparing')}
+            </p>
+          )}
+        </>
+      )}
+      {state.status === 'error' && (
+        <p role="alert" className="text-body text-text">
+          {t(`form.photos.errors.${state.kind}`)}
+        </p>
+      )}
+      {state.status === 'error' && state.kind === 'failed' && (
+        <Button
+          variant="secondary"
+          disabled={disabled}
+          aria-label={t('form.photos.retryLabel', { position })}
+          onClick={() => void retry()}
+        >
+          {t('form.photos.retry')}
+        </Button>
+      )}
+    </>
   );
 }

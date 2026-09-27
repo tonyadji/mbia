@@ -1,3 +1,4 @@
+import { useQueryClient } from '@tanstack/react-query';
 import { useEffect, useRef, useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { useTranslation } from 'react-i18next';
@@ -6,10 +7,19 @@ import { ApiError } from '../api/client';
 import { errorMessage } from '../api/errorMessage';
 import type { components } from '../api/generated/schema';
 import { Button, buttonClassName } from '../components/Button';
+import { familyQueryKey } from '../families/useFamily';
 import { i18n } from '../i18n';
+import {
+  fromMemoryPhotos,
+  MemoryPhotosField,
+  takenAtError,
+  toPhotoInputs,
+  type MemoryPhotoDraft,
+} from '../memories/MemoryPhotosField';
 import { RelatedPersonsPicker, type RelatedPerson } from '../memories/RelatedPersonsPicker';
 import {
   MEMORY_ERRORS,
+  PHOTO_ERRORS,
   showServerFieldErrors,
   StoryFields,
   type StoryFormValues,
@@ -21,10 +31,12 @@ type Memory = components['schemas']['MemoryResponse'];
 
 /**
  * SCREEN-014 — Edit Memory, for its creator or an ADMIN with a role that can write (OQ-041): the
- * fields of SCREEN-006. An archived Person already on the Memory may stay but not be added back;
+ * fields of SCREEN-006, with the Memory's photos, described, removed or added within the Family's
+ * limit; the text may be emptied only while a photo remains (mvp.md §17). An archived Person already on the Memory may stay but not be added back;
  * when the Persons change, at least one ACTIVE Person stays (OQ-035, OQ-043). The form sends the
  * version it was loaded with; when someone changed the Memory meanwhile, the User reloads the
- * latest version before retrying, and form values are never merged (SCREEN-012).
+ * latest version before retrying, and form values are never merged (SCREEN-012): photos sent but
+ * not saved are dropped (the cleanup removes them, OQ-036).
  *
  * The form takes the place of the Memory in the history, and the Memory takes it back when the
  * form is left: `Archive` then still returns where the User came from before the Memory.
@@ -32,9 +44,14 @@ type Memory = components['schemas']['MemoryResponse'];
 export function EditMemoryPage() {
   return (
     <MemoryRoute>
-      {({ familyId, memory, role, myUserId, reload }) =>
-        canChangeMemory(memory, role, myUserId) ? (
-          <EditMemoryForm familyId={familyId} loaded={memory} reload={reload} />
+      {({ familyId, memory, role, myUserId, photoLimit, reload }) =>
+        canChangeMemory(memory, role, myUserId) && photoLimit !== undefined ? (
+          <EditMemoryForm
+            familyId={familyId}
+            loaded={memory}
+            photoLimit={photoLimit}
+            reload={reload}
+          />
         ) : (
           <Navigate to={memoryPath(familyId, memory.id)} replace />
         )
@@ -64,17 +81,22 @@ function sameIds(a: RelatedPerson[], b: RelatedPerson[]) {
 function EditMemoryForm({
   familyId,
   loaded,
+  photoLimit,
   reload,
 }: {
   familyId: string;
   loaded: Memory;
+  photoLimit: number;
   reload: () => Promise<Memory | undefined>;
 }) {
   const { t } = useTranslation(['memory', 'settings']);
   const navigate = useNavigate();
+  const queryClient = useQueryClient();
   // The version this form was built from; a background refresh of the Memory does not change it.
   const [base, setBase] = useState(loaded);
   const [persons, setPersons] = useState(() => toPersons(loaded));
+  const [photos, setPhotos] = useState<MemoryPhotoDraft[]>(() => fromMemoryPhotos(loaded.photos));
+  const [triedToSave, setTriedToSave] = useState(false);
   const form = useForm<StoryFormValues>({ defaultValues: toFormValues(loaded) });
   const update = useUpdateMemory(familyId, base.id);
   const back = memoryPath(familyId, base.id);
@@ -82,6 +104,16 @@ function EditMemoryForm({
     update.error instanceof ApiError && update.error.code === 'CONCURRENT_MODIFICATION';
   const code = update.error instanceof ApiError ? update.error.code : null;
   const memoryError = MEMORY_ERRORS.find((known) => known === code);
+  const photoError = PHOTO_ERRORS.find((known) => known === code);
+  const hasReadyPhoto = photos.some((photo) => photo.status === 'ready');
+  // `Save` waits until every photo added is ready.
+  const photosPending = photos.some((photo) => photo.status !== 'ready');
+
+  // The text becomes optional, or required again, with the photos that remain.
+  const { isSubmitted } = form.formState;
+  useEffect(() => {
+    if (isSubmitted) void form.trigger('content');
+  }, [hasReadyPhoto, isSubmitted, form]);
 
   const heading = useRef<HTMLHeadingElement>(null);
   const conflict = useRef<HTMLDivElement>(null);
@@ -104,12 +136,16 @@ function EditMemoryForm({
   const lacksActivePerson = personsChanged && persons.every((person) => person.archived);
 
   const submit = form.handleSubmit((values) => {
+    if (photos.some((photo) => takenAtError(photo) !== null)) return;
     update.mutate(
       {
         version: base.version,
         body: {
           title: values.title.trim(),
+          // A blank text empties it, allowed only while a photo remains (mvp.md §17).
           content: values.content,
+          // The complete new list: kept photos keep their place, new ones follow (plan §3.2).
+          photos: toPhotoInputs(photos),
           ...(personsChanged ? { relatedPersonIds: persons.map((person) => person.id) } : {}),
         },
       },
@@ -120,6 +156,10 @@ function EditMemoryForm({
         },
         onError: (failure) => {
           showServerFieldErrors(form, failure);
+          // The limit may have been lowered since the Family was loaded.
+          if (failure instanceof ApiError && failure.code === 'MEMORY_PHOTO_LIMIT_REACHED') {
+            void queryClient.invalidateQueries({ queryKey: familyQueryKey(familyId), exact: true });
+          }
         },
       },
     );
@@ -130,6 +170,8 @@ function EditMemoryForm({
     if (latest) {
       setBase(latest);
       setPersons(toPersons(latest));
+      setPhotos(fromMemoryPhotos(latest.photos));
+      setTriedToSave(false);
       form.reset(toFormValues(latest));
       update.reset();
       reloaded.current = true;
@@ -150,8 +192,32 @@ function EditMemoryForm({
           {t('edit.title')}
         </h1>
       </header>
-      <form noValidate onSubmit={(event) => void submit(event)} className="flex flex-col gap-6">
-        <StoryFields form={form} />
+      <form
+        noValidate
+        onSubmit={(event) => {
+          setTriedToSave(true);
+          const element = event.currentTarget;
+          const invalidDate = photos.some((photo) => takenAtError(photo) !== null);
+          void submit(event).then(() => {
+            // The title and text get the focus first; otherwise the invalid taken date, once shown.
+            if (invalidDate && Object.keys(form.formState.errors).length === 0) {
+              requestAnimationFrame(() => {
+                element.querySelector<HTMLElement>('[aria-invalid="true"]')?.focus();
+              });
+            }
+          });
+        }}
+        className="flex flex-col gap-6"
+      >
+        <StoryFields form={form} contentOptional={hasReadyPhoto} emptyContent="contentOrPhoto" />
+        <MemoryPhotosField
+          familyId={familyId}
+          limit={photoLimit}
+          photos={photos}
+          onChange={setPhotos}
+          showErrors={triedToSave}
+          disabled={update.isPending || isConflict}
+        />
         <RelatedPersonsPicker
           familyId={familyId}
           persons={persons}
@@ -178,14 +244,26 @@ function EditMemoryForm({
         ) : (
           update.isError && (
             <p role="alert" className="text-body text-text">
-              {memoryError ? t(`edit.errors.${memoryError}`) : errorMessage(i18n, update.error)}
+              {memoryError
+                ? t(`edit.errors.${memoryError}`)
+                : photoError === 'MEMORY_PHOTO_LIMIT_REACHED'
+                  ? t('edit.errors.MEMORY_PHOTO_LIMIT_REACHED', { count: photoLimit })
+                  : photoError
+                    ? t(`edit.errors.${photoError}`)
+                    : errorMessage(i18n, update.error)}
             </p>
           )
         )}
         <div className="flex flex-col gap-3 sm:flex-row">
           <Button
             type="submit"
-            disabled={persons.length === 0 || lacksActivePerson || update.isPending || isConflict}
+            disabled={
+              persons.length === 0 ||
+              lacksActivePerson ||
+              photosPending ||
+              update.isPending ||
+              isConflict
+            }
             className="sm:w-auto"
           >
             {t('edit.submit')}

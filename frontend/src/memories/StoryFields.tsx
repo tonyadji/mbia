@@ -8,7 +8,7 @@ import { TextField } from '../components/TextField';
 const LIMITS = { title: 250, content: 50_000 } as const;
 
 /** Validation errors are stored as keys, so that their message follows a language change. */
-type FieldErrorKey = 'required' | 'tooLong' | 'invalid';
+type FieldErrorKey = 'required' | 'contentOrPhoto' | 'tooLong' | 'invalid';
 
 /** Codes explained in the words of a Memory; others use the shared `errors` messages. */
 export const MEMORY_ERRORS = ['PERSON_NOT_ACTIVE', 'PERSON_NOT_FOUND'] as const;
@@ -28,21 +28,24 @@ export interface StoryFormValues {
 
 /**
  * The title and text of a story (SCREEN-006, SCREEN-014). The text may stay empty when
- * `contentOptional`, that is when the Memory has a photo (mvp.md §17).
+ * `contentOptional`, that is when the Memory has a photo (mvp.md §17); otherwise an empty text is
+ * explained by `emptyContent`.
  */
 export function StoryFields({
   form,
   contentOptional = false,
+  emptyContent = 'required',
 }: {
   form: UseFormReturn<StoryFormValues>;
   contentOptional?: boolean;
+  emptyContent?: 'required' | 'contentOrPhoto';
 }) {
   const { t } = useTranslation('memory');
 
   const validate =
-    (max: number, optional = false) =>
+    (max: number, optional = false, empty: FieldErrorKey = 'required') =>
     (value: string) => {
-      if (value.trim() === '' && !optional) return 'required' satisfies FieldErrorKey;
+      if (value.trim() === '' && !optional) return empty;
       if (value.length > max) return 'tooLong' satisfies FieldErrorKey;
       return true;
     };
@@ -67,7 +70,9 @@ export function StoryFields({
           rows={10}
           required={!contentOptional}
           error={message('content')}
-          {...form.register('content', { validate: validate(LIMITS.content, contentOptional) })}
+          {...form.register('content', {
+            validate: validate(LIMITS.content, contentOptional, emptyContent),
+          })}
         />
         {contentOptional && (
           <p className="text-caption text-text-muted">{t('form.contentOptional')}</p>
