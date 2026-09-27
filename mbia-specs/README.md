@@ -71,6 +71,10 @@ The visual mockup is a design reference. Product rules and screen behavior are d
 
 ## Changelog
 
+### 0.6.2 — 2026-09-27
+
+- The previous link of a renewed invitation answers 404 `INVITATION_NOT_FOUND`, like an unknown token (OQ-058); an ACTIVE member accepting an expired, revoked or used link of their Family gets 410, the invitation's state being checked first (OQ-059). `data-model.md` §8; `openapi.yaml` `previewInvitation`, `acceptInvitation` (descriptions only).
+
 ### 0.6.1 — 2026-09-27
 
 - Renewing or revoking an ACCEPTED or REVOKED invitation answers 410 (`INVITATION_ALREADY_USED`, `INVITATION_REVOKED`); an EXPIRED invitation can be revoked (OQ-057; `data-model.md` §8; `openapi.yaml` `renewInvitation`, `revokeInvitation`, additive).

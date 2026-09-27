@@ -75,14 +75,14 @@ class InvitationAccessApiTest extends ApiTestSupport {
     }
 
     @Test
-    void previewAndAcceptanceDoNotExistYet() {
+    void anUnknownTokenIsNotFoundForPreviewAndAcceptance() {
         for (Function<String, MvcTestResult> call : List.<Function<String, MvcTestResult>>of(
                 token -> mvc.get().uri("/api/v1/invitations/{token}", token)
                         .header("Authorization", family.viewer().bearer()).exchange(),
                 token -> mvc.post().uri("/api/v1/invitations/{token}/accept", token)
                         .header("Authorization", family.viewer().bearer()).exchange())) {
             assertThat(call.apply("a".repeat(43))).hasStatus(HttpStatus.NOT_FOUND)
-                    .bodyJson().extractingPath("$.code").isEqualTo("RESOURCE_NOT_FOUND");
+                    .bodyJson().extractingPath("$.code").isEqualTo("INVITATION_NOT_FOUND");
         }
     }
 

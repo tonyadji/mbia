@@ -9,6 +9,7 @@ import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.util.HexFormat;
+import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 import org.springframework.http.HttpHeaders;
@@ -83,6 +84,7 @@ public final class InvitationFixtures {
     public Map<String, Object> row(UUID invitationId) {
         return jdbc.sql("""
                 SELECT status, role, channel, locale, email, person_id, token_hash, version, invited_by, revoked_by,
+                       accepted_by, accepted_at::text AS accepted_at,
                        expires_at::text AS expires_at, created_at::text AS created_at,
                        renewed_at::text AS renewed_at, revoked_at::text AS revoked_at
                 FROM family_invitations WHERE id = ?
@@ -104,12 +106,45 @@ public final class InvitationFixtures {
                 .param(invitationId).update();
     }
 
-    /** Marks the invitation ACCEPTED, as PR-48 will. */
+    /** Marks the invitation ACCEPTED, as its acceptance does. */
     public void accept(UUID invitationId, UUID userId) {
         jdbc.sql("""
                 UPDATE family_invitations SET status = 'ACCEPTED', accepted_by = ?, accepted_at = now()
                 WHERE id = ?
                 """).params(userId, invitationId).update();
+    }
+
+    /** @return the raw token of a new link invitation */
+    public String linkToken(TestJwts.Token token, UUID familyId, String role, UUID personId) {
+        MvcTestResult result = inviteLink(token, familyId, role, personId);
+        assertThat(result).hasStatus(HttpStatus.CREATED);
+        return tokenOf(result);
+    }
+
+    /** {@code GET /invitations/{token}}, signed out. */
+    public MvcTestResult preview(String rawToken) {
+        return mvc.get().uri("/api/v1/invitations/{token}", rawToken).exchange();
+    }
+
+    /** {@code POST /invitations/{token}/accept}. */
+    public MvcTestResult acceptLink(TestJwts.Token token, String rawToken) {
+        return mvc.post().uri("/api/v1/invitations/{token}/accept", rawToken)
+                .header(HttpHeaders.AUTHORIZATION, token.bearer())
+                .exchange();
+    }
+
+    /** @return the id of the invitation whose current token is this one */
+    public UUID idOfToken(String rawToken) {
+        return jdbc.sql("SELECT id FROM family_invitations WHERE token_hash = ?").param(sha256Hex(rawToken))
+                .query(UUID.class).single();
+    }
+
+    /** @return the User's membership rows in the Family, with {@code removed_at} as text */
+    public List<Map<String, Object>> memberships(UUID familyId, UUID userId) {
+        return jdbc.sql("""
+                SELECT id, role, status, version, joined_at, removed_at::text AS removed_at
+                FROM family_memberships WHERE family_id = ? AND user_id = ?
+                """).params(familyId, userId).query().listOfRows();
     }
 
     public static UUID idOf(MvcTestResult result) {

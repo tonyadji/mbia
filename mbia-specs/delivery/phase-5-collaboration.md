@@ -183,7 +183,7 @@ No analytics event (`family_invitation_sent`, `family_invitation_accepted` arriv
 
 **Scope**
 
-- `previewInvitation` (public): Family name, inviter, role, status, expiry; never the Person. Unknown token → 404 `INVITATION_NOT_FOUND`; expired, revoked, used or renewed → 410 with its code.
+- `previewInvitation` (public): Family name, inviter, role, status, expiry; never the Person. Unknown token, or the previous link of a renewed invitation → 404 `INVITATION_NOT_FOUND` (OQ-058); expired, revoked or used → 410 with its code, also for an ACTIVE member on acceptance (OQ-059).
 - `acceptInvitation`: creates or reactivates the membership and marks the invitation `ACCEPTED`, atomically; `alreadyMember` for an ACTIVE member (invitation untouched); `suggestedPerson` while the Person is ACTIVE and linked to no User.
 - Audit of the acceptance.
 

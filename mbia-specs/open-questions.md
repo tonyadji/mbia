@@ -648,3 +648,23 @@ When a question is answered, update the relevant spec, then move the entry to **
 - **Recommendation:** A, and an EXPIRED invitation is revocable, so that the ADMIN can close a link they will not renew.
 - **Blocking:** PR-47.
 - **Answer:** A, and an EXPIRED invitation (or a PENDING one past its expiry) can be revoked (human, 2026-09-27). Documented in `data-model.md` §8 and `openapi.yaml` (`renewInvitation`, `revokeInvitation`: `410`).
+
+### OQ-058 — The previous link of a renewed invitation
+
+- **Raised by / date:** coding agent (PR-48), 2026-09-27
+- **Context:** the Phase 5 plan and `openapi.yaml` said that a renewed link answers 410 in `previewInvitation` and `acceptInvitation`. Renewal replaces `token_hash` and only the current hash is stored (`data-model.md` §8); Phase 5 adds no migration for invitations (plan §3.3), so the previous token matches no invitation.
+- **Question:** what does the API answer for the previous link of a renewed invitation?
+- **Options:** A — 404 `INVITATION_NOT_FOUND`, like any unknown token; the join screen shows the same "no longer valid" message for 404 and 410 / B — 410, by keeping the previous hash in a new column (a migration outside plan §3.3).
+- **Recommendation:** A.
+- **Blocking:** PR-48.
+- **Answer:** A (human, 2026-09-27). Documented in `data-model.md` §8 and `openapi.yaml` (`previewInvitation`, `acceptInvitation`: `404`, `410`).
+
+### OQ-059 — An ACTIVE member opening a link that is no longer valid
+
+- **Raised by / date:** coding agent (PR-48), 2026-09-27
+- **Context:** an ACTIVE member who opens a link for their own Family is taken to the Family and the invitation stays pending (mvp.md §18); expired, revoked or accepted invitations cannot be accepted (`data-model.md` §8). The specs did not say which rule wins when an ACTIVE member accepts an expired, revoked or used link of their Family.
+- **Question:** 410, or `alreadyMember = true`?
+- **Options:** A — the invitation's state is checked first: 410 with its code; `alreadyMember` only for a PENDING invitation not expired, as the preview already answers 410 / B — `alreadyMember = true` whatever the invitation's state.
+- **Recommendation:** A.
+- **Blocking:** PR-48.
+- **Answer:** A (human, 2026-09-27). Documented in `data-model.md` §8 and `openapi.yaml` (`acceptInvitation`).

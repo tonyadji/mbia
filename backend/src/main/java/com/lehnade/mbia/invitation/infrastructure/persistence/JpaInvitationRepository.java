@@ -64,6 +64,16 @@ class JpaInvitationRepository implements InvitationRepository {
     }
 
     @Override
+    public Optional<Invitation> findByTokenHash(String tokenHash) {
+        return jpa.findByTokenHash(tokenHash).map(JpaInvitationRepository::toDomain);
+    }
+
+    @Override
+    public Optional<Invitation> lockByTokenHash(String tokenHash) {
+        return jpa.lockByTokenHash(tokenHash).map(JpaInvitationRepository::toDomain);
+    }
+
+    @Override
     public boolean existsPendingForPerson(UUID personId) {
         return jpa.existsByPersonIdAndStatus(personId, InvitationStatus.PENDING.name());
     }
@@ -75,6 +85,7 @@ class JpaInvitationRepository implements InvitationRepository {
 
     private static void changeState(InvitationJpaEntity entity, Invitation invitation) {
         entity.changeState(invitation.tokenHash(), invitation.status().name(), invitation.expiresAt(),
+                invitation.acceptedBy().orElse(null), invitation.acceptedAt().orElse(null),
                 invitation.revokedBy().orElse(null), invitation.revokedAt().orElse(null),
                 invitation.renewedAt().orElse(null), invitation.updatedAt());
     }
@@ -95,8 +106,8 @@ class JpaInvitationRepository implements InvitationRepository {
         return Invitation.restore(new InvitationId(entity.id()), entity.familyId(),
                 InvitationChannel.valueOf(entity.channel()), entity.email(), entity.locale(),
                 InvitationRole.valueOf(entity.role()), entity.personId(), entity.tokenHash(),
-                InvitationStatus.valueOf(entity.status()), entity.invitedBy(), entity.revokedBy(),
-                entity.expiresAt(), entity.revokedAt(), entity.renewedAt(), entity.createdAt(), entity.updatedAt(),
-                entity.version());
+                InvitationStatus.valueOf(entity.status()), entity.invitedBy(), entity.acceptedBy(),
+                entity.revokedBy(), entity.expiresAt(), entity.acceptedAt(), entity.revokedAt(), entity.renewedAt(),
+                entity.createdAt(), entity.updatedAt(), entity.version());
     }
 }

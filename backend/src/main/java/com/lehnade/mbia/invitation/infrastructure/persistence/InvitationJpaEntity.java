@@ -43,11 +43,17 @@ class InvitationJpaEntity {
     @Column(name = "invited_by", nullable = false, updatable = false)
     private UUID invitedBy;
 
+    @Column(name = "accepted_by")
+    private UUID acceptedBy;
+
     @Column(name = "revoked_by")
     private UUID revokedBy;
 
     @Column(name = "expires_at", nullable = false)
     private Instant expiresAt;
+
+    @Column(name = "accepted_at")
+    private Instant acceptedAt;
 
     @Column(name = "revoked_at")
     private Instant revokedAt;
@@ -80,11 +86,13 @@ class InvitationJpaEntity {
         this.createdAt = createdAt;
     }
 
-    void changeState(String tokenHash, String status, Instant expiresAt, UUID revokedBy, Instant revokedAt,
-            Instant renewedAt, Instant updatedAt) {
+    void changeState(String tokenHash, String status, Instant expiresAt, UUID acceptedBy, Instant acceptedAt,
+            UUID revokedBy, Instant revokedAt, Instant renewedAt, Instant updatedAt) {
         this.tokenHash = tokenHash;
         this.status = status;
         this.expiresAt = expiresAt;
+        this.acceptedBy = acceptedBy;
+        this.acceptedAt = acceptedAt;
         this.revokedBy = revokedBy;
         this.revokedAt = revokedAt;
         this.renewedAt = renewedAt;
@@ -131,12 +139,20 @@ class InvitationJpaEntity {
         return invitedBy;
     }
 
+    UUID acceptedBy() {
+        return acceptedBy;
+    }
+
     UUID revokedBy() {
         return revokedBy;
     }
 
     Instant expiresAt() {
         return expiresAt;
+    }
+
+    Instant acceptedAt() {
+        return acceptedAt;
     }
 
     Instant revokedAt() {

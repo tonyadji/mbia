@@ -338,8 +338,8 @@ Rules:
 - `expires_at = created_at + 14 days` (or `renewed_at + 14 days` after renewal);
 - the invitation is not bound to `email`: any authenticated, email-verified User holding the raw token may accept it;
 - accepting an invitation atomically creates or reactivates the membership and marks the invitation `ACCEPTED` (single use);
-- if the accepting User already has an `ACTIVE` membership in the Family, nothing changes and the invitation stays `PENDING`;
-- renewal replaces `token_hash`, resets `expires_at`, sets `renewed_at` and, for `EMAIL`, sends the email again; the old token stops working immediately;
+- if the accepting User already has an `ACTIVE` membership in the Family, nothing changes and the invitation stays `PENDING`; the invitation's state is checked first, so an expired, revoked or accepted invitation answers 410 even to an ACTIVE member (OQ-059);
+- renewal replaces `token_hash`, resets `expires_at`, sets `renewed_at` and, for `EMAIL`, sends the email again; the old token stops working immediately and, since only the current hash is stored, answers like an unknown token (404 `INVITATION_NOT_FOUND`, OQ-058);
 - revocation sets `status = REVOKED`, `revoked_at`, `revoked_by`;
 - a `PENDING` or `EXPIRED` invitation can be renewed or revoked; an `ACCEPTED` or `REVOKED` one cannot (410 `INVITATION_ALREADY_USED`, `INVITATION_REVOKED`; OQ-057); revocation is final;
 - `EXPIRED` is set lazily when an expired `PENDING` invitation is read or accepted, and may also be set by a scheduled task;

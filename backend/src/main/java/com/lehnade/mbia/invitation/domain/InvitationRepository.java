@@ -30,6 +30,15 @@ public interface InvitationRepository {
     /** @return the Family's invitations in this status, most recent first */
     List<Invitation> findInFamily(UUID familyId, InvitationStatus status);
 
+    /** @return the invitation whose current token has this hash, whatever its status */
+    Optional<Invitation> findByTokenHash(String tokenHash);
+
+    /**
+     * As {@link #findByTokenHash(String)}, locking the invitation until the end of the caller's
+     * transaction, so that a second acceptance of the same token waits for the first one.
+     */
+    Optional<Invitation> lockByTokenHash(String tokenHash);
+
     boolean existsPendingForPerson(UUID personId);
 
     /**
