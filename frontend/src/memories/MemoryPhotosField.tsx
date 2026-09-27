@@ -50,6 +50,9 @@ export interface MemoryPhotoDraft {
 
 let nextKey = 0;
 
+/** The focus target `Add a photo`, next to the photos' keys. */
+const ADD = Symbol('add');
+
 function newDraft(file: File): MemoryPhotoDraft {
   nextKey++;
   return {
@@ -116,6 +119,9 @@ export function toPhotoInputs(photos: MemoryPhotoDraft[]): MemoryPhotoInput[] {
  * failure and `Remove`, then gets a caption and, behind `More information`, a taken date. The
  * photos already on a Memory are described or removed the same way; above a lowered limit, they
  * stay and `Add a photo` waits until enough are removed (mvp.md §17).
+ * Focus follows the photos (design-guidelines.md §9): after an addition it moves to the first photo
+ * added; after a removal, to the photo that takes its place, otherwise the previous one, otherwise
+ * `Add a photo`.
  * `showErrors` shows the invalid taken dates once the User tried to publish.
  */
 export function MemoryPhotosField({
@@ -137,6 +143,10 @@ export function MemoryPhotosField({
   const labelId = useId();
   const limitId = useId();
   const input = useRef<HTMLInputElement>(null);
+  const addButton = useRef<HTMLButtonElement>(null);
+  const items = useRef(new Map<string, HTMLFieldSetElement>());
+  // Where the focus goes once the photos are rendered: a photo's key, or `Add a photo`.
+  const pendingFocus = useRef<string | typeof ADD | null>(null);
   const [leftOut, setLeftOut] = useState(0);
   const atLimit = photos.length >= limit;
   // A lowered limit leaves the photos of a Memory in place; none can be added until enough are removed.
@@ -151,15 +161,31 @@ export function MemoryPhotosField({
     [onChange],
   );
 
+  useEffect(() => {
+    const target = pendingFocus.current;
+    if (target === null) return;
+    pendingFocus.current = null;
+    (target === ADD ? addButton.current : items.current.get(target))?.focus();
+  }, [photos]);
+
+  const itemRef = useCallback((key: string, element: HTMLFieldSetElement | null) => {
+    if (element === null) items.current.delete(key);
+    else items.current.set(key, element);
+  }, []);
+
   const remove = (key: string) => {
     setLeftOut(0);
+    const index = photos.findIndex((photo) => photo.key === key);
+    pendingFocus.current = (photos[index + 1] ?? photos[index - 1])?.key ?? ADD;
     onChange((current) => current.filter((photo) => photo.key !== key));
   };
 
   const add = (files: File[]) => {
     const free = Math.max(0, limit - photos.length);
     setLeftOut(Math.max(0, files.length - free));
-    onChange((current) => [...current, ...files.slice(0, free).map(newDraft)]);
+    const drafts = files.slice(0, free).map(newDraft);
+    pendingFocus.current = drafts[0]?.key ?? null;
+    onChange((current) => [...current, ...drafts]);
   };
 
   return (
@@ -175,6 +201,7 @@ export function MemoryPhotosField({
                 familyId={familyId}
                 photo={photo}
                 position={index + 1}
+                itemRef={itemRef}
                 onUpdate={update}
                 onRemove={remove}
                 showErrors={showErrors}
@@ -185,6 +212,7 @@ export function MemoryPhotosField({
         </ol>
       )}
       <Button
+        ref={addButton}
         variant="secondary"
         disabled={disabled || atLimit}
         aria-describedby={atLimit ? limitId : undefined}
@@ -220,6 +248,7 @@ function MemoryPhotoItem({
   familyId,
   photo,
   position,
+  itemRef,
   onUpdate,
   onRemove,
   showErrors,
@@ -228,6 +257,7 @@ function MemoryPhotoItem({
   familyId: string;
   photo: MemoryPhotoDraft;
   position: number;
+  itemRef: (key: string, element: HTMLFieldSetElement | null) => void;
   onUpdate: (key: string, patch: Partial<MemoryPhotoDraft>) => void;
   onRemove: (key: string) => void;
   showErrors: boolean;
@@ -251,7 +281,13 @@ function MemoryPhotoItem({
   }));
 
   return (
-    <fieldset className="flex flex-col gap-3">
+    <fieldset
+      ref={(element) => {
+        itemRef(key, element);
+      }}
+      tabIndex={-1}
+      className="flex min-w-0 flex-col gap-3 rounded-xl outline-none focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-primary"
+    >
       <legend className="mb-2 text-body font-semibold text-text">
         {t('form.photos.photo', { position })}
       </legend>

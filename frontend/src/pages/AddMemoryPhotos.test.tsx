@@ -505,4 +505,55 @@ describe('Photos in Add Memory (SCREEN-006)', () => {
     expect(screen.getByRole('button', { name: 'Add a photo' })).toBeDisabled();
     expect(screen.getAllByRole('progressbar', { name: /^Sending photo \d$/ })).toHaveLength(3);
   });
+
+  it('moves the focus to the first photo added, then to the photo that takes a removed one’s place', async () => {
+    fakeApi({ limit: 3 });
+    renderApp();
+    await fillTitle('Le marché');
+    const group = (position: number) =>
+      screen.getByRole('group', { name: `Photo ${String(position)}` });
+
+    // Choosing the photos that reach the limit disables `Add a photo`: the focus is not lost.
+    addPhoto().focus();
+    pick(jpegs(1));
+    await waitFor(() => {
+      expect(group(1)).toHaveFocus();
+    });
+    addPhoto().focus();
+    pick(jpegs(2));
+    await waitFor(() => {
+      expect(group(2)).toHaveFocus();
+    });
+    expect(addPhoto()).toBeDisabled();
+
+    // The first removed: the next one takes its place, and the focus.
+    fireEvent.click(screen.getByRole('button', { name: 'Retirer la photo 1' }));
+    await waitFor(() => {
+      expect(screen.getAllByRole('group', { name: /^Photo \d$/ })).toHaveLength(2);
+    });
+    expect(group(1)).toHaveFocus();
+    // The last removed: the previous one gets the focus.
+    fireEvent.click(screen.getByRole('button', { name: 'Retirer la photo 2' }));
+    await waitFor(() => {
+      expect(group(1)).toHaveFocus();
+    });
+    // No photo left: `Add a photo` gets it.
+    fireEvent.click(screen.getByRole('button', { name: 'Retirer la photo 1' }));
+    await waitFor(() => {
+      expect(addPhoto()).toHaveFocus();
+    });
+  });
+
+  it('keeps a long caption without break inside the photo at phone width', async () => {
+    fakeApi();
+    renderApp();
+    await fillTitle('Le marché');
+    pick(jpegs(1));
+    const field = await screen.findByRole('textbox', { name: 'Légende de la photo 1' });
+    fireEvent.change(field, { target: { value: 'Nkolbisson'.repeat(20) } });
+
+    // A single-line field scrolls its text; its photo may shrink below its content's width.
+    expect(field.tagName).toBe('INPUT');
+    expect(screen.getByRole('group', { name: 'Photo 1' })).toHaveClass('min-w-0');
+  });
 });
