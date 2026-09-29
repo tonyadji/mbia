@@ -96,7 +96,13 @@ cd frontend && npm run test:e2e                  # or npm run test:e2e:ui
   (`e2e/support/mailpit.ts`), so runs repeat without resetting local data. The isolation test signs in as the realm's
   test user `bob@mbia.local`.
 - Expected texts come from `src/i18n/{fr,en}`: a wording change does not break the tests.
-- `e2e/mvp-release-criteria.spec.ts` lists every step of `mvp.md` §28 as `test.fixme`: each phase turns its steps into
-  real tests.
+- `e2e/mvp-release-criteria.spec.ts` is the MVP north star: one serial journey of `mvp.md` §28, one `test.step` per
+  line, from sign-up to the family story, the tree and derived kinship; its last step, "Cross-Family access must fail",
+  is played by the relative and by `bob@mbia.local`, each a real member of their own Family. The MVP is releasable when
+  it passes.
+- `e2e/phase-<n>-journey.spec.ts` replay the journey of each delivery plan (`mbia-specs/delivery/`, §1), in French and
+  English, and check each screen against `design-guidelines.md` §9 (`e2e/support/accessibility.ts`).
+- `e2e/support/` holds the shared steps: sign-up and sign-in (`keycloak.ts`, `mailpit.ts`), starting a Family
+  (`family.ts`), telling a memory and reading the family story (`story.ts`).
 - Report: `npx playwright show-report` (traces and screenshots of failed tests). `MAILPIT_URL`, `E2E_API_URL` and
   `E2E_OIDC_AUTHORITY` override the local service URLs.

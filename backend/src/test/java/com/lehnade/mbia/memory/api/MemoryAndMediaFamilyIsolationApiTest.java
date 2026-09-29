@@ -24,7 +24,7 @@ import org.springframework.http.MediaType;
 import org.springframework.test.web.servlet.assertj.MvcTestResult;
 
 /**
- * PR-39 and PR-46: Family isolation across every Memory and media operation of Phases 3 and 4
+ * PR-39, PR-46 and PR-63: Family isolation across every Memory and media operation of Phases 3, 4 and 6
  * (mvp.md §22; technical-specification.md §17; AGENTS.md §5), Memory photos included. A member of
  * another Family gets 404 on each of them, learns nothing of the Family and changes nothing in it,
  * whether they call the Family itself or use its ids through their own Family.
@@ -79,7 +79,17 @@ class MemoryAndMediaFamilyIsolationApiTest extends ApiTestSupport {
                 operation("updateMemory: its photos", test -> test.memories.update(test.mine.token(),
                         test.theirs.familyId(), test.theirs.memoryId(), "\"0\"", "{\"photos\": []}")),
                 operation("completeMediaUpload", test -> test.media.complete(test.mine.token(),
-                        test.theirs.familyId(), test.theirs.pendingUploadId())));
+                        test.theirs.familyId(), test.theirs.pendingUploadId())),
+                // PR-63: the date of a Memory (mvp.md §17), a new parameter of both operations.
+                operation("createStoryMemory: with its date", test -> test.memories.createStory(
+                        test.mine.token(), test.theirs.familyId(), """
+                                {"title": "Titre", "content": "Texte",
+                                 "happenedAt": {"precision": "YEAR_ONLY", "year": 1975},
+                                 "relatedPersonIds": ["%s"]}
+                                """.formatted(test.theirs.personId()))),
+                operation("updateMemory: its date", test -> test.memories.update(test.mine.token(),
+                        test.theirs.familyId(), test.theirs.memoryId(), "\"0\"",
+                        "{\"happenedAt\": {\"precision\": \"EXACT\", \"date\": \"1962-03-12\"}}")));
     }
 
     @ParameterizedTest(name = "{0}")
@@ -107,6 +117,9 @@ class MemoryAndMediaFamilyIsolationApiTest extends ApiTestSupport {
                         test.mine.familyId(), test.theirs.memoryId())),
                 withIds("updateMemory", "MEMORY_NOT_FOUND", test -> test.memories.update(test.mine.token(),
                         test.mine.familyId(), test.theirs.memoryId(), "\"0\"", "{\"title\": \"Piraté\"}")),
+                withIds("updateMemory: its date", "MEMORY_NOT_FOUND", test -> test.memories.update(
+                        test.mine.token(), test.mine.familyId(), test.theirs.memoryId(), "\"0\"",
+                        "{\"happenedAt\": {\"precision\": \"UNKNOWN\"}}")),
                 withIds("updateMemory: a Person", "PERSON_NOT_FOUND", test -> test.memories.update(test.mine.token(),
                         test.mine.familyId(), test.mine.memoryId(), "\"0\"",
                         "{\"relatedPersonIds\": [\"" + test.theirs.personId() + "\"]}")),
@@ -191,7 +204,8 @@ class MemoryAndMediaFamilyIsolationApiTest extends ApiTestSupport {
      */
     private Snapshot snapshot(UUID familyId) {
         return new Snapshot(
-                jdbc.sql("SELECT id, status, version, title, content FROM memories WHERE family_id = ? ORDER BY id")
+                jdbc.sql("SELECT id, status, version, title, content, happened_date, happened_year, "
+                        + "happened_date_precision FROM memories WHERE family_id = ? ORDER BY id")
                         .param(familyId).query().listOfRows(),
                 jdbc.sql("SELECT memory_id, person_id FROM memory_persons WHERE family_id = ? ORDER BY 1, 2")
                         .param(familyId).query().listOfRows(),
