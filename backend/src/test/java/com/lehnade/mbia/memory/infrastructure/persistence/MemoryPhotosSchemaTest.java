@@ -154,8 +154,8 @@ class MemoryPhotosSchemaTest extends ApiTestSupport {
                 WHERE contype = 'c' AND conrelid IN ('memories'::regclass, 'media_assets'::regclass)
                 """).query(String.class).list())
                 .containsExactlyInAnyOrder("ck_memory_type", "ck_memory_status", "ck_memory_story_title",
-                        "ck_media_asset_purpose", "ck_media_asset_status", "ck_media_asset_size",
-                        "ck_media_asset_ready_derivatives");
+                        "ck_memory_happened_date_precision", "ck_memory_happened_date", "ck_media_asset_purpose",
+                        "ck_media_asset_status", "ck_media_asset_size", "ck_media_asset_ready_derivatives");
     }
 
     private UUID photo(UUID family) {

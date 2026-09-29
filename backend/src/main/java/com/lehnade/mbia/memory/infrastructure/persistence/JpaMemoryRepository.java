@@ -7,7 +7,7 @@ import com.lehnade.mbia.memory.domain.MemoryPhoto;
 import com.lehnade.mbia.memory.domain.MemoryRepository;
 import com.lehnade.mbia.memory.domain.MemoryStatus;
 import com.lehnade.mbia.memory.domain.MemoryType;
-import com.lehnade.mbia.memory.domain.TakenDate;
+import com.lehnade.mbia.memory.domain.PartialDay;
 import java.time.Instant;
 import java.util.Collection;
 import java.util.List;
@@ -37,8 +37,10 @@ class JpaMemoryRepository implements MemoryRepository {
     public void insert(Memory memory) {
         UUID familyId = memory.familyId();
         UUID memoryId = memory.id().value();
+        PartialDay happenedAt = memory.happenedAt();
         jpa.saveAndFlush(new MemoryJpaEntity(memoryId, familyId, memory.type().name(), memory.status().name(),
-                memory.title(), memory.content(), memory.createdBy(), memory.updatedBy(), memory.createdAt(),
+                memory.title(), memory.content(), happenedAt.date(), happenedAt.year(),
+                happenedAt.precision().name(), memory.createdBy(), memory.updatedBy(), memory.createdAt(),
                 memory.updatedAt()));
         links.saveAllAndFlush(memory.relatedPersonIds().stream()
                 .map(personId -> new MemoryPersonJpaEntity(familyId, memoryId, personId, memory.createdAt()))
@@ -59,7 +61,9 @@ class JpaMemoryRepository implements MemoryRepository {
         MemoryJpaEntity entity = jpa.findById(memoryId)
                 .filter(found -> found.familyId().equals(familyId) && found.version() == memory.version())
                 .orElseThrow(() -> new OptimisticLockingFailureException("The memory changed since it was read."));
-        entity.changeStory(memory.title(), memory.content(), memory.updatedBy(), memory.updatedAt());
+        PartialDay happenedAt = memory.happenedAt();
+        entity.changeStory(memory.title(), memory.content(), happenedAt.date(), happenedAt.year(),
+                happenedAt.precision().name(), memory.updatedBy(), memory.updatedAt());
         if (memory.status() == MemoryStatus.ARCHIVED) {
             entity.archive(memory.updatedBy(), memory.updatedAt());
         }
@@ -165,8 +169,11 @@ class JpaMemoryRepository implements MemoryRepository {
 
     private static Memory toDomain(MemoryJpaEntity entity, Set<UUID> relatedPersonIds, List<MemoryPhoto> photos) {
         return Memory.restore(new MemoryId(entity.id()), entity.familyId(), MemoryType.valueOf(entity.type()),
-                MemoryStatus.valueOf(entity.status()), entity.title(), entity.content(), relatedPersonIds, photos,
-                entity.createdBy(), entity.updatedBy(), entity.createdAt(), entity.updatedAt(), entity.version());
+                MemoryStatus.valueOf(entity.status()), entity.title(), entity.content(),
+                new PartialDay(PartialDay.Precision.valueOf(entity.happenedDatePrecision()), entity.happenedDate(),
+                        entity.happenedYear()),
+                relatedPersonIds, photos, entity.createdBy(), entity.updatedBy(), entity.createdAt(),
+                entity.updatedAt(), entity.version());
     }
 
     private static MemoryPhotoJpaEntity row(UUID familyId, UUID memoryId, MemoryPhoto photo, Instant createdAt) {
@@ -177,7 +184,7 @@ class JpaMemoryRepository implements MemoryRepository {
 
     private static MemoryPhoto toDomain(MemoryPhotoJpaEntity row) {
         return new MemoryPhoto(new MediaAssetId(row.mediaAssetId()), row.position(), row.caption(),
-                new TakenDate(TakenDate.Precision.valueOf(row.takenDatePrecision()), row.takenDate(),
+                new PartialDay(PartialDay.Precision.valueOf(row.takenDatePrecision()), row.takenDate(),
                         row.takenYear()));
     }
 }

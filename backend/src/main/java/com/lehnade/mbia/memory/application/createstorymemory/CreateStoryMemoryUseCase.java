@@ -29,7 +29,8 @@ import org.springframework.transaction.annotation.Transactional;
 
 /**
  * Writes a family story linked to one or more Persons, with 0 to a few photos (openapi
- * {@code createStoryMemory}; mvp.md §17; person-relationships-collaboration.md §12). ADMIN or
+ * {@code createStoryMemory}; mvp.md §17; person-relationships-collaboration.md §12), possibly dated,
+ * never in the future (OQ-063). ADMIN or
  * CONTRIBUTOR only. Every related Person is of the Family, not MERGED and ACTIVE (OQ-035, OQ-037).
  * Each photo is a READY {@code MEMORY_PHOTO} of the Family, uploaded by the caller and used nowhere
  * else, and there are no more than {@code mbia.memory.max-photos} (data-model.md §14bis, OQ-036,
@@ -37,7 +38,8 @@ import org.springframework.transaction.annotation.Transactional;
  *
  * <p>The Memory, its Persons, its photos and the audit entry are written in one transaction
  * (technical-specification.md §14); the audit holds the photo asset ids, never the title, the text
- * nor a caption (OQ-039, data-model.md §17).
+ * nor a caption (OQ-039, data-model.md §17). Neither the audit nor the activity records the date
+ * (OQ-063).
  */
 @Service
 public class CreateStoryMemoryUseCase {
@@ -76,7 +78,8 @@ public class CreateStoryMemoryUseCase {
 
         Instant now = clock.instant();
         Memory memory = Memory.createStory(MemoryId.newId(), command.familyId(), command.title(),
-                command.content(), command.relatedPersonIds(), command.photos(), caller.id(), now);
+                command.content(), command.happenedAt(), command.relatedPersonIds(), command.photos(), caller.id(),
+                now);
         if (memory.photos().size() > settings.maxPhotos()) {
             throw MemoryPhotos.limitReached(settings.maxPhotos());
         }
