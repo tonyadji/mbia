@@ -1,7 +1,7 @@
 openapi: 3.1.0
 info:
   title: Mbia API
-  version: 0.4.0
+  version: 0.5.0
   summary: REST contract for the Mbia commercial MVP
   description: |
     Contract-first API for Mbia, a private collaborative family heritage platform.
@@ -1054,9 +1054,30 @@ paths:
       operationId: listFamilyMemories
       summary: List active family memories
       description: |
-        ACTIVE Memories of the Family, most recently added first (`createdAt` descending,
-        then `id`), for any ACTIVE member (OQ-034).
+        ACTIVE Memories of the Family, for any ACTIVE member. Without `year` nor `undated`,
+        most recently added first (`createdAt` descending, then `id`) (OQ-034).
+
+        The family story (`mvp.md` §20, OQ-064): with `year`, the Memories that happened
+        that year (an EXACT `happenedAt` in that year, or a YEAR_ONLY one of that year),
+        those with an EXACT date first in date order, then those with the year only in the
+        order they were added (`createdAt` ascending), then `id`. With `undated=true`, the
+        Memories whose `happenedAt` is UNKNOWN, most recently added first. `year` and
+        `undated` together return 400 `VALIDATION_FAILED`.
       parameters:
+        - name: year
+          in: query
+          required: false
+          description: Only the Memories that happened this year (family story, OQ-064).
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 9999
+        - name: undated
+          in: query
+          required: false
+          description: "`true`: only the Memories without a year (family story, OQ-064)."
+          schema:
+            type: boolean
         - name: type
           in: query
           required: false
@@ -1131,7 +1152,9 @@ paths:
         `PERMISSION_DENIED`; another purpose or the same asset twice 400 `VALIDATION_FAILED`; an
         asset not READY 409 `MEDIA_NOT_READY`; an asset already used 409 `MEDIA_ALREADY_USED`;
         more photos than `FamilyResponse.limits.maxPhotosPerMemory` 409
-        `MEMORY_PHOTO_LIMIT_REACHED`. Memory, Persons and photos are stored in one transaction.
+        `MEMORY_PHOTO_LIMIT_REACHED`. `happenedAt` is optional (absent: UNKNOWN); an inconsistent
+        or future date returns 400 `VALIDATION_FAILED` (OQ-063). Memory, Persons and photos are
+        stored in one transaction.
       requestBody:
         required: true
         content:
@@ -1200,7 +1223,8 @@ paths:
         rules of `createStoryMemory`; more photos than the limit after an addition returns 409
         `MEMORY_PHOTO_LIMIT_REACHED`, while a Memory above a lowered limit may still be changed
         without adding a photo. A Memory left without text and without photo returns 400
-        `VALIDATION_FAILED`.
+        `VALIDATION_FAILED`. `happenedAt` absent or `null` keeps the date; UNKNOWN removes it;
+        an inconsistent or future date returns 400 `VALIDATION_FAILED` (OQ-063).
       parameters:
         - $ref: '#/components/parameters/IfMatch'
       requestBody:
@@ -1336,6 +1360,30 @@ paths:
           $ref: '#/components/responses/NotFound'
         '409':
           $ref: '#/components/responses/Conflict'
+
+  /families/{familyId}/story/years:
+    parameters:
+      - $ref: '#/components/parameters/FamilyId'
+    get:
+      tags: [Memories]
+      operationId: listFamilyStoryYears
+      summary: The years of the family story
+      description: |
+        The strip of years of the family story (`mvp.md` §20, SCREEN-002, OQ-064), for any
+        ACTIVE member: every year with at least one ACTIVE Memory, in chronological order, with
+        its number of ACTIVE Memories, and the number of ACTIVE Memories without a year. A
+        Family without Memory returns an empty list and 0.
+      responses:
+        '200':
+          description: The years of the family story
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/FamilyStoryYears'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
 
   /families/{familyId}/activities:
     parameters:
@@ -2370,6 +2418,7 @@ components:
         - status
         - relatedPersons
         - photos
+        - happenedAt
         - createdBy
         - createdAt
         - updatedAt
@@ -2383,6 +2432,8 @@ components:
           format: uuid
         type:
           $ref: '#/components/schemas/MemoryType'
+        happenedAt:
+          $ref: '#/components/schemas/MemoryDate'
         status:
           $ref: '#/components/schemas/MemoryStatus'
         title:
@@ -2426,6 +2477,41 @@ components:
         version:
           type: integer
           format: int64
+
+    MemoryDate:
+      description: |
+        When a Memory happened (`mvp.md` §17, OQ-063): a `PartialDate` that is never in the
+        future. An EXACT date after the current day, or a YEAR_ONLY year after the current
+        year, is refused with 400 `VALIDATION_FAILED` (field `happenedAt`). The current day is
+        the server's in UTC, with one day of tolerance for time zones ahead of UTC.
+      allOf:
+        - $ref: '#/components/schemas/PartialDate'
+
+    FamilyStoryYears:
+      type: object
+      required: [years, undatedMemoryCount]
+      properties:
+        years:
+          type: array
+          description: The years with at least one ACTIVE Memory, oldest first.
+          items:
+            $ref: '#/components/schemas/FamilyStoryYear'
+        undatedMemoryCount:
+          type: integer
+          minimum: 0
+          description: The number of ACTIVE Memories without a year.
+
+    FamilyStoryYear:
+      type: object
+      required: [year, memoryCount]
+      properties:
+        year:
+          type: integer
+          minimum: 1
+          maximum: 9999
+        memoryCount:
+          type: integer
+          minimum: 1
 
     MemoryPhotoInput:
       type: object
@@ -2508,6 +2594,11 @@ components:
           minLength: 1
           maxLength: 50000
           description: Not blank when present; required when the Memory has no photo.
+        happenedAt:
+          description: When it happened (OQ-063); absent or `null` means UNKNOWN.
+          oneOf:
+            - $ref: '#/components/schemas/MemoryDate'
+            - type: 'null'
         photos:
           type: array
           maxItems: 10
@@ -2536,6 +2627,13 @@ components:
           description: |
             An absent or `null` value keeps the text (OQ-008, OQ-049); a blank string empties it,
             allowed only if a photo remains (OQ-042).
+        happenedAt:
+          description: |
+            When it happened (OQ-063). An absent or `null` value keeps it (OQ-008); UNKNOWN
+            removes it.
+          oneOf:
+            - $ref: '#/components/schemas/MemoryDate'
+            - type: 'null'
         photos:
           type: array
           maxItems: 10

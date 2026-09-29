@@ -365,6 +365,8 @@ Critical automated scenarios include:
 - protect linked Person;
 - merge duplicate;
 - add Memory;
+- date a Memory, refuse a future date, and read the family story by year (`mvp.md` §17, §20);
+- tell a first Memory in a Family without Person;
 - invite Contributor (email and link);
 - reject reused, expired, revoked or renewed invitation token;
 - keep at least one ADMIN;
