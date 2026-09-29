@@ -80,6 +80,7 @@ function memory(overrides: Record<string, unknown> = {}) {
     status: 'ACTIVE',
     title: 'Le marché de Yaoundé',
     content: 'Grand-mère vendait du plantain.',
+    happenedAt: { precision: 'UNKNOWN' },
     relatedPersons: [{ id: AWA_ID, displayName: 'Awa Ngo', status: 'ACTIVE' }],
     createdBy: { userId: 'u1', displayName: 'Tony', deleted: false },
     createdAt: '2026-09-20T10:00:00Z',
@@ -239,6 +240,34 @@ describe('Memory screens', () => {
   });
 
   describe('Memory (SCREEN-013)', () => {
+    it.each([
+      ['fr', { precision: 'YEAR_ONLY', year: 1975 }, 'En 1975'],
+      ['fr', { precision: 'EXACT', date: '1975-03-12' }, 'Le 12 mars 1975'],
+      ['en', { precision: 'YEAR_ONLY', year: 1975 }, 'In 1975'],
+      ['en', { precision: 'EXACT', date: '1975-03-12' }, 'On March 12, 1975'],
+    ])(
+      'says when it happened in the reader’s language (%s), the year in digits only',
+      async (locale, happenedAt, text) => {
+        fakeApi({ locale, role: 'VIEWER', getMemory: () => jsonResponse(memory({ happenedAt })) });
+        renderApp(MEMORY);
+
+        const title = await screen.findByRole('heading', { level: 1 });
+        const date = await screen.findByText(text);
+        // Right under the title, as plain text until the family story's years exist (PR-61).
+        expect(title.nextElementSibling).toBe(date);
+        expect(date.closest('a')).toBeNull();
+      },
+    );
+
+    it('says nothing about when it happened when it is unknown', async () => {
+      fakeApi({ role: 'VIEWER' });
+      renderApp(MEMORY);
+
+      const title = await screen.findByRole('heading', { level: 1 });
+      expect(title.nextElementSibling).toHaveTextContent(/^Ajouté par/);
+      expect(screen.queryByText(/^(En|Le) \d/)).not.toBeInTheDocument();
+    });
+
     it('shows the title, the text as typed, the Persons, the author and the date', async () => {
       const content =
         'Chaque samedi,\n\n<b>grand-mère</b> allait au **marché**.\n<script>x</script>';

@@ -78,6 +78,7 @@ function memory(overrides: Record<string, unknown> = {}) {
     status: 'ACTIVE',
     title: 'Le marché de Yaoundé',
     content: 'Grand-mère vendait du plantain.',
+    happenedAt: { precision: 'UNKNOWN' },
     photos: [
       photo(1, 'Grand-mère au marché'),
       photo(2, null, { precision: 'YEAR_ONLY', year: 1975 }),

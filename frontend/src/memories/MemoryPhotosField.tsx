@@ -10,18 +10,11 @@ import {
 import { useTranslation } from 'react-i18next';
 import type { components } from '../api/generated/schema';
 import { Button } from '../components/Button';
-import { Select } from '../components/Select';
 import { TextField } from '../components/TextField';
 import { PHOTO_TYPES } from '../media/prepareImage';
 import { UploadProgress } from '../media/UploadProgress';
 import { usePhotoUpload } from '../media/usePhotoUpload';
-import {
-  partialDate,
-  requiredDate,
-  validYear,
-  YEAR_MAX,
-  YEAR_MIN,
-} from '../persons/PersonFormFields';
+import { dateDraftError, PartialDateField, toPartialDate } from './PartialDateField';
 
 type Precision = components['schemas']['DatePrecision'];
 type MemoryPhotoInput = components['schemas']['MemoryPhotoInput'];
@@ -85,13 +78,7 @@ export function fromMemoryPhotos(photos: MemoryPhoto[]): MemoryPhotoDraft[] {
 
 /** Why the taken date of a photo cannot be sent, like a birth date (OQ-033). */
 export function takenAtError(photo: MemoryPhotoDraft) {
-  const valid =
-    photo.precision === 'EXACT'
-      ? requiredDate(photo.date)
-      : photo.precision === 'YEAR_ONLY'
-        ? validYear(photo.year)
-        : true;
-  return valid === true ? null : valid;
+  return dateDraftError(photo, { notFuture: false });
 }
 
 /** The photos ready to be published, in the order they were added (`MemoryPhotoInput[]`). */
@@ -102,10 +89,7 @@ export function toPhotoInputs(photos: MemoryPhotoDraft[]): MemoryPhotoInput[] {
           {
             mediaAssetId: photo.assetId,
             caption: photo.caption.trim() === '' ? null : photo.caption.trim(),
-            takenAt:
-              photo.precision === 'UNKNOWN'
-                ? null
-                : partialDate(photo.precision, photo.date, photo.year.trim()),
+            takenAt: photo.precision === 'UNKNOWN' ? null : toPartialDate(photo),
           },
         ]
       : [],
@@ -263,22 +247,12 @@ function MemoryPhotoItem({
   showErrors: boolean;
   disabled: boolean;
 }) {
-  const { t } = useTranslation(['memory', 'person']);
+  const { t } = useTranslation('memory');
   const detailsId = useId();
   const [open, setOpen] = useState(false);
   const { key, file } = photo;
 
   const dateError = showErrors ? takenAtError(photo) : null;
-  const dateMessage =
-    dateError === 'invalidYear'
-      ? t('person:form.invalidYear', { min: YEAR_MIN, max: YEAR_MAX })
-      : dateError === 'dateRequired'
-        ? t('person:form.dateRequired')
-        : undefined;
-  const precisionOptions = (['UNKNOWN', 'YEAR_ONLY', 'EXACT'] as const).map((value) => ({
-    value,
-    label: t(`person:form.precision.${value}`),
-  }));
 
   return (
     <fieldset
@@ -347,40 +321,18 @@ function MemoryPhotoItem({
         {t('form.photos.moreInfo')}
       </button>
       {(open || dateError !== null) && (
-        <div id={detailsId} className="flex flex-col gap-4">
-          <Select
+        <div id={detailsId}>
+          <PartialDateField
             label={t('form.photos.takenAt')}
-            options={precisionOptions}
-            value={photo.precision}
+            dateLabel={t('form.photos.takenDate')}
+            yearLabel={t('form.photos.takenYear')}
+            value={photo}
+            error={dateError}
             disabled={disabled}
-            onChange={(event) => {
-              onUpdate(key, { precision: event.target.value as Precision });
+            onChange={(patch) => {
+              onUpdate(key, patch);
             }}
           />
-          {photo.precision === 'EXACT' && (
-            <TextField
-              type="date"
-              label={t('form.photos.takenDate')}
-              value={photo.date}
-              error={dateMessage}
-              disabled={disabled}
-              onChange={(event) => {
-                onUpdate(key, { date: event.target.value });
-              }}
-            />
-          )}
-          {photo.precision === 'YEAR_ONLY' && (
-            <TextField
-              inputMode="numeric"
-              label={t('form.photos.takenYear')}
-              value={photo.year}
-              error={dateMessage}
-              disabled={disabled}
-              onChange={(event) => {
-                onUpdate(key, { year: event.target.value });
-              }}
-            />
-          )}
         </div>
       )}
     </fieldset>

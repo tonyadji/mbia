@@ -82,7 +82,12 @@ const eloise = person({
   relationshipToCurrentUser: 'MOTHER',
 });
 
-function memoryFrom(body: { title: string; content: string; relatedPersonIds: string[] }) {
+function memoryFrom(body: {
+  title: string;
+  content: string;
+  relatedPersonIds: string[];
+  happenedAt?: unknown;
+}) {
   const byId: Record<string, ReturnType<typeof person>> = {
     [MARIE_ID]: marie,
     [ELOISE_ID]: eloise,
@@ -95,6 +100,7 @@ function memoryFrom(body: { title: string; content: string; relatedPersonIds: st
     status: 'ACTIVE',
     title: body.title,
     content: body.content,
+    happenedAt: body.happenedAt ?? { precision: 'UNKNOWN' },
     relatedPersons: body.relatedPersonIds.map((id) => ({
       id,
       displayName: byId[id]?.displayName ?? '?',
@@ -424,6 +430,155 @@ describe('Add a Memory (SCREEN-006)', () => {
     expect(await screen.findByRole('textbox', { name: 'Your story' })).toBeInTheDocument();
     expect(screen.getByRole('group', { name: 'Who is this memory about?' })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Publish' })).toBeEnabled();
+  });
+
+  describe('when it happened (OQ-063)', () => {
+    // Only `Date` is fixed: the day is 29 September 2026, whatever the machine running the tests.
+    beforeEach(() => {
+      vi.useFakeTimers({ toFake: ['Date'] });
+      vi.setSystemTime(new Date(2026, 8, 29, 12));
+    });
+    afterEach(() => {
+      vi.useRealTimers();
+    });
+
+    const when = () => screen.getByRole('combobox', { name: 'Quand est-ce arrivé ?' });
+
+    it('publishes a year, and the Memory reads "En 1975"', async () => {
+      const { posted } = fakeApi();
+      renderApp(addMemoryPath(ADJI_ID));
+      await fillStory('Le mariage', 'Toute la famille était là.');
+      expect(when()).toHaveValue('UNKNOWN');
+      fireEvent.change(when(), { target: { value: 'YEAR_ONLY' } });
+      fireEvent.change(screen.getByRole('textbox', { name: "Année où c'est arrivé" }), {
+        target: { value: '1975' },
+      });
+      fireEvent.click(publish());
+
+      expect(await screen.findByText('En 1975')).toBeInTheDocument();
+      expect(posted).toEqual([
+        expect.objectContaining({ happenedAt: { precision: 'YEAR_ONLY', year: 1975 } }),
+      ]);
+    });
+
+    it('publishes an exact date, and the Memory reads it in the reader’s language', async () => {
+      const { posted } = fakeApi();
+      renderApp(addMemoryPath(ADJI_ID));
+      await fillStory('Le mariage', 'Toute la famille était là.');
+      fireEvent.change(when(), { target: { value: 'EXACT' } });
+      const date = screen.getByLabelText("Date à laquelle c'est arrivé");
+      // The date picker offers no day after today.
+      expect(date).toHaveAttribute('max', '2026-09-29');
+      fireEvent.change(date, { target: { value: '1975-03-12' } });
+      fireEvent.click(publish());
+
+      expect(await screen.findByText('Le 12 mars 1975')).toBeInTheDocument();
+      expect(posted).toEqual([
+        expect.objectContaining({ happenedAt: { precision: 'EXACT', date: '1975-03-12' } }),
+      ]);
+    });
+
+    it('publishes without a date: nothing is sent and nothing is shown', async () => {
+      const { posted } = fakeApi();
+      renderApp(addMemoryPath(ADJI_ID));
+      await fillStory('Le mariage', 'Toute la famille était là.');
+      fireEvent.click(publish());
+
+      expect(
+        await screen.findByRole('heading', { level: 1, name: 'Le mariage' }),
+      ).toBeInTheDocument();
+      expect(posted[0]).not.toHaveProperty('happenedAt');
+      expect(screen.queryByText(/^(En|Le) \d/)).not.toBeInTheDocument();
+    });
+
+    it.each([
+      ['a year after this one', 'YEAR_ONLY', "Année où c'est arrivé", '2027'],
+      ['tomorrow', 'EXACT', "Date à laquelle c'est arrivé", '2026-09-30'],
+    ])('refuses %s before sending anything, and says why', async (_, precision, label, value) => {
+      const { posted } = fakeApi();
+      renderApp(addMemoryPath(ADJI_ID));
+      await fillStory('Le mariage', 'Toute la famille était là.');
+      fireEvent.change(when(), { target: { value: precision } });
+      const field = screen.getByLabelText(label);
+      fireEvent.change(field, { target: { value } });
+      fireEvent.click(publish());
+
+      await waitFor(() => {
+        expect(field).toHaveAccessibleDescription(
+          'Cette date est dans le futur. Un souvenir raconte ce qui est déjà arrivé.',
+        );
+      });
+      await waitFor(() => {
+        expect(field).toHaveFocus();
+      });
+      expect(posted).toEqual([]);
+    });
+
+    it('accepts today', async () => {
+      const { posted } = fakeApi();
+      renderApp(addMemoryPath(ADJI_ID));
+      await fillStory('Le mariage', 'Toute la famille était là.');
+      fireEvent.change(when(), { target: { value: 'YEAR_ONLY' } });
+      fireEvent.change(screen.getByRole('textbox', { name: "Année où c'est arrivé" }), {
+        target: { value: '2026' },
+      });
+      fireEvent.click(publish());
+      expect(await screen.findByText('En 2026')).toBeInTheDocument();
+      expect(posted).toHaveLength(1);
+    });
+
+    it('explains the server’s refusal of a future date on the field, keeping what was typed', async () => {
+      const { posted } = fakeApi({
+        create: [
+          () =>
+            problemResponse('VALIDATION_FAILED', 400, {
+              fieldErrors: [
+                {
+                  field: 'happenedAt',
+                  code: 'FUTURE_DATE',
+                  message: 'A date must not be in the future.',
+                },
+              ],
+            }),
+        ],
+      });
+      renderApp(addMemoryPath(ADJI_ID));
+      await fillStory('Le mariage', 'Toute la famille était là.');
+      fireEvent.change(when(), { target: { value: 'YEAR_ONLY' } });
+      const year = screen.getByRole('textbox', { name: "Année où c'est arrivé" });
+      fireEvent.change(year, { target: { value: '2026' } });
+      fireEvent.click(publish());
+
+      await waitFor(() => {
+        expect(year).toHaveAccessibleDescription(
+          'Cette date est dans le futur. Un souvenir raconte ce qui est déjà arrivé.',
+        );
+      });
+      await waitFor(() => {
+        expect(year).toHaveFocus();
+      });
+      expect(screen.queryByText('A date must not be in the future.')).not.toBeInTheDocument();
+      expect(screen.getByRole('textbox', { name: 'Titre' })).toHaveValue('Le mariage');
+      expect(posted).toHaveLength(1);
+
+      // Changing the date clears the refusal.
+      fireEvent.change(year, { target: { value: '2025' } });
+      expect(year).not.toHaveAccessibleDescription();
+    });
+
+    it('asks "When did it happen?" in English', async () => {
+      fakeApi({ locale: 'en' });
+      await act(() => i18n.changeLanguage('en'));
+      renderApp(addMemoryPath(ADJI_ID));
+      const question = await screen.findByRole('combobox', { name: 'When did it happen?' });
+      expect(
+        within(question)
+          .getAllByRole('option')
+          .map((option) => option.textContent),
+      ).toEqual(['Unknown', 'Year only', 'Exact date']);
+      fireEvent.change(question, { target: { value: 'YEAR_ONLY' } });
+      expect(screen.getByRole('textbox', { name: 'Year it happened' })).toBeInTheDocument();
+    });
   });
 });
 

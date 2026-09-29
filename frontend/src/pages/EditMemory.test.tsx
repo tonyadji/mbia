@@ -58,6 +58,7 @@ function memory(overrides: Record<string, unknown> = {}) {
     status: 'ACTIVE',
     title: 'Le marché de Yaoundé',
     content: 'Grand-mère vendait du plantain.',
+    happenedAt: { precision: 'UNKNOWN' },
     relatedPersons: [{ id: AWA_ID, displayName: 'Awa Ngo', status: 'ACTIVE' }],
     createdBy: { userId: ME, displayName: 'Tony', deleted: false },
     createdAt: '2026-09-20T10:00:00Z',
@@ -436,6 +437,130 @@ describe('Edit & archive a Memory', () => {
 
       await waitFor(() => {
         expect(router.state.location.pathname).toBe(MEMORY);
+      });
+    });
+
+    describe('when it happened (OQ-063)', () => {
+      beforeEach(() => {
+        vi.useFakeTimers({ toFake: ['Date'] });
+        vi.setSystemTime(new Date(2026, 8, 29, 12));
+      });
+      afterEach(() => {
+        vi.useRealTimers();
+      });
+
+      const in1975 = { happenedAt: { precision: 'YEAR_ONLY', year: 1975 } };
+      const when = () => screen.getByRole('combobox', { name: 'Quand est-ce arrivé ?' });
+      const save = () => {
+        fireEvent.click(screen.getByRole('button', { name: 'Enregistrer' }));
+      };
+
+      it('shows the date of the Memory, and changes 1975 into 12 March 1962', async () => {
+        const api = fakeApi({ getMemory: () => jsonResponse(memory(in1975)) });
+        const { router } = renderApp([EDIT]);
+
+        const year = await screen.findByRole('textbox', { name: "Année où c'est arrivé" });
+        expect(when()).toHaveValue('YEAR_ONLY');
+        expect(year).toHaveValue('1975');
+        fireEvent.change(when(), { target: { value: 'EXACT' } });
+        fireEvent.change(screen.getByLabelText("Date à laquelle c'est arrivé"), {
+          target: { value: '1962-03-12' },
+        });
+        save();
+
+        await waitFor(() => {
+          expect(router.state.location.pathname).toBe(MEMORY);
+        });
+        const patch = api.sent('PATCH')[0];
+        expect(patch?.headers.get('If-Match')).toBe('"0"');
+        expect(await patch?.json()).toMatchObject({
+          happenedAt: { precision: 'EXACT', date: '1962-03-12' },
+        });
+        expect(await screen.findByText('Le 12 mars 1962')).toBeInTheDocument();
+      });
+
+      it('removes the date with Unknown', async () => {
+        const api = fakeApi({ getMemory: () => jsonResponse(memory(in1975)) });
+        const { router } = renderApp([EDIT]);
+
+        await screen.findByRole('textbox', { name: "Année où c'est arrivé" });
+        fireEvent.change(when(), { target: { value: 'UNKNOWN' } });
+        save();
+
+        await waitFor(() => {
+          expect(router.state.location.pathname).toBe(MEMORY);
+        });
+        expect(await api.sent('PATCH')[0]?.json()).toMatchObject({
+          happenedAt: { precision: 'UNKNOWN' },
+        });
+        await screen.findByText(/ont été enregistrées/);
+        expect(screen.queryByText(/^En \d/)).not.toBeInTheDocument();
+      });
+
+      it('does not send an unchanged date', async () => {
+        const api = fakeApi({ getMemory: () => jsonResponse(memory(in1975)) });
+        const { router } = renderApp([EDIT]);
+
+        fireEvent.change(await screen.findByLabelText(/Titre/), { target: { value: 'Le marché' } });
+        save();
+
+        await waitFor(() => {
+          expect(router.state.location.pathname).toBe(MEMORY);
+        });
+        expect(await api.sent('PATCH')[0]?.json()).not.toHaveProperty('happenedAt');
+      });
+
+      it('refuses a future year before sending anything, and says why', async () => {
+        const api = fakeApi({ getMemory: () => jsonResponse(memory(in1975)) });
+        renderApp([EDIT]);
+
+        const year = await screen.findByRole('textbox', { name: "Année où c'est arrivé" });
+        fireEvent.change(year, { target: { value: '2027' } });
+        save();
+
+        await waitFor(() => {
+          expect(year).toHaveAccessibleDescription(
+            'Cette date est dans le futur. Un souvenir raconte ce qui est déjà arrivé.',
+          );
+        });
+        await waitFor(() => {
+          expect(year).toHaveFocus();
+        });
+        expect(api.sent('PATCH')).toEqual([]);
+      });
+
+      it('explains the server’s refusal of the date on the field', async () => {
+        fakeApi({
+          getMemory: () => jsonResponse(memory(in1975)),
+          patchMemory: () =>
+            jsonResponse(
+              {
+                code: 'VALIDATION_FAILED',
+                status: 400,
+                title: 'VALIDATION_FAILED',
+                detail: 'raw server detail',
+                fieldErrors: [{ field: 'happenedAt', code: 'FUTURE_DATE', message: 'raw' }],
+              },
+              400,
+              'application/problem+json',
+            ),
+        });
+        renderApp([EDIT]);
+
+        const year = await screen.findByRole('textbox', { name: "Année où c'est arrivé" });
+        fireEvent.change(year, { target: { value: '2026' } });
+        save();
+
+        await waitFor(() => {
+          expect(year).toHaveAccessibleDescription(
+            'Cette date est dans le futur. Un souvenir raconte ce qui est déjà arrivé.',
+          );
+        });
+        await waitFor(() => {
+          expect(year).toHaveFocus();
+        });
+        expect(year).toHaveValue('2026');
+        expect(screen.queryByText('raw')).not.toBeInTheDocument();
       });
     });
   });

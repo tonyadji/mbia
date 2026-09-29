@@ -3,6 +3,7 @@ import { useTranslation } from 'react-i18next';
 import { ApiError } from '../api/client';
 import { TextArea } from '../components/TextArea';
 import { TextField } from '../components/TextField';
+import type { DateError } from './PartialDateField';
 
 /** `CreateStoryMemoryRequest` / `UpdateMemoryRequest` limits (mvp.md §17, data-model.md §14). */
 const LIMITS = { title: 250, content: 50_000 } as const;
@@ -99,4 +100,14 @@ export function showServerFieldErrors(form: UseFormReturn<StoryFormValues>, fail
       focused = true;
     }
   }
+}
+
+/** Why the server refused the date of a Memory (`happenedAt`), if it did (OQ-063). */
+export function serverDateError(failure: unknown): DateError | null {
+  if (!(failure instanceof ApiError)) return null;
+  const refusal = failure.fieldErrors.find((fieldError) =>
+    fieldError.field.startsWith('happenedAt'),
+  );
+  if (refusal === undefined) return null;
+  return refusal.code === 'FUTURE_DATE' ? 'futureDate' : 'invalid';
 }

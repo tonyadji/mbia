@@ -16,10 +16,20 @@ import {
   toPhotoInputs,
   type MemoryPhotoDraft,
 } from '../memories/MemoryPhotosField';
+import {
+  dateDraftError,
+  fromPartialDate,
+  PartialDateField,
+  sameDate,
+  toPartialDate,
+  type DateDraft,
+  type DateError,
+} from '../memories/PartialDateField';
 import { RelatedPersonsPicker, type RelatedPerson } from '../memories/RelatedPersonsPicker';
 import {
   MEMORY_ERRORS,
   PHOTO_ERRORS,
+  serverDateError,
   showServerFieldErrors,
   StoryFields,
   type StoryFormValues,
@@ -31,7 +41,7 @@ type Memory = components['schemas']['MemoryResponse'];
 
 /**
  * SCREEN-014 — Edit Memory, for its creator or an ADMIN with a role that can write (OQ-041): the
- * fields of SCREEN-006, with the Memory's photos, described, removed or added within the Family's
+ * fields of SCREEN-006, with the Memory's date, changed or removed (OQ-063), its photos, described, removed or added within the Family's
  * limit; the text may be emptied only while a photo remains (mvp.md §17). An archived Person already on the Memory may stay but not be added back;
  * when the Persons change, at least one ACTIVE Person stays (OQ-035, OQ-043). The form sends the
  * version it was loaded with; when someone changed the Memory meanwhile, the User reloads the
@@ -96,6 +106,10 @@ function EditMemoryForm({
   const [base, setBase] = useState(loaded);
   const [persons, setPersons] = useState(() => toPersons(loaded));
   const [photos, setPhotos] = useState<MemoryPhotoDraft[]>(() => fromMemoryPhotos(loaded.photos));
+  const [happenedAt, setHappenedAt] = useState<DateDraft>(() => fromPartialDate(loaded.happenedAt));
+  // The server's refusal of the date, until the User changes it.
+  const [serverDate, setServerDate] = useState<DateError | null>(null);
+  const formElement = useRef<HTMLFormElement>(null);
   const [triedToSave, setTriedToSave] = useState(false);
   const form = useForm<StoryFormValues>({ defaultValues: toFormValues(loaded) });
   const update = useUpdateMemory(familyId, base.id);
@@ -135,8 +149,20 @@ function EditMemoryForm({
   // Changed Persons keep at least one ACTIVE Person (OQ-035); unchanged ones may all be archived (OQ-043).
   const lacksActivePerson = personsChanged && persons.every((person) => person.archived);
 
+  const dateChanged = !sameDate(happenedAt, fromPartialDate(base.happenedAt));
+  const dateError =
+    serverDate ?? (triedToSave ? dateDraftError(happenedAt, { notFuture: true }) : null);
+  // A date the server refused gets the focus, unless the title or text was refused too.
+  useEffect(() => {
+    if (serverDate === null || Object.keys(form.formState.errors).length > 0) return;
+    formElement.current?.querySelector<HTMLElement>('[aria-invalid="true"]')?.focus();
+  }, [serverDate, form]);
+  const hasInvalidDate = () =>
+    dateDraftError(happenedAt, { notFuture: true }) !== null ||
+    photos.some((photo) => takenAtError(photo) !== null);
+
   const submit = form.handleSubmit((values) => {
-    if (photos.some((photo) => takenAtError(photo) !== null)) return;
+    if (hasInvalidDate()) return;
     update.mutate(
       {
         version: base.version,
@@ -146,6 +172,8 @@ function EditMemoryForm({
           content: values.content,
           // The complete new list: kept photos keep their place, new ones follow (plan §3.2).
           photos: toPhotoInputs(photos),
+          // Sent only when changed; UNKNOWN removes it (OQ-063).
+          ...(dateChanged ? { happenedAt: toPartialDate(happenedAt) } : {}),
           ...(personsChanged ? { relatedPersonIds: persons.map((person) => person.id) } : {}),
         },
       },
@@ -156,6 +184,7 @@ function EditMemoryForm({
         },
         onError: (failure) => {
           showServerFieldErrors(form, failure);
+          setServerDate(serverDateError(failure));
           // The limit may have been lowered since the Family was loaded.
           if (failure instanceof ApiError && failure.code === 'MEMORY_PHOTO_LIMIT_REACHED') {
             void queryClient.invalidateQueries({ queryKey: familyQueryKey(familyId), exact: true });
@@ -171,6 +200,8 @@ function EditMemoryForm({
       setBase(latest);
       setPersons(toPersons(latest));
       setPhotos(fromMemoryPhotos(latest.photos));
+      setHappenedAt(fromPartialDate(latest.happenedAt));
+      setServerDate(null);
       setTriedToSave(false);
       form.reset(toFormValues(latest));
       update.reset();
@@ -193,13 +224,14 @@ function EditMemoryForm({
         </h1>
       </header>
       <form
+        ref={formElement}
         noValidate
         onSubmit={(event) => {
           setTriedToSave(true);
           const element = event.currentTarget;
-          const invalidDate = photos.some((photo) => takenAtError(photo) !== null);
+          const invalidDate = hasInvalidDate();
           void submit(event).then(() => {
-            // The title and text get the focus first; otherwise the invalid taken date, once shown.
+            // The title and text get the focus first; otherwise the first invalid date, once shown.
             if (invalidDate && Object.keys(form.formState.errors).length === 0) {
               requestAnimationFrame(() => {
                 element.querySelector<HTMLElement>('[aria-invalid="true"]')?.focus();
@@ -210,6 +242,19 @@ function EditMemoryForm({
         className="flex flex-col gap-6"
       >
         <StoryFields form={form} contentOptional={hasReadyPhoto} emptyContent="contentOrPhoto" />
+        <PartialDateField
+          label={t('form.happenedAt.label')}
+          dateLabel={t('form.happenedAt.date')}
+          yearLabel={t('form.happenedAt.year')}
+          value={happenedAt}
+          error={dateError}
+          notFuture
+          disabled={update.isPending || isConflict}
+          onChange={(patch) => {
+            setServerDate(null);
+            setHappenedAt((current) => ({ ...current, ...patch }));
+          }}
+        />
         <MemoryPhotosField
           familyId={familyId}
           limit={photoLimit}
