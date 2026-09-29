@@ -80,6 +80,15 @@ When a question is answered, update the relevant spec, then move the entry to **
 - **Recommendation:** none yet; to settle before a V1 plan.
 - **Blocking:** nothing in the MVP.
 
+### OQ-069 — The direction of the strip of years
+
+- **Raised by / date:** human (PR-62 review), 2026-09-29
+- **Context:** OQ-064 (answer A) orders the strip of years of Family Home chronologically, oldest first, opened on the most recent year, with the undated entry last (`mvp.md` §20, SCREEN-002, `YearStrip`). The human wonders whether the most recent years should come first, so that reading the strip feels like a journey from recent, well-known events towards older, less-known ones.
+- **Question:** does the strip read oldest first (today) or most recent first?
+- **Options:** A — keep the chronological order of OQ-064: a timeline read left to right, familiar to older readers; the journey already starts on the most recent year, and going back in time means swiping the content to the right / B — most recent first, the undated entry still last: the first natural swipe on a phone goes back in time; the order inside a year does not change, `Previous year` / `Next year` keep their chronological meaning, and the API may keep its order (the screen reverses it).
+- **Recommendation:** B (coding agent), not decided.
+- **Blocking:** nothing. **The human will ask beta users for feedback** before deciding; until then, A stays as specified and nothing changes in the specs or the code. If B is chosen: `mvp.md` §20, SCREEN-002, SCREEN-016 and `YearStrip` with its tests, in a separate change.
+
 ## Resolved
 
 ### OQ-001 — JUnit major version with Spring Boot 4.1
