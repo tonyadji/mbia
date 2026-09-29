@@ -142,6 +142,26 @@ class JpaMemoryRepository implements MemoryRepository {
     }
 
     @Override
+    public List<Memory> findActiveOfStoryYear(UUID familyId, int year, int page, int size) {
+        return withPersonsAndPhotos(familyId, jpa.findActiveOfStoryYear(familyId, year, PageRequest.of(page, size)));
+    }
+
+    @Override
+    public long countActiveOfStoryYear(UUID familyId, int year) {
+        return jpa.countActiveOfStoryYear(familyId, year);
+    }
+
+    @Override
+    public List<Memory> findActiveUndated(UUID familyId, int page, int size) {
+        return withPersonsAndPhotos(familyId, jpa.findActiveUndated(familyId, PageRequest.of(page, size)));
+    }
+
+    @Override
+    public long countActiveUndated(UUID familyId) {
+        return jpa.countActiveUndated(familyId);
+    }
+
+    @Override
     public Set<UUID> findPhotosAmong(Collection<UUID> mediaAssetIds) {
         if (mediaAssetIds.isEmpty()) {
             return Set.of();

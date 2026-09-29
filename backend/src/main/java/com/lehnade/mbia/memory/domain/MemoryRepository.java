@@ -42,6 +42,23 @@ public interface MemoryRepository {
     long countActiveInFamily(UUID familyId, Optional<MemoryType> type);
 
     /**
+     * @return one page of the Family's ACTIVE Memories that happened this year: EXACT dates first by
+     *     date, then the years only in the order they were added, then by id (data-model.md §23.5,
+     *     OQ-064)
+     */
+    List<Memory> findActiveOfStoryYear(UUID familyId, int year, int page, int size);
+
+    long countActiveOfStoryYear(UUID familyId, int year);
+
+    /**
+     * @return one page of the Family's ACTIVE Memories without a year, most recently added first, then
+     *     by id (data-model.md §23.5, OQ-064)
+     */
+    List<Memory> findActiveUndated(UUID familyId, int page, int size);
+
+    long countActiveUndated(UUID familyId);
+
+    /**
      * @return among these media assets, those that are the photo of a Memory, whatever its status
      *     (data-model.md §14bis)
      */

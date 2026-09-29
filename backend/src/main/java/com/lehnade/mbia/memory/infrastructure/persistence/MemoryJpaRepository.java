@@ -42,6 +42,31 @@ interface MemoryJpaRepository extends JpaRepository<MemoryJpaEntity, UUID> {
             """)
     long countActiveInFamily(UUID familyId, String type);
 
+    /** Each row is {@code [story_year, memory_count]}; a null story year counts the undated Memories (§23.5). */
+    @Query(nativeQuery = true, value = StoryYearSql.YEARS)
+    List<Object[]> countActiveByStoryYear(UUID familyId);
+
+    /** The Family's ACTIVE Memories of a story year, in the order of OQ-064 (data-model.md §23.5). */
+    @Query(nativeQuery = true, value = StoryYearSql.MEMORIES_OF_YEAR)
+    List<MemoryJpaEntity> findActiveOfStoryYear(UUID familyId, int year, Pageable pageable);
+
+    @Query(nativeQuery = true, value = StoryYearSql.COUNT_OF_YEAR)
+    long countActiveOfStoryYear(UUID familyId, int year);
+
+    /** The Family's ACTIVE Memories without a year, most recently added first, then by id (OQ-064). */
+    @Query("""
+            SELECT m FROM MemoryJpaEntity m
+            WHERE m.familyId = :familyId AND m.status = 'ACTIVE' AND m.happenedDatePrecision = 'UNKNOWN'
+            ORDER BY m.createdAt DESC, m.id ASC
+            """)
+    List<MemoryJpaEntity> findActiveUndated(UUID familyId, Pageable pageable);
+
+    @Query("""
+            SELECT COUNT(m) FROM MemoryJpaEntity m
+            WHERE m.familyId = :familyId AND m.status = 'ACTIVE' AND m.happenedDatePrecision = 'UNKNOWN'
+            """)
+    long countActiveUndated(UUID familyId);
+
     @Query("""
             SELECT new com.lehnade.mbia.memory.infrastructure.persistence.MemoryCountRow(m.familyId, COUNT(m))
             FROM MemoryJpaEntity m

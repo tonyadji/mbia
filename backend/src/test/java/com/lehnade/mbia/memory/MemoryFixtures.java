@@ -5,6 +5,7 @@ import com.lehnade.mbia.TestJwts;
 import com.lehnade.mbia.family.FamilyFixtures;
 import java.sql.Timestamp;
 import java.time.Instant;
+import java.time.LocalDate;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
@@ -115,6 +116,42 @@ public final class MemoryFixtures {
         return mvc.get().uri("/api/v1/families/{familyId}/memories" + query, familyId)
                 .header(HttpHeaders.AUTHORIZATION, token.bearer())
                 .exchange();
+    }
+
+    /**
+     * @param title without JSON escaping
+     * @param happenedAt the JSON of a {@code MemoryDate}, or {@code null} for none
+     * @return the id of a story created by {@code token}, which must be allowed to create it
+     */
+    public UUID createStoryId(TestJwts.Token token, UUID familyId, String title, String happenedAt,
+            UUID... relatedPersonIds) {
+        return idOf(createStory(token, familyId, """
+                {"title": "%s", "content": "Texte", "happenedAt": %s, "relatedPersonIds": [%s]}
+                """.formatted(title, happenedAt, Arrays.stream(relatedPersonIds)
+                .map(id -> "\"" + id + "\"").collect(Collectors.joining(", ")))));
+    }
+
+    /** {@code GET …/families/{familyId}/story/years} (listFamilyStoryYears). */
+    public MvcTestResult storyYears(TestJwts.Token token, UUID familyId) {
+        return mvc.get().uri("/api/v1/families/{familyId}/story/years", familyId)
+                .header(HttpHeaders.AUTHORIZATION, token.bearer())
+                .exchange();
+    }
+
+    /** Sets an EXACT date directly, without the API, for large fixtures. */
+    public void happenedOn(UUID memoryId, LocalDate date) {
+        jdbc.sql("""
+                UPDATE memories SET happened_date_precision = 'EXACT', happened_date = ?, happened_year = NULL
+                WHERE id = ?
+                """).params(date, memoryId).update();
+    }
+
+    /** Sets a YEAR_ONLY date directly, without the API, for large fixtures. */
+    public void happenedIn(UUID memoryId, int year) {
+        jdbc.sql("""
+                UPDATE memories SET happened_date_precision = 'YEAR_ONLY', happened_date = NULL, happened_year = ?
+                WHERE id = ?
+                """).params(year, memoryId).update();
     }
 
     /**
