@@ -71,51 +71,6 @@ When a question is answered, update the relevant spec, then move the entry to **
 - **Recommendation:** none yet; the human wants to think about it. Phase 5 ships A.
 - **Blocking:** nothing in Phase 5, which keeps the current acceptance flow until this is decided.
 
-### OQ-063 — The date of a Memory
-
-- **Raised by / date:** coding agent (family story review), 2026-09-29
-- **Context:** the human decided that a Memory has an optional date, one year at most for the MVP, which places it in the family story (`mvp.md` §17, §20). The contract already has a Memory-level `takenAt`, deprecated by OQ-042: always null in responses and refused with 400 on a story. The activity of a new Memory records its title only (`data-model.md` §16). No date of the product is bounded today.
-- **Question:** (a) which field carries the date; (b) is a date in the future refused; (c) does the activity of a new Memory record its year?
-- **Options:** (a) A — a new field `happenedAt` (`PartialDate`), additive; the deprecated `takenAt` stays as it is / B — reuse the deprecated `takenAt`, which changes its meaning. (b) A — refused (400 `VALIDATION_FAILED`, as an invalid date) / B — accepted. (c) A — no / B — yes, the feed says "in 1975".
-- **Recommendation:** (a) A, (b) A, (c) A.
-- **Blocking:** the contract and migration of the family story (Phase 6 plan). The specs are written with the recommendation, marked provisional.
-
-### OQ-064 — The strip of years and the order of a year
-
-- **Raised by / date:** coding agent (family story review), 2026-09-29
-- **Context:** Family Home shows a strip of the years that have Memories, and a year opens "What happened in {year}" (`mvp.md` §20, SCREEN-002, SCREEN-016). OQ-034 ordered Memories "most recently added first" because it did not invent a chronology; the family story is one.
-- **Question:** the details of the strip, and the order inside a year and among undated Memories.
-- **Options:** A — only the years with at least one ACTIVE Memory, in chronological order, opened on the most recent year, each with its number of Memories; the undated entry last; inside a year, exact dates first in date order, then the years only in the order they were added; undated Memories most recently added first / B — every year between the oldest and the newest, empty years included / C — another order proposed by the human.
-- **Recommendation:** A.
-- **Blocking:** the family story screens (Phase 6 plan). Written with A, marked provisional.
-
-### OQ-065 — Telling a first memory when the Family has no Person
-
-- **Raised by / date:** coding agent (family story review), 2026-09-29
-- **Context:** `Tell a first memory` replaces `Start with me` as the first gesture of a new Family (human, 2026-09-29), and asks who the memory is about, creating the Person on the way. A Memory needs at least one ACTIVE Person (`mvp.md` §17). `createPerson` already links the new Person to the caller (`linkToCurrentUser`) and warns of possible duplicates.
-- **Question:** (a) how are the Person and the Memory created; (b) does `Me` create the User's own linked Person; (c) can a Person be added from the related-Persons field of every Memory, not only the first one; (d) does `Add a person` stay next to `Tell a first memory` on the empty Family Home?
-- **Options:** (a) A — two calls, the Person then the Memory, the form keeping what was written if the second fails / B — one new operation creating both atomically. (b) A — yes / B — no, `Me` only picks an existing Person. (c) A — yes / B — first memory only. (d) A — yes, as a secondary action / B — no.
-- **Recommendation:** (a) A (no new operation; a Person without Memory is harmless), (b) A, (c) A, (d) A.
-- **Blocking:** the onboarding of the family story (Phase 6 plan). Written with the recommendations, marked provisional.
-
-### OQ-066 — The primary action of Family Home
-
-- **Raised by / date:** coding agent (family story review), 2026-09-29
-- **Context:** Family Home now shows the family story first (`mvp.md` §20). A screen has at most one dominant primary action (`screens.md`, global UI rules); today it is `View family tree`.
-- **Question:** which action dominates, and where do the tree and the counts go?
-- **Options:** A — `Tell a memory` for ADMIN / CONTRIBUTOR, none for a VIEWER (the story is the content); `View family tree` and the counts stay as secondary items / B — `Read our story` (opens the most recent year) for everyone / C — `View family tree` stays primary.
-- **Recommendation:** A.
-- **Blocking:** SCREEN-002 of the Phase 6 plan. Written with A, marked provisional.
-
-### OQ-067 — The labels of the family story
-
-- **Raised by / date:** coding agent (family story review), 2026-09-29
-- **Context:** the human asked for an engaging label for the family story and for Memories without a year.
-- **Question:** which French and English labels?
-- **Options:** A — "Notre histoire / Our story", "Ce qui s'est passé en {année} / What happened in {year}", "Souvenirs sans date / Undated memories" / B — "La mémoire de la famille {nom} / The {name} family memory", "Hors du temps / Timeless" / C — other labels chosen by the human.
-- **Recommendation:** A, the clearest for older readers.
-- **Blocking:** nothing before the screens; `localization-and-kinship-labels.md` §1 holds A, marked provisional.
-
 ### OQ-068 — Family questions (V1)
 
 - **Raised by / date:** human and coding agent (family story review), 2026-09-29
@@ -191,7 +146,6 @@ When a question is answered, update the relevant spec, then move the entry to **
 - **Options:** (1) A — absent or `null` leaves a field unchanged, a blank string clears an optional text, `{precision: UNKNOWN}` clears a date, `gender: UNKNOWN` clears the gender / B — `null` clears, absent keeps (needs `JsonNullable`, a new library: ADR). (2) A — 200, nothing written, version unchanged / B — the version always increments. (3) A — 404 `PERSON_NOT_FOUND` / B — no rule until PR-26.
 - **Recommendation:** A for all three.
 - **Answer:** A for all three (human, 2026-09-25). Documented in `openapi.yaml` (`updatePerson`, `UpdatePersonRequest`) and `technical-specification.md` §13; changed in PR-18.
-
 
 ### OQ-009 — Claim / unclaim edge cases and scope of linked-Person protection
 
@@ -753,3 +707,53 @@ When a question is answered, update the relevant spec, then move the entry to **
 - **Recommendation:** A, A: the existing texts already say "the family's administrator", and the neutral form is a label of the table.
 - **Blocking:** PR-53.
 - **Answer:** A, A (human, 2026-09-27). Documented in `screens.md` SCREEN-008.
+
+### OQ-063 — The date of a Memory
+
+- **Raised by / date:** coding agent (family story review), 2026-09-29
+- **Context:** the human decided that a Memory has an optional date, one year at most for the MVP, which places it in the family story (`mvp.md` §17, §20). The contract already has a Memory-level `takenAt`, deprecated by OQ-042: always null in responses and refused with 400 on a story. The activity of a new Memory records its title only (`data-model.md` §16). No date of the product is bounded today.
+- **Question:** (a) which field carries the date; (b) is a date in the future refused; (c) does the activity of a new Memory record its year?
+- **Options:** (a) A — a new field `happenedAt` (`PartialDate`), additive; the deprecated `takenAt` stays as it is / B — reuse the deprecated `takenAt`, which changes its meaning. (b) A — refused (400 `VALIDATION_FAILED`, as an invalid date) / B — accepted. (c) A — no / B — yes, the feed says "in 1975".
+- **Recommendation:** (a) A, (b) A, (c) A.
+- **Blocking:** the contract and migration of the family story (Phase 6 plan). The specs are written with the recommendation, marked provisional.
+- **Answer:** A, A, A (human, 2026-09-29). A new optional field `happenedAt` (`PartialDate`); the deprecated `takenAt` stays as it is; a date in the future is refused; the activity of a new Memory records no year. Documented in `mvp.md` §17, SCREEN-006.
+
+### OQ-064 — The strip of years and the order of a year
+
+- **Raised by / date:** coding agent (family story review), 2026-09-29
+- **Context:** Family Home shows a strip of the years that have Memories, and a year opens "What happened in {year}" (`mvp.md` §20, SCREEN-002, SCREEN-016). OQ-034 ordered Memories "most recently added first" because it did not invent a chronology; the family story is one.
+- **Question:** the details of the strip, and the order inside a year and among undated Memories.
+- **Options:** A — only the years with at least one ACTIVE Memory, in chronological order, opened on the most recent year, each with its number of Memories; the undated entry last; inside a year, exact dates first in date order, then the years only in the order they were added; undated Memories most recently added first / B — every year between the oldest and the newest, empty years included / C — another order proposed by the human.
+- **Recommendation:** A.
+- **Blocking:** the family story screens (Phase 6 plan). Written with A, marked provisional.
+- **Answer:** A (human, 2026-09-29). Documented in `mvp.md` §20, SCREEN-002, SCREEN-016.
+
+### OQ-065 — Telling a first memory when the Family has no Person
+
+- **Raised by / date:** coding agent (family story review), 2026-09-29
+- **Context:** `Tell a first memory` replaces `Start with me` as the first gesture of a new Family (human, 2026-09-29), and asks who the memory is about, creating the Person on the way. A Memory needs at least one ACTIVE Person (`mvp.md` §17). `createPerson` already links the new Person to the caller (`linkToCurrentUser`) and warns of possible duplicates.
+- **Question:** (a) how are the Person and the Memory created; (b) does `Me` create the User's own linked Person; (c) can a Person be added from the related-Persons field of every Memory, not only the first one; (d) does `Add a person` stay next to `Tell a first memory` on the empty Family Home?
+- **Options:** (a) A — two calls, the Person then the Memory, the form keeping what was written if the second fails / B — one new operation creating both atomically. (b) A — yes / B — no, `Me` only picks an existing Person. (c) A — yes / B — first memory only. (d) A — yes, as a secondary action / B — no.
+- **Recommendation:** (a) A (no new operation; a Person without Memory is harmless), (b) A, (c) A, (d) A.
+- **Blocking:** the onboarding of the family story (Phase 6 plan). Written with the recommendations, marked provisional.
+- **Answer:** A, A, A, A (human, 2026-09-29). Two calls, the Person then the Memory; `Me` creates the User's own linked Person; a Person can be added from the related-Persons field of every Memory; `Add a person` stays as a secondary action. Documented in `mvp.md` §14, SCREEN-002, SCREEN-006.
+
+### OQ-066 — The primary action of Family Home
+
+- **Raised by / date:** coding agent (family story review), 2026-09-29
+- **Context:** Family Home now shows the family story first (`mvp.md` §20). A screen has at most one dominant primary action (`screens.md`, global UI rules); today it is `View family tree`.
+- **Question:** which action dominates, and where do the tree and the counts go?
+- **Options:** A — `Tell a memory` for ADMIN / CONTRIBUTOR, none for a VIEWER (the story is the content); `View family tree` and the counts stay as secondary items / B — `Read our story` (opens the most recent year) for everyone / C — `View family tree` stays primary.
+- **Recommendation:** A.
+- **Blocking:** SCREEN-002 of the Phase 6 plan. Written with A, marked provisional.
+- **Answer:** A (human, 2026-09-29). Documented in `mvp.md` §20, SCREEN-002.
+
+### OQ-067 — The labels of the family story
+
+- **Raised by / date:** coding agent (family story review), 2026-09-29
+- **Context:** the human asked for an engaging label for the family story and for Memories without a year.
+- **Question:** which French and English labels?
+- **Options:** A — "Notre histoire / Our story", "Ce qui s'est passé en {année} / What happened in {year}", "Souvenirs sans date / Undated memories" / B — "La mémoire de la famille {nom} / The {name} family memory", "Hors du temps / Timeless" / C — other labels chosen by the human.
+- **Recommendation:** A, the clearest for older readers.
+- **Blocking:** nothing before the screens; `localization-and-kinship-labels.md` §1 holds A, marked provisional.
+- **Answer:** A (human, 2026-09-29). Documented in `localization-and-kinship-labels.md` §1.
