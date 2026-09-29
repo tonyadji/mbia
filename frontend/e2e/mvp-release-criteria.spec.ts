@@ -1,5 +1,6 @@
 import { fileURLToPath } from 'node:url';
 import { expect, test, type Page } from '@playwright/test';
+import { openStartWithMe } from './support/family';
 import { t } from './support/i18n';
 import {
   newUser,
@@ -61,7 +62,7 @@ test.describe('MVP release criteria (mvp.md §28)', () => {
     });
 
     await test.step('3. create own Person', async () => {
-      await page.getByRole('link', { name: fr('family:home.startWithMe') }).click();
+      await openStartWithMe(page, 'fr');
       await firstName(page).fill('Alice');
       await page.getByRole('button', { name: fr('person:form.submitMe') }).click();
       await expect(page).toHaveURL(familyUrl);
@@ -215,7 +216,7 @@ test.describe('MVP release criteria (mvp.md §28)', () => {
       await bob.getByRole('button', { name: t('en', 'family:create.submit') }).click();
       await expect(bob).toHaveURL(/\/families\/[0-9a-f-]{36}$/);
       const bobFamilyUrl = bob.url();
-      await bob.getByRole('link', { name: t('en', 'family:home.startWithMe') }).click();
+      await openStartWithMe(bob, 'en');
       await bob.getByLabel(t('en', 'person:form.firstName'), { exact: true }).fill('Bobby');
       await bob.getByRole('button', { name: t('en', 'person:form.submitMe') }).click();
       await expect(bob).toHaveURL(bobFamilyUrl);

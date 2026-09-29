@@ -1,5 +1,6 @@
 import { expect, test, type Page } from '@playwright/test';
 import { expectAccessibleControls } from './support/accessibility';
+import { openStartWithMe } from './support/family';
 import { t, type Language } from './support/i18n';
 import { newUser, registerAndVerify } from './support/keycloak';
 
@@ -29,7 +30,7 @@ for (const { language, locale } of [
       await expect(page).toHaveURL(/\/families\/[0-9a-f-]{36}$/);
       const familyUrl = page.url();
       await expectScreen(page);
-      await page.getByRole('link', { name: t(language, 'family:home.startWithMe') }).click();
+      await openStartWithMe(page, language);
       await expectScreen(page);
       await firstName(page, language).fill('Alice');
       await page.getByRole('button', { name: t(language, 'person:form.submitMe') }).click();

@@ -40,10 +40,10 @@ export interface FamilyHomeState {
 }
 
 /**
- * SCREEN-002 — Family Home: the Person and Memory counts, "Our story" (mvp.md §20), the search
- * entry (SCREEN-007), `View family tree` as primary action, then `Add a relative` and
- * `Add a memory`, then the recent activity (mvp.md §20, OQ-054). The welcome after joining comes
- * first (OQ-050).
+ * SCREEN-002 — Family Home: "Our story" first (mvp.md §20), `Tell a memory` as the primary action
+ * for ADMIN / CONTRIBUTOR (OQ-066), the Person and Memory counts, the search entry (SCREEN-007),
+ * then `View family tree` and `Add a relative` / `Add a person` as secondary actions, then the
+ * recent activity (OQ-054). The welcome after joining comes first (OQ-050).
  */
 export function FamilyHomePage() {
   const { familyId = '' } = useParams();
@@ -80,15 +80,7 @@ function FamilyContent({ family }: { family: Family }) {
     <>
       <header className="flex items-center gap-3">
         <FamilyIcon />
-        <div className="flex min-w-0 flex-1 flex-col">
-          <h1 className="text-section break-words text-text">{family.name}</h1>
-          <p className="text-caption text-text-muted">
-            <span>{t('home.personCount', { count: family.stats.personCount })}</span>
-            <span className="before:mx-1.5 before:content-['·']">
-              {t('home.memoryCount', { count: family.stats.memoryCount })}
-            </span>
-          </p>
-        </div>
+        <h1 className="min-w-0 flex-1 text-section break-words text-text">{family.name}</h1>
         <AccountLink />
       </header>
       {joined && <JoinedWelcome family={family} />}
@@ -125,6 +117,12 @@ function FamilyContent({ family }: { family: Family }) {
       ) : (
         <>
           <FamilyStory family={family} />
+          <p className="text-body text-text-muted">
+            <span>{t('home.personCount', { count: family.stats.personCount })}</span>
+            <span className="before:mx-1.5 before:content-['·']">
+              {t('home.memoryCount', { count: family.stats.memoryCount })}
+            </span>
+          </p>
           <Link
             to={searchPath(family.id)}
             className="flex min-h-12 items-center gap-3 rounded-xl border border-border bg-surface px-4 text-body text-text-muted transition-colors hover:border-primary focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary"
@@ -134,19 +132,11 @@ function FamilyContent({ family }: { family: Family }) {
           </Link>
           <Link
             to={familyTreePath(family.id)}
-            className={buttonClassName('primary', 'sm:w-auto sm:self-start')}
+            className={buttonClassName('secondary', 'sm:w-auto sm:self-start')}
           >
             {t('home.viewTree')}
           </Link>
           {canAddPersons && <AddAction family={family} />}
-          {canAddPersons && (
-            <Link
-              to={addMemoryPath(family.id)}
-              className={buttonClassName('secondary', 'sm:w-auto sm:self-start')}
-            >
-              {t('home.addMemory')}
-            </Link>
-          )}
         </>
       )}
       <RecentActivity familyId={family.id} />
@@ -156,8 +146,9 @@ function FamilyContent({ family }: { family: Family }) {
 
 /**
  * "Our story" (mvp.md §20, SCREEN-002, OQ-067): the strip of years, opened on the most recent one.
- * Without any Memory, the strip is replaced by the invitation to tell a first memory, with
- * `Tell a memory` for ADMIN / CONTRIBUTOR and the text only for a VIEWER.
+ * Without any Memory, the strip is replaced by the invitation to tell a first memory. Under either,
+ * `Tell a memory`, the primary action of the screen for ADMIN / CONTRIBUTOR (OQ-066); a VIEWER has
+ * none.
  */
 function FamilyStory({ family }: { family: Family }) {
   const { t } = useTranslation('memory');
@@ -170,19 +161,7 @@ function FamilyStory({ family }: { family: Family }) {
   } else if (years.isError) {
     content = <ErrorState error={years.error} onRetry={() => void years.refetch()} />;
   } else if (years.data.years.length === 0 && years.data.undatedMemoryCount === 0) {
-    content = (
-      <>
-        <p className="text-body text-text-muted">{t('story.invitation')}</p>
-        {canAdd && (
-          <Link
-            to={addMemoryPath(family.id)}
-            className={buttonClassName('secondary', 'sm:w-auto sm:self-start')}
-          >
-            {t('story.tell')}
-          </Link>
-        )}
-      </>
-    );
+    content = <p className="text-body text-text-muted">{t('story.invitation')}</p>;
   } else {
     content = (
       <YearStrip
@@ -199,6 +178,14 @@ function FamilyStory({ family }: { family: Family }) {
         {t('story.title')}
       </h2>
       {content}
+      {canAdd && (
+        <Link
+          to={addMemoryPath(family.id)}
+          className={buttonClassName('primary', 'sm:w-auto sm:self-start')}
+        >
+          {t('story.tell')}
+        </Link>
+      )}
     </section>
   );
 }
@@ -276,10 +263,11 @@ function JoinedWelcome({ family }: { family: Family }) {
 }
 
 /**
- * The Family has no Person yet (SCREEN-002): ADMIN and CONTRIBUTOR may start with themselves or
- * someone else, a VIEWER only reads the explanation. Also the empty tree (SCREEN-003).
+ * The Family has no Person yet (SCREEN-002, mvp.md §14): it starts with a first memory, which asks
+ * who it is about (SCREEN-006, OQ-065); `Add a person` stays as a secondary action. A VIEWER only
+ * reads the explanation.
  */
-export function FamilyEmptyState({ family }: { family: Family }) {
+function FamilyEmptyState({ family }: { family: Family }) {
   const { t } = useTranslation('family');
   const canAddPersons = family.myRole === 'ADMIN' || family.myRole === 'CONTRIBUTOR';
   return (
@@ -288,14 +276,11 @@ export function FamilyEmptyState({ family }: { family: Family }) {
       <p className="text-body text-text-muted">{t('home.emptyBody')}</p>
       {canAddPersons && (
         <div className="mt-6 flex w-full max-w-sm flex-col gap-3">
-          <Link
-            to={addPersonPath(family.id, { startWithMe: true })}
-            className={buttonClassName('primary')}
-          >
-            {t('home.startWithMe')}
+          <Link to={addMemoryPath(family.id)} className={buttonClassName('primary')}>
+            {t('home.tellFirstMemory')}
           </Link>
           <Link to={addPersonPath(family.id)} className={buttonClassName('secondary')}>
-            {t('home.addSomeoneElse')}
+            {t('home.addPerson')}
           </Link>
         </div>
       )}

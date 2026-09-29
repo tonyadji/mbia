@@ -54,6 +54,21 @@
     "chooseTitle": "Choisir une personne",
     "searchLabel": "Rechercher dans la famille",
     "allChosen": "Les personnes trouvées sont déjà choisies.",
+    "newPerson": "À ajouter à la famille",
+    "newTitle": "Ajouter une personne",
+    "addNew": "Ajouter {{name}}",
+    "backToSearch": "Revenir à la recherche",
+    "addThisPerson": "Ajouter cette personne",
+    "subject": {
+      "question": "De qui parle ce souvenir ?",
+      "me": "Moi",
+      "someoneElse": "Quelqu'un d'autre",
+      "meHint": "Votre nom, tel qu'il apparaîtra dans l'arbre de la famille.",
+      "choose": "Choisissez de qui parle ce souvenir pour pouvoir le publier.",
+      "added": "{{name}} fait maintenant partie de la famille."
+    },
+    "personsAdded_one": "{{names}} fait maintenant partie de la famille, mais le souvenir n'a pas été publié. Tout ce que vous avez écrit est conservé : vous pouvez publier à nouveau.",
+    "personsAdded_other": "{{names}} font maintenant partie de la famille, mais le souvenir n'a pas été publié. Tout ce que vous avez écrit est conservé : vous pouvez publier à nouveau.",
     "publish": "Publier",
     "readOnly": "Votre rôle dans cette famille ne permet pas d'ajouter un souvenir."
   },

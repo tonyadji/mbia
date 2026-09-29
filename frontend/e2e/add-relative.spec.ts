@@ -1,4 +1,5 @@
 import { expect, test, type Page } from '@playwright/test';
+import { openStartWithMe } from './support/family';
 import { t, type Language } from './support/i18n';
 import { newUser, registerAndVerify } from './support/keycloak';
 
@@ -32,7 +33,7 @@ for (const { language, locale } of [
       const familyUrl = page.url();
 
       // "Start with me", born in 1990.
-      await page.getByRole('link', { name: t(language, 'family:home.startWithMe') }).click();
+      await openStartWithMe(page, language);
       await fillPerson(page, language, 'Alice', 1990);
       await page.getByRole('button', { name: t(language, 'person:form.submitMe') }).click();
       await expect(page).toHaveURL(familyUrl);

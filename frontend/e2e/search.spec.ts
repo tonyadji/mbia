@@ -1,4 +1,5 @@
 import { expect, test } from '@playwright/test';
+import { openStartWithMe } from './support/family';
 import { t } from './support/i18n';
 import { newUser, registerAndVerify } from './support/keycloak';
 
@@ -27,7 +28,7 @@ test('a User finds a Person from home, links her as their mother, then finds the
   const familyUrl = page.url();
 
   // Me, then Éloïse, not linked to anyone yet.
-  await page.getByRole('link', { name: t(language, 'family:home.startWithMe') }).click();
+  await openStartWithMe(page, language);
   await page.getByLabel(t(language, 'person:form.firstName'), { exact: true }).fill('Alice');
   await page.getByRole('button', { name: t(language, 'person:form.submitMe') }).click();
   await expect(page).toHaveURL(familyUrl);

@@ -1,5 +1,6 @@
 import { expect, test, type Page } from '@playwright/test';
 import { expectAccessibleControls } from './support/accessibility';
+import { openStartWithMe } from './support/family';
 import { t, type Language } from './support/i18n';
 import {
   newUser,
@@ -41,7 +42,7 @@ for (const { language, locale } of [
       await expect(activity(page, language)).toHaveCount(0);
 
       // Three people added in a row: one line, without link.
-      await page.getByRole('link', { name: t(language, 'family:home.startWithMe') }).click();
+      await openStartWithMe(page, language);
       await firstName(page, language).fill('Alice');
       await page.getByRole('button', { name: t(language, 'person:form.submitMe') }).click();
       const profiles: string[] = [];

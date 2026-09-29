@@ -1,5 +1,6 @@
 import { expect, test, type Browser, type Locator, type Page } from '@playwright/test';
 import { expectAccessibleControls, expectReadableScreen } from './support/accessibility';
+import { openStartWithMe } from './support/family';
 import { t, type Language } from './support/i18n';
 import {
   newUser,
@@ -50,7 +51,7 @@ for (const { language, locale } of [
       await expect(page).toHaveURL(/\/families\/[0-9a-f-]{36}$/);
       const familyUrl = page.url();
       const membersUrl = `${familyUrl}/members`;
-      await page.getByRole('link', { name: t(language, 'family:home.startWithMe') }).click();
+      await openStartWithMe(page, language);
       await firstName(page, language).fill('Alice');
       await page.getByRole('button', { name: t(language, 'person:form.submitMe') }).click();
       await page.getByRole('button', { name: t(language, 'family:home.addRelative') }).click();
