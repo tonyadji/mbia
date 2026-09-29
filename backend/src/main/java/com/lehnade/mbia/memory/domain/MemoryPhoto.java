@@ -7,22 +7,22 @@ import java.util.Objects;
  * position, the order of addition, with an optional caption and taken date.
  *
  * @param caption {@code null} when there is none; never logged nor audited
- * @param takenAt {@link TakenDate#UNKNOWN} when not given
+ * @param takenAt {@link PartialDay#UNKNOWN} when not given
  */
-public record MemoryPhoto(MediaAssetId mediaAssetId, int position, String caption, TakenDate takenAt) {
+public record MemoryPhoto(MediaAssetId mediaAssetId, int position, String caption, PartialDay takenAt) {
 
     public static final int CAPTION_MAX_LENGTH = 5000;
 
     public MemoryPhoto {
         Objects.requireNonNull(mediaAssetId, "mediaAssetId");
-        takenAt = takenAt == null ? TakenDate.UNKNOWN : takenAt;
+        takenAt = takenAt == null ? PartialDay.UNKNOWN : takenAt;
     }
 
     /**
      * A photo to add, as the member describes it. The caption is kept as written, a blank one being
      * no caption.
      */
-    public record New(MediaAssetId mediaAssetId, String caption, TakenDate takenAt) {
+    public record New(MediaAssetId mediaAssetId, String caption, PartialDay takenAt) {
 
         public New {
             Objects.requireNonNull(mediaAssetId, "mediaAssetId");

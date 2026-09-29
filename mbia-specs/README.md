@@ -72,6 +72,10 @@ The visual mockup is a design reference. Product rules and screen behavior are d
 
 ## Changelog
 
+### 0.7.2 — 2026-09-29
+
+- `data-model.md` §14: `ck_memory_happened_date` requires `happened_year IS NOT NULL` for YEAR_ONLY, since a check accepts the NULL result of `BETWEEN` (found by the schema test of PR-58); `V012__memory_happened_date.sql` follows it.
+
 ### 0.7.1 — 2026-09-29
 
 The family story, technical side and delivery plan:

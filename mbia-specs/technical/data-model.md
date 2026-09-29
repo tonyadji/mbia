@@ -694,7 +694,8 @@ memories (
     CHECK (type = 'STORY'),
     CONSTRAINT ck_memory_happened_date CHECK (
         (happened_date_precision = 'EXACT' AND happened_date IS NOT NULL AND happened_year IS NULL)
-     OR (happened_date_precision = 'YEAR_ONLY' AND happened_date IS NULL AND happened_year BETWEEN 1 AND 9999)
+     OR (happened_date_precision = 'YEAR_ONLY' AND happened_date IS NULL AND happened_year IS NOT NULL
+         AND happened_year BETWEEN 1 AND 9999)
      OR (happened_date_precision = 'UNKNOWN' AND happened_date IS NULL AND happened_year IS NULL)),
 
     UNIQUE (id, family_id)
@@ -709,7 +710,7 @@ content      at most 50,000 characters; required and not blank when the Memory h
 happened_*   when it happened (mvp.md §17, OQ-063): a partial date (§9), never in the future
 ```
 
-The date of a Memory follows §9 with one source of truth. Its **story year**, used by the family story (`mvp.md` §20), is `COALESCE(EXTRACT(YEAR FROM happened_date), happened_year)`: null when the precision is UNKNOWN. "Never in the future" is the application's rule, since it depends on the current day (`openapi.yaml` `MemoryDate`). `V012__memory_happened_date.sql` adds the three columns and their check; every existing Memory becomes UNKNOWN, that is undated.
+The date of a Memory follows §9 with one source of truth; the check names `happened_year IS NOT NULL` because a check accepts the NULL result of `BETWEEN`. Its **story year**, used by the family story (`mvp.md` §20), is `COALESCE(EXTRACT(YEAR FROM happened_date), happened_year)`: null when the precision is UNKNOWN. "Never in the future" is the application's rule, since it depends on the current day (`openapi.yaml` `MemoryDate`). `V012__memory_happened_date.sql` adds the three columns and their check; every existing Memory becomes UNKNOWN, that is undated.
 
 `V007__memories.sql` created the table without the media columns of the earlier draft (`media_asset_id`, `caption`, taken date): they belong to each photo in `memory_photos`. Its check that a STORY has a title and a text is relaxed by `V009__memory_photos.sql` to the title only; the text rule, which depends on the photos, is the application's.
 

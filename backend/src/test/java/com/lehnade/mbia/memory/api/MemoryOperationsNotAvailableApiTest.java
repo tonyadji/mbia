@@ -56,25 +56,6 @@ class MemoryOperationsNotAvailableApiTest extends ApiTestSupport {
         }
     }
 
-    /** Until PR-58 (Phase 6 plan): every Memory reads as undated, and a known date is refused, never lost. */
-    @Test
-    void aMemoryIsUndatedAndAKnownDateIsRefusedUntilItIsStored() {
-        MemoryFixtures memories = new MemoryFixtures(mvc, jdbc);
-        assertThat(memories.createStory(family.admin(), family.familyId(), """
-                {"title": "Le marché", "content": "Texte", "relatedPersonIds": ["%s"],
-                 "happenedAt": {"precision": "UNKNOWN"}}
-                """.formatted(person)))
-                .hasStatus(HttpStatus.CREATED)
-                .bodyJson().extractingPath("$.happenedAt.precision").isEqualTo("UNKNOWN");
-        MvcTestResult dated = memories.createStory(family.admin(), family.familyId(), """
-                {"title": "Le marché", "content": "Texte", "relatedPersonIds": ["%s"],
-                 "happenedAt": {"precision": "YEAR_ONLY", "year": 1975}}
-                """.formatted(person));
-        assertThat(dated).hasStatus(HttpStatus.BAD_REQUEST)
-                .bodyJson().extractingPath("$.fieldErrors[0].field").isEqualTo("happenedAt");
-        assertThat(memories.count(family.familyId())).isEqualTo(2);
-    }
-
     private static void assertNotAvailable(MvcTestResult result) {
         assertThat(result)
                 .hasStatus(HttpStatus.NOT_FOUND)

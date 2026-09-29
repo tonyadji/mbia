@@ -14,6 +14,7 @@ import com.lehnade.mbia.memory.domain.Memory;
 import com.lehnade.mbia.memory.domain.MemoryPhoto;
 import com.lehnade.mbia.memory.domain.MemoryRepository;
 import com.lehnade.mbia.memory.domain.MemoryType;
+import com.lehnade.mbia.memory.domain.PartialDay;
 import com.lehnade.mbia.shared.application.audit.AuditEntry;
 import com.lehnade.mbia.shared.application.audit.AuditLog;
 import com.lehnade.mbia.shared.domain.FieldValidationException;
@@ -32,7 +33,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 /**
- * Changes the title, text, Persons or photos of a story, from its current version (openapi
+ * Changes the title, text, date, Persons or photos of a story, from its current version (openapi
  * {@code updateMemory}, SCREEN-014, technical-specification.md §13). Its creator or an ADMIN, with
  * a role that can write (mvp.md §17, OQ-041). A field of a photo Memory is refused (OQ-037). When
  * the Persons change, every Person newly added is ACTIVE and at least one Person stays ACTIVE,
@@ -45,7 +46,8 @@ import org.springframework.transaction.annotation.Transactional;
  * The Memory, its photos, their assets and the audit are written in one transaction.
  *
  * <p>Each changed field is audited on its own; the title, the text and the captions are never
- * copied into the audit, only the fact that they changed (OQ-039, OQ-042, data-model.md §17).
+ * copied into the audit, only the fact that they changed (OQ-039, OQ-042, data-model.md §17). The
+ * date is, before and after, as a Person's birth: a date is not a family text.
  */
 @Service
 public class UpdateMemoryUseCase {
@@ -88,8 +90,8 @@ public class UpdateMemoryUseCase {
         Versions.requireCurrent(command.expectedVersion(), memory.version());
 
         Instant now = clock.instant();
-        Memory changed = memory.updateStory(command.title(), command.content(), command.relatedPersonIds(),
-                command.photos(), callerId, now);
+        Memory changed = memory.updateStory(command.title(), command.content(), command.happenedAt(),
+                command.relatedPersonIds(), command.photos(), callerId, now);
         if (changed == memory) {
             return view(memory);
         }
@@ -131,6 +133,10 @@ public class UpdateMemoryUseCase {
                 append(after, callerId, Map.of(), Map.of("field", field), now);
             }
         }
+        if (!before.happenedAt().equals(after.happenedAt())) {
+            append(after, callerId, Map.of(Memory.HAPPENED_AT, describe(before.happenedAt())),
+                    Map.of(Memory.HAPPENED_AT, describe(after.happenedAt())), now);
+        }
         if (!before.relatedPersonIds().equals(after.relatedPersonIds())) {
             append(after, callerId, Map.of("relatedPersonIds", sorted(before)),
                     Map.of("relatedPersonIds", sorted(after)), now);
@@ -151,6 +157,15 @@ public class UpdateMemoryUseCase {
             append(after, callerId, Map.of(),
                     Map.of("field", "photoDetails", "mediaAssetIds", photoIds(described)), now);
         }
+    }
+
+    /** As a Person's birth in its audit: the ISO date, the year, or {@code UNKNOWN}. */
+    private static String describe(PartialDay date) {
+        return switch (date.precision()) {
+            case EXACT -> date.date().toString();
+            case YEAR_ONLY -> date.year().toString();
+            case UNKNOWN -> "UNKNOWN";
+        };
     }
 
     /** The photos of {@code memory} that {@code other} does not have, in position order. */

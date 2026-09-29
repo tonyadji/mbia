@@ -35,11 +35,10 @@ import com.lehnade.mbia.memory.application.updatememory.UpdateMemoryUseCase;
 import com.lehnade.mbia.memory.domain.MediaAssetId;
 import com.lehnade.mbia.memory.domain.Memory;
 import com.lehnade.mbia.memory.domain.MemoryPhoto;
-import com.lehnade.mbia.memory.domain.TakenDate;
+import com.lehnade.mbia.memory.domain.PartialDay;
 import com.lehnade.mbia.shared.api.web.ETags;
 import com.lehnade.mbia.shared.domain.DomainException;
 import com.lehnade.mbia.shared.domain.ErrorCode;
-import com.lehnade.mbia.shared.domain.FieldValidationException;
 import java.time.Instant;
 import java.time.OffsetDateTime;
 import java.time.ZoneOffset;
@@ -80,9 +79,10 @@ class MemoriesController implements MemoriesApi {
 
     @Override
     public ResponseEntity<MemoryResponse> createStoryMemory(UUID familyId, CreateStoryMemoryRequest request) {
-        refuseHappenedAtUntilPr58(request.getHappenedAt());
         MemoryView memory = createStoryMemory.create(new CreateStoryMemoryCommand(familyId, request.getTitle(),
-                request.getContent(), request.getRelatedPersonIds(),
+                request.getContent(), Optional.ofNullable(request.getHappenedAt())
+                        .map(MemoriesController::toHappenedAt).orElse(PartialDay.UNKNOWN),
+                request.getRelatedPersonIds(),
                 Optional.ofNullable(request.getPhotos()).orElse(List.of()).stream()
                         .map(MemoriesController::toNewPhoto)
                         .toList()));
@@ -127,13 +127,12 @@ class MemoriesController implements MemoriesApi {
     }
 
     /**
-     * An absent or {@code null} field keeps its value, a blank text empties it (OQ-008); {@code photos}
-     * is the complete new list (OQ-042).
+     * An absent or {@code null} field keeps its value, a blank text empties it (OQ-008), an UNKNOWN
+     * date removes it (OQ-063); {@code photos} is the complete new list (OQ-042).
      */
     @Override
     public ResponseEntity<MemoryResponse> updateMemory(String ifMatch, UUID familyId, UUID memoryId,
             UpdateMemoryRequest request) {
-        refuseHappenedAtUntilPr58(request.getHappenedAt());
         Set<String> photoFields = new HashSet<>();
         if (request.getCaption() != null) {
             photoFields.add("caption");
@@ -143,7 +142,9 @@ class MemoriesController implements MemoriesApi {
         }
         MemoryView memory = updateMemory.update(new UpdateMemoryCommand(familyId, memoryId,
                 ETags.parseIfMatch(ifMatch), Optional.ofNullable(request.getTitle()),
-                Optional.ofNullable(request.getContent()), Optional.ofNullable(request.getRelatedPersonIds()),
+                Optional.ofNullable(request.getContent()),
+                Optional.ofNullable(request.getHappenedAt()).map(MemoriesController::toHappenedAt),
+                Optional.ofNullable(request.getRelatedPersonIds()),
                 photoFields, Optional.ofNullable(request.getPhotos())
                         .map(photos -> photos.stream().map(MemoriesController::toNewPhoto).toList())));
         return ResponseEntity.ok().eTag(ETags.of(memory.memory().version())).body(toResponse(memory));
@@ -163,8 +164,7 @@ class MemoriesController implements MemoriesApi {
     private static MemoryResponse toResponse(MemoryView view) {
         Memory memory = view.memory();
         return new MemoryResponse(memory.id().value(), memory.familyId(), MemoryType.valueOf(memory.type().name()),
-                // Every Memory is undated until PR-58 stores its date (Phase 6 plan).
-                new MemoryDate(DatePrecision.UNKNOWN),
+                toMemoryDate(memory.happenedAt()),
                 MemoryStatus.valueOf(memory.status().name()),
                 view.photos().stream().map(MemoriesController::toResponse).toList(),
                 view.relatedPersons().stream()
@@ -182,12 +182,26 @@ class MemoriesController implements MemoriesApi {
     private static MemoryPhoto.New toNewPhoto(MemoryPhotoInput photo) {
         PartialDate takenAt = photo.getTakenAt();
         return new MemoryPhoto.New(new MediaAssetId(photo.getMediaAssetId()), photo.getCaption(),
-                takenAt == null ? null : TakenDate.of(TakenDate.Precision.valueOf(takenAt.getPrecision().name()),
-                        takenAt.getDate(), takenAt.getYear()));
+                takenAt == null ? null : PartialDay.of("photos",
+                        PartialDay.Precision.valueOf(takenAt.getPrecision().name()), takenAt.getDate(),
+                        takenAt.getYear()));
+    }
+
+    private static PartialDay toHappenedAt(MemoryDate happenedAt) {
+        return PartialDay.of(Memory.HAPPENED_AT,
+                happenedAt.getPrecision() == null ? null
+                        : PartialDay.Precision.valueOf(happenedAt.getPrecision().name()),
+                happenedAt.getDate(), happenedAt.getYear());
+    }
+
+    private static MemoryDate toMemoryDate(PartialDay happenedAt) {
+        return new MemoryDate(DatePrecision.fromValue(happenedAt.precision().name()))
+                .date(happenedAt.date())
+                .year(happenedAt.year());
     }
 
     private static MemoryPhotoResponse toResponse(MemoryPhotoView photo) {
-        TakenDate takenAt = photo.takenAt();
+        PartialDay takenAt = photo.takenAt();
         return new MemoryPhotoResponse(photo.mediaAssetId().value(), photo.url(), photo.thumbnailUrl())
                 .caption(photo.caption())
                 .takenAt(new PartialDate(DatePrecision.fromValue(takenAt.precision().name()))
@@ -199,17 +213,6 @@ class MemoriesController implements MemoriesApi {
 
     private static OffsetDateTime toDateTime(Instant instant) {
         return instant.atOffset(ZoneOffset.UTC);
-    }
-
-    /**
-     * The date of a Memory is stored from PR-58 on (Phase 6 plan): until then a known date is refused
-     * rather than silently lost; UNKNOWN, the default, is accepted.
-     */
-    private static void refuseHappenedAtUntilPr58(MemoryDate happenedAt) {
-        if (happenedAt != null && happenedAt.getPrecision() != DatePrecision.UNKNOWN) {
-            throw new FieldValidationException("happenedAt", "NOT_ALLOWED",
-                    "The date of a Memory is not available yet.");
-        }
     }
 
     private static DomainException notAvailableYet() {
