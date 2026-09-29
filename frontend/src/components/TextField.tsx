@@ -17,11 +17,13 @@ export function TextField({ label, error, className = '', ...props }: TextFieldP
       <label htmlFor={id} className="text-caption font-semibold text-text">
         {label}
       </label>
+      {/* `focus-within`, not `focus-visible`: the calendar button inside a date field takes the focus
+          without matching `:focus` in Chromium; a text field shows its focus either way (§9). */}
       <input
         id={id}
         aria-invalid={error ? true : undefined}
         aria-describedby={error ? errorId : undefined}
-        className={`min-h-12 rounded-xl border bg-surface px-4 text-body text-text focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary ${error ? 'border-2 border-text' : 'border-border'}`}
+        className={`min-h-12 rounded-xl border bg-surface px-4 text-body text-text focus-within:outline-2 focus-within:outline-offset-2 focus-within:outline-primary ${error ? 'border-2 border-text' : 'border-border'}`}
         {...props}
       />
       {error && (
