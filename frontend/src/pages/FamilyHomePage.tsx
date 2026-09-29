@@ -9,7 +9,9 @@ import { ErrorState } from '../components/ErrorState';
 import { IconButton } from '../components/IconButton';
 import { NavigationBar } from '../components/NavigationBar';
 import { Skeleton } from '../components/Skeleton';
+import { YearStrip } from '../components/YearStrip';
 import { useFamily } from '../families/useFamily';
+import { useFamilyStoryYears } from '../memories/useFamilyStoryYears';
 import { AddRelativeMenu } from '../persons/AddRelativeMenu';
 import { addRelativePath } from '../persons/relatives';
 import { familyTreePath } from '../tree/treePath';
@@ -38,9 +40,10 @@ export interface FamilyHomeState {
 }
 
 /**
- * SCREEN-002 — Family Home: the Person and Memory counts, the search entry (SCREEN-007),
- * `View family tree` as primary action, then `Add a relative` and `Add a memory`, then the recent
- * activity (mvp.md §20, OQ-054). The welcome after joining comes first (OQ-050).
+ * SCREEN-002 — Family Home: the Person and Memory counts, "Our story" (mvp.md §20), the search
+ * entry (SCREEN-007), `View family tree` as primary action, then `Add a relative` and
+ * `Add a memory`, then the recent activity (mvp.md §20, OQ-054). The welcome after joining comes
+ * first (OQ-050).
  */
 export function FamilyHomePage() {
   const { familyId = '' } = useParams();
@@ -121,6 +124,7 @@ function FamilyContent({ family }: { family: Family }) {
         <FamilyEmptyState family={family} />
       ) : (
         <>
+          <FamilyStory family={family} />
           <Link
             to={searchPath(family.id)}
             className="flex min-h-12 items-center gap-3 rounded-xl border border-border bg-surface px-4 text-body text-text-muted transition-colors hover:border-primary focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary"
@@ -147,6 +151,55 @@ function FamilyContent({ family }: { family: Family }) {
       )}
       <RecentActivity familyId={family.id} />
     </>
+  );
+}
+
+/**
+ * "Our story" (mvp.md §20, SCREEN-002, OQ-067): the strip of years, opened on the most recent one.
+ * Without any Memory, the strip is replaced by the invitation to tell a first memory, with
+ * `Tell a memory` for ADMIN / CONTRIBUTOR and the text only for a VIEWER.
+ */
+function FamilyStory({ family }: { family: Family }) {
+  const { t } = useTranslation('memory');
+  const years = useFamilyStoryYears(family.id);
+  const canAdd = family.myRole === 'ADMIN' || family.myRole === 'CONTRIBUTOR';
+
+  let content;
+  if (years.isPending) {
+    content = <Skeleton className="h-12 w-full" />;
+  } else if (years.isError) {
+    content = <ErrorState error={years.error} onRetry={() => void years.refetch()} />;
+  } else if (years.data.years.length === 0 && years.data.undatedMemoryCount === 0) {
+    content = (
+      <>
+        <p className="text-body text-text-muted">{t('story.invitation')}</p>
+        {canAdd && (
+          <Link
+            to={addMemoryPath(family.id)}
+            className={buttonClassName('secondary', 'sm:w-auto sm:self-start')}
+          >
+            {t('story.tell')}
+          </Link>
+        )}
+      </>
+    );
+  } else {
+    content = (
+      <YearStrip
+        familyId={family.id}
+        years={years.data.years}
+        undatedMemoryCount={years.data.undatedMemoryCount}
+      />
+    );
+  }
+
+  return (
+    <section aria-labelledby="family-story" className="flex min-w-0 flex-col gap-3">
+      <h2 id="family-story" className="text-section text-text">
+        {t('story.title')}
+      </h2>
+      {content}
+    </section>
   );
 }
 

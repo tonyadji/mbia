@@ -15,7 +15,8 @@ import { ArchiveMemoryDialog } from '../memories/ArchiveMemoryDialog';
 import { MemoryPhotos } from '../memories/MemoryPhotos';
 import { useArchiveMemory } from '../memories/useArchiveMemory';
 import { useMemory } from '../memories/useMemory';
-import { formatPartialDate } from '../persons/formatPartialDate';
+import { familyStoryPath } from '../memories/storyPath';
+import { formatPartialDate, yearOf } from '../persons/formatPartialDate';
 import { familyHomePath } from './FamilyHomePage';
 import { familyMemoriesPath } from './FamilyMemoriesPage';
 import { FamilyNotFoundPage } from './FamilyNotFoundPage';
@@ -156,8 +157,10 @@ function MemoryView({
   const language = isSupportedLanguage(i18n.resolvedLanguage)
     ? i18n.resolvedLanguage
     : DEFAULT_LANGUAGE;
-  // "In 1975", "On 12 March 1975" in the reader's language; nothing when unknown (OQ-063).
+  // "In 1975", "On 12 March 1975" in the reader's language, leading to that year of the family
+  // story (SCREEN-016); nothing when unknown (OQ-063).
   const happenedOn = formatPartialDate(memory.happenedAt, language);
+  const happenedYear = yearOf(memory.happenedAt);
   const happenedAt =
     happenedOn === null
       ? null
@@ -200,8 +203,11 @@ function MemoryView({
         <h1 ref={heading} tabIndex={-1} className="text-display break-words text-text outline-none">
           {memory.title}
         </h1>
-        {/* Plain text until the year of the family story exists (PR-61). */}
-        {happenedAt !== null && <p className="text-body text-text">{happenedAt}</p>}
+        {happenedAt !== null && happenedYear !== null && (
+          <Link to={familyStoryPath(familyId, Number(happenedYear))} className={LINK_CLASS}>
+            {happenedAt}
+          </Link>
+        )}
         <p className="text-caption text-text-muted">
           {t('screen.addedBy', { actor, date: formatDate(new Date(memory.createdAt), language) })}
         </p>

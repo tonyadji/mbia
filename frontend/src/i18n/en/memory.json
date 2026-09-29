@@ -129,5 +129,29 @@
     "warning": "Archive this memory? It will disappear for the whole family.",
     "confirm": "Archive",
     "cancel": "Cancel"
+  },
+  "story": {
+    "title": "Our story",
+    "strip": "The years of our story",
+    "entry_one": "{{year}} · {{count}} memory",
+    "entry_other": "{{year}} · {{count}} memories",
+    "undatedEntry_one": "Undated memories · {{count}} memory",
+    "undatedEntry_other": "Undated memories · {{count}} memories",
+    "undated": "Undated memories",
+    "yearTitle": "What happened in {{year}}",
+    "invitation": "Your family's story starts with a first memory.",
+    "tell": "Tell a memory",
+    "previous": "Previous year",
+    "next": "Next year",
+    "more": "Show more",
+    "emptyYear": "There is no memory left in {{year}}. Choose another year of the story.",
+    "emptyUndated": "There is no undated memory left. Choose a year of the story.",
+    "empty": "The family has no memory yet.",
+    "back": "Back to the family",
+    "notFound": {
+      "title": "Year not found",
+      "body": "This year does not exist in the family's story.",
+      "back": "Back to the family"
+    }
   }
 }

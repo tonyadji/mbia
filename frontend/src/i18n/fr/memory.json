@@ -129,5 +129,29 @@
     "warning": "Archiver ce souvenir ? Il disparaîtra pour toute la famille.",
     "confirm": "Archiver",
     "cancel": "Annuler"
+  },
+  "story": {
+    "title": "Notre histoire",
+    "strip": "Les années de notre histoire",
+    "entry_one": "{{year}} · {{count}} souvenir",
+    "entry_other": "{{year}} · {{count}} souvenirs",
+    "undatedEntry_one": "Souvenirs sans date · {{count}} souvenir",
+    "undatedEntry_other": "Souvenirs sans date · {{count}} souvenirs",
+    "undated": "Souvenirs sans date",
+    "yearTitle": "Ce qui s'est passé en {{year}}",
+    "invitation": "L'histoire de votre famille commence par un premier souvenir.",
+    "tell": "Raconter un souvenir",
+    "previous": "Année précédente",
+    "next": "Année suivante",
+    "more": "Voir plus",
+    "emptyYear": "Il n'y a plus de souvenir en {{year}}. Choisissez une autre année de l'histoire.",
+    "emptyUndated": "Il n'y a plus de souvenir sans date. Choisissez une année de l'histoire.",
+    "empty": "La famille n'a pas encore de souvenir.",
+    "back": "Retour à la famille",
+    "notFound": {
+      "title": "Année introuvable",
+      "body": "Cette année n'existe pas dans l'histoire de la famille.",
+      "back": "Retour à la famille"
+    }
   }
 }

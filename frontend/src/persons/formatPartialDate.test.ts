@@ -1,4 +1,4 @@
-import { formatPartialDate, yearOf } from './formatPartialDate';
+import { formatDayOfYear, formatPartialDate, yearOf } from './formatPartialDate';
 
 describe('formatPartialDate', () => {
   it('formats an exact date in the active language', () => {
@@ -22,5 +22,18 @@ describe('yearOf', () => {
     expect(yearOf({ precision: 'EXACT', date: '1954-03-12' })).toBe('1954');
     expect(yearOf({ precision: 'YEAR_ONLY', year: 2020 })).toBe('2020');
     expect(yearOf({ precision: 'UNKNOWN' })).toBeNull();
+  });
+});
+
+describe('formatDayOfYear', () => {
+  it('writes the day and month of an exact date, without its year', () => {
+    const date = { precision: 'EXACT', date: '1962-03-12' } as const;
+    expect(formatDayOfYear(date, 'fr')).toBe('12 mars');
+    expect(formatDayOfYear(date, 'en')).toBe('March 12');
+  });
+
+  it('writes nothing for a year only or an unknown date', () => {
+    expect(formatDayOfYear({ precision: 'YEAR_ONLY', year: 1975 }, 'fr')).toBeNull();
+    expect(formatDayOfYear({ precision: 'UNKNOWN' }, 'en')).toBeNull();
   });
 });
