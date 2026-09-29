@@ -252,10 +252,10 @@ describe('Memory screens', () => {
         renderApp(MEMORY);
 
         const title = await screen.findByRole('heading', { level: 1 });
-        const date = await screen.findByText(text);
-        // Right under the title, as plain text until the family story's years exist (PR-61).
+        const date = await screen.findByRole('link', { name: text });
+        // Right under the title, leading to that year of the family story (SCREEN-016).
         expect(title.nextElementSibling).toBe(date);
-        expect(date.closest('a')).toBeNull();
+        expect(date).toHaveAttribute('href', `/families/${ADJI_ID}/story/1975`);
       },
     );
 
@@ -266,6 +266,7 @@ describe('Memory screens', () => {
       const title = await screen.findByRole('heading', { level: 1 });
       expect(title.nextElementSibling).toHaveTextContent(/^Ajouté par/);
       expect(screen.queryByText(/^(En|Le) \d/)).not.toBeInTheDocument();
+      expect(document.querySelector('a[href*="/story/"]')).toBeNull();
     });
 
     it('shows the title, the text as typed, the Persons, the author and the date', async () => {

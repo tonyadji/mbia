@@ -5,18 +5,21 @@ import { useFreshImageUrl } from '../media/useFreshImageUrl';
  * A story card (design-guidelines.md §6, §7): the thumbnail of the first photo when there is one,
  * the title and the first lines of the text, opening the Memory (SCREEN-005, SCREEN-015). The
  * thumbnail is decorative: the title names the card. A Memory without text shows its title only.
- * The text is plain: line breaks are kept, nothing is interpreted (OQ-032).
+ * The text is plain: line breaks are kept, nothing is interpreted (OQ-032). In a year of the family
+ * story, the card also says the day it happened, when known (SCREEN-016).
  */
 export function MemoryCard({
   title,
   content,
   thumbnailUrl,
   to,
+  date = null,
 }: {
   title: string;
   content: string | null;
   thumbnailUrl: string | null;
   to: string;
+  date?: string | null;
 }) {
   const thumbnail = useFreshImageUrl(thumbnailUrl);
   return (
@@ -38,6 +41,7 @@ export function MemoryCard({
       )}
       <span className="flex min-w-0 flex-1 flex-col gap-1">
         <span className="text-body font-semibold break-words text-text">{title}</span>
+        {date !== null && <span className="text-caption text-text">{date}</span>}
         {content?.trim() && (
           <span className="line-clamp-3 text-caption break-words whitespace-pre-line text-text-muted">
             {content}
