@@ -40,7 +40,8 @@ mbia-specs/
 │   ├── phase-2-core-family-graph.md
 │   ├── phase-3-family-memories.md
 │   ├── phase-4-memory-photos.md
-│   └── phase-5-collaboration.md
+│   ├── phase-5-collaboration.md
+│   └── phase-6-family-story.md
 ├── product/
 │   ├── vision.md
 │   ├── mvp.md
@@ -70,6 +71,15 @@ mbia-specs/
 The visual mockup is a design reference. Product rules and screen behavior are defined in text and remain authoritative.
 
 ## Changelog
+
+### 0.7.1 — 2026-09-29
+
+The family story, technical side and delivery plan:
+
+- `openapi.yaml` 0.5.0, additive: `MemoryDate` and `happenedAt` on Memory responses, creation and update; `listFamilyMemories` `year` and `undated`; new operation `listFamilyStoryYears` (OQ-063, OQ-064);
+- `data-model.md` §14, §17, §23.5: the date of a Memory (`happened_*` columns, check, story year), its audit, the family story index; `V012__memory_happened_date.sql` planned;
+- `technical-specification.md` §17: family story scenarios; ADR-008: view event `family_story_viewed` (not sent before the analytics work);
+- delivery plan `delivery/phase-6-family-story.md` (PR-58 to PR-63).
 
 ### 0.7 — 2026-09-29
 

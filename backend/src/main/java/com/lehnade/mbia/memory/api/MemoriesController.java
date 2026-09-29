@@ -5,6 +5,8 @@ import com.lehnade.mbia.api.generated.model.ActivityActor;
 import com.lehnade.mbia.api.generated.model.CreatePhotoMemoryRequest;
 import com.lehnade.mbia.api.generated.model.CreateStoryMemoryRequest;
 import com.lehnade.mbia.api.generated.model.DatePrecision;
+import com.lehnade.mbia.api.generated.model.FamilyStoryYears;
+import com.lehnade.mbia.api.generated.model.MemoryDate;
 import com.lehnade.mbia.api.generated.model.MemoryPhotoInput;
 import com.lehnade.mbia.api.generated.model.MemoryPhotoResponse;
 import com.lehnade.mbia.api.generated.model.MemoryPage;
@@ -37,6 +39,7 @@ import com.lehnade.mbia.memory.domain.TakenDate;
 import com.lehnade.mbia.shared.api.web.ETags;
 import com.lehnade.mbia.shared.domain.DomainException;
 import com.lehnade.mbia.shared.domain.ErrorCode;
+import com.lehnade.mbia.shared.domain.FieldValidationException;
 import java.time.Instant;
 import java.time.OffsetDateTime;
 import java.time.ZoneOffset;
@@ -77,6 +80,7 @@ class MemoriesController implements MemoriesApi {
 
     @Override
     public ResponseEntity<MemoryResponse> createStoryMemory(UUID familyId, CreateStoryMemoryRequest request) {
+        refuseHappenedAtUntilPr58(request.getHappenedAt());
         MemoryView memory = createStoryMemory.create(new CreateStoryMemoryCommand(familyId, request.getTitle(),
                 request.getContent(), request.getRelatedPersonIds(),
                 Optional.ofNullable(request.getPhotos()).orElse(List.of()).stream()
@@ -99,10 +103,20 @@ class MemoriesController implements MemoriesApi {
     }
 
     @Override
-    public ResponseEntity<MemoryPage> listFamilyMemories(UUID familyId, MemoryType type, Integer page,
-            Integer size) {
+    public ResponseEntity<MemoryPage> listFamilyMemories(UUID familyId, Integer year, Boolean undated,
+            MemoryType type, Integer page, Integer size) {
+        // The family story filters arrive with PR-59 (Phase 6 plan).
+        if (year != null || undated != null) {
+            throw notAvailableYet();
+        }
         return ResponseEntity.ok(toPage(listFamilyMemories.list(new ListFamilyMemoriesCommand(familyId,
                 Optional.ofNullable(type).map(MemoryType::name), page, size))));
+    }
+
+    /** The strip of years of the family story arrives with PR-59 (Phase 6 plan). */
+    @Override
+    public ResponseEntity<FamilyStoryYears> listFamilyStoryYears(UUID familyId) {
+        throw notAvailableYet();
     }
 
     @Override
@@ -119,6 +133,7 @@ class MemoriesController implements MemoriesApi {
     @Override
     public ResponseEntity<MemoryResponse> updateMemory(String ifMatch, UUID familyId, UUID memoryId,
             UpdateMemoryRequest request) {
+        refuseHappenedAtUntilPr58(request.getHappenedAt());
         Set<String> photoFields = new HashSet<>();
         if (request.getCaption() != null) {
             photoFields.add("caption");
@@ -148,6 +163,8 @@ class MemoriesController implements MemoriesApi {
     private static MemoryResponse toResponse(MemoryView view) {
         Memory memory = view.memory();
         return new MemoryResponse(memory.id().value(), memory.familyId(), MemoryType.valueOf(memory.type().name()),
+                // Every Memory is undated until PR-58 stores its date (Phase 6 plan).
+                new MemoryDate(DatePrecision.UNKNOWN),
                 MemoryStatus.valueOf(memory.status().name()),
                 view.photos().stream().map(MemoriesController::toResponse).toList(),
                 view.relatedPersons().stream()
@@ -182,6 +199,17 @@ class MemoriesController implements MemoriesApi {
 
     private static OffsetDateTime toDateTime(Instant instant) {
         return instant.atOffset(ZoneOffset.UTC);
+    }
+
+    /**
+     * The date of a Memory is stored from PR-58 on (Phase 6 plan): until then a known date is refused
+     * rather than silently lost; UNKNOWN, the default, is accepted.
+     */
+    private static void refuseHappenedAtUntilPr58(MemoryDate happenedAt) {
+        if (happenedAt != null && happenedAt.getPrecision() != DatePrecision.UNKNOWN) {
+            throw new FieldValidationException("happenedAt", "NOT_ALLOWED",
+                    "The date of a Memory is not available yet.");
+        }
     }
 
     private static DomainException notAvailableYet() {

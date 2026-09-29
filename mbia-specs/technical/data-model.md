@@ -1,6 +1,6 @@
 # Mbia MVP — Data Model
 
-**Version:** 0.2  
+**Version:** 0.3  
 **Status:** Draft for implementation  
 **Database:** PostgreSQL 18  
 **Scope:** Commercial MVP
@@ -680,6 +680,10 @@ memories (
     title               VARCHAR(250) NOT NULL,
     content             TEXT,
 
+    happened_date           DATE,
+    happened_year           SMALLINT,
+    happened_date_precision date_precision NOT NULL DEFAULT 'UNKNOWN',
+
     created_by          UUID NOT NULL REFERENCES users(id),
     updated_by          UUID NOT NULL REFERENCES users(id),
     created_at          TIMESTAMPTZ NOT NULL,
@@ -688,6 +692,10 @@ memories (
     version             BIGINT NOT NULL DEFAULT 0,
 
     CHECK (type = 'STORY'),
+    CONSTRAINT ck_memory_happened_date CHECK (
+        (happened_date_precision = 'EXACT' AND happened_date IS NOT NULL AND happened_year IS NULL)
+     OR (happened_date_precision = 'YEAR_ONLY' AND happened_date IS NULL AND happened_year BETWEEN 1 AND 9999)
+     OR (happened_date_precision = 'UNKNOWN' AND happened_date IS NULL AND happened_year IS NULL)),
 
     UNIQUE (id, family_id)
 )
@@ -696,9 +704,12 @@ memories (
 Invariants (the second one spans `memory_photos` and is enforced in the application transaction):
 
 ```text
-title    required, not blank, at most 250 characters
-content  at most 50,000 characters; required and not blank when the Memory has no photo
+title        required, not blank, at most 250 characters
+content      at most 50,000 characters; required and not blank when the Memory has no photo
+happened_*   when it happened (mvp.md §17, OQ-063): a partial date (§9), never in the future
 ```
+
+The date of a Memory follows §9 with one source of truth. Its **story year**, used by the family story (`mvp.md` §20), is `COALESCE(EXTRACT(YEAR FROM happened_date), happened_year)`: null when the precision is UNKNOWN. "Never in the future" is the application's rule, since it depends on the current day (`openapi.yaml` `MemoryDate`). `V012__memory_happened_date.sql` adds the three columns and their check; every existing Memory becomes UNKNOWN, that is undated.
 
 `V007__memories.sql` created the table without the media columns of the earlier draft (`media_asset_id`, `caption`, taken date): they belong to each photo in `memory_photos`. Its check that a STORY has a title and a text is relaxed by `V009__memory_photos.sql` to the title only; the text rule, which depends on the photos, is the application's.
 
@@ -823,7 +834,7 @@ Resource and `payload` of each type (a name that is unknown is left out):
 | `PERSON_CREATED`, `PERSON_ARCHIVED`, `PERSON_RESTORED` | `PERSON` / the Person | `personDisplayName` |
 | `PERSON_MERGED` | `PERSON` / the Person kept | `personDisplayName` (the Person kept, after the merge), `mergedPersonDisplayName` (the duplicate) |
 | `RELATIONSHIP_CREATED`, `RELATIONSHIP_ARCHIVED` | `RELATIONSHIP` / the relationship | `relationshipType`, `sourcePersonId`, `sourcePersonDisplayName`, `targetPersonId`, `targetPersonDisplayName` |
-| `MEMORY_CREATED` | `MEMORY` / the Memory | `memoryTitle` |
+| `MEMORY_CREATED` | `MEMORY` / the Memory | `memoryTitle` (never its date, OQ-063) |
 | `INVITATION_ACCEPTED`, `MEMBER_LEFT`, `MEMBER_REMOVED` | `MEMBERSHIP` / the membership | `memberDisplayName` (the member's account name) |
 
 `actor_user_id` is the User who acted: the new member for `INVITATION_ACCEPTED` and `MEMBER_LEFT`, the ADMIN for `MEMBER_REMOVED`. A merge writes only `PERSON_MERGED`: the duplicate relationships it archives and the Person released when a member leaves write no activity of their own. An operation that changes nothing (archiving an archived Person, an ACTIVE member opening an invitation) writes none.
@@ -863,7 +874,7 @@ Rules:
 Memories write (OQ-039):
 
 - `MEMORY_CREATED`: the type, the related Person ids and the photo asset ids;
-- `MEMORY_UPDATED`: one entry per changed field; for `title`, `content` and `caption` only the field name is recorded, never the text; for related Persons, the ids before and after; for `photos`, the asset ids before and after when photos are added or removed, and the field `photoDetails` with the asset id only when a caption or taken date changes (OQ-042);
+- `MEMORY_UPDATED`: one entry per changed field; for `title`, `content` and `caption` only the field name is recorded, never the text; for `happenedAt`, the dates before and after, as for a Person's birth (a date is not family text); for related Persons, the ids before and after; for `photos`, the asset ids before and after when photos are added or removed, and the field `photoDetails` with the asset id only when a caption or taken date changes (OQ-042);
 - `MEMORY_ARCHIVED`.
 
 Media operations are not audited: their state is in `media_assets`. Storage keys and pre-signed URLs are never written. Setting, replacing or removing a Person's photo changes the Person: it is a `PERSON_UPDATED` entry of the field `profilePicture`, whose values are the asset ids, and the Person history shows it without values (OQ-046).
@@ -1075,6 +1086,16 @@ WHERE status = 'ACTIVE';
 ```
 
 Family Memories are listed in the same order: `created_at DESC`, then `id` (OQ-034).
+
+### 23.5 Family story
+
+```sql
+CREATE INDEX idx_memories_family_story_year
+ON memories (family_id, (COALESCE(EXTRACT(YEAR FROM happened_date)::int, happened_year::int)))
+WHERE status = 'ACTIVE';
+```
+
+The strip of years (`listFamilyStoryYears`) groups the ACTIVE Memories of a Family by story year (§14) in one query; a year (`listFamilyMemories?year=`) reads that index. Inside a year: EXACT dates first by `happened_date`, then YEAR_ONLY by `created_at` ascending, then `id`; undated Memories use `idx_memories_family_recent` (OQ-064). The query that computes the story year and the index expression must stay identical, so that the index is used.
 
 ## 24. Database responsibilities vs domain responsibilities
 

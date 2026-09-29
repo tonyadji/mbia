@@ -10,7 +10,7 @@ The MVP must measure the funnel defined in `product/mvp.md` §25. Data must stay
 
 - Use PostHog Cloud, EU region.
 - Business events (`user_registered`, `family_created`, `person_created`, …) are sent **server-side** by the backend after the transaction commits.
-- View events (`tree_viewed`, `person_profile_viewed`) are sent by the frontend.
+- View events (`family_story_viewed`, `tree_viewed`, `person_profile_viewed`) are sent by the frontend.
 - The only identifier is the Mbia User UUID; `familyId` is sent as an event property/group. Never send names, emails, Person data, story content or photos.
 - Frontend capture is configured without cookies or persistent storage, without session recording and without autocapture.
 - All analytics calls go through a small `AnalyticsPort` (backend) / `analytics` module (frontend) so the provider can be replaced.
