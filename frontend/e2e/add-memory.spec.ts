@@ -1,5 +1,6 @@
 import { expect, test, type Page } from '@playwright/test';
 import { expectAccessibleControls } from './support/accessibility';
+import { openStartWithMe } from './support/family';
 import { t, type Language } from './support/i18n';
 import { newUser, registerAndVerify } from './support/keycloak';
 
@@ -30,7 +31,7 @@ for (const { language, locale } of [
       const familyUrl = page.url();
 
       // Me, then my mother.
-      await page.getByRole('link', { name: t(language, 'family:home.startWithMe') }).click();
+      await openStartWithMe(page, language);
       await firstName(page, language).fill('Alice');
       await page.getByRole('button', { name: t(language, 'person:form.submitMe') }).click();
       await page.getByRole('button', { name: t(language, 'family:home.addRelative') }).click();
@@ -40,7 +41,7 @@ for (const { language, locale } of [
       await expect(page).toHaveURL(familyUrl);
 
       // The story form opens directly, with me preselected.
-      await page.getByRole('link', { name: t(language, 'family:home.addMemory') }).click();
+      await page.getByRole('link', { name: t(language, 'memory:story.tell') }).click();
       await expect(page.getByRole('heading', { level: 1 })).toHaveText(
         t(language, 'memory:form.title'),
       );

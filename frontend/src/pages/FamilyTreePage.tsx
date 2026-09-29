@@ -3,6 +3,7 @@ import { useTranslation } from 'react-i18next';
 import { Link, useLocation, useNavigate, useParams, useSearchParams } from 'react-router';
 import { ApiError } from '../api/client';
 import { BottomSheet } from '../components/BottomSheet';
+import { buttonClassName } from '../components/Button';
 import { ErrorState } from '../components/ErrorState';
 import { IconButton } from '../components/IconButton';
 import { NavigationBar } from '../components/NavigationBar';
@@ -17,7 +18,8 @@ import { SiblingsList } from '../tree/SiblingsList';
 import { TreeCanvas } from '../tree/TreeCanvas';
 import { layoutTree, type PlacedAdd } from '../tree/treeLayout';
 import type { FamilyTreeState } from '../tree/treePath';
-import { FamilyEmptyState, familyHomePath, SearchIcon, type Family } from './FamilyHomePage';
+import { addPersonPath } from './AddPersonPage';
+import { familyHomePath, SearchIcon, type Family } from './FamilyHomePage';
 import { FamilyNotFoundPage } from './FamilyNotFoundPage';
 import { searchPath } from './SearchPage';
 
@@ -111,7 +113,7 @@ function FamilyTree({ family }: { family: Family }) {
   } else if (tree.isPending || notFound) {
     content = <TreeSkeleton />;
   } else if (layout === null) {
-    content = <FamilyEmptyState family={family} />;
+    content = <TreeEmptyState family={family} />;
   } else {
     content = (
       <div
@@ -245,5 +247,34 @@ function TreeSkeleton() {
         </div>
       ))}
     </div>
+  );
+}
+
+/**
+ * The tree of a Family without Persons (SCREEN-003): nobody is in it yet; ADMIN and CONTRIBUTOR may
+ * start with themselves or someone else, a VIEWER only reads the explanation. Family Home starts
+ * with a memory instead (mvp.md §14).
+ */
+function TreeEmptyState({ family }: { family: Family }) {
+  const { t } = useTranslation('tree');
+  const canAdd = family.myRole === 'ADMIN' || family.myRole === 'CONTRIBUTOR';
+  return (
+    <section className="flex flex-1 flex-col items-center justify-center gap-2 text-center">
+      <h2 className="text-section text-text">{t('empty.title')}</h2>
+      <p className="text-body text-text-muted">{t('empty.body')}</p>
+      {canAdd && (
+        <div className="mt-6 flex w-full max-w-sm flex-col gap-3">
+          <Link
+            to={addPersonPath(family.id, { startWithMe: true })}
+            className={buttonClassName('primary')}
+          >
+            {t('empty.startWithMe')}
+          </Link>
+          <Link to={addPersonPath(family.id)} className={buttonClassName('secondary')}>
+            {t('empty.addSomeoneElse')}
+          </Link>
+        </div>
+      )}
+    </section>
   );
 }

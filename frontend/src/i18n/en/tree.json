@@ -19,5 +19,11 @@
     "center": "Center the tree on {{name}}",
     "add": "Add…"
   },
-  "search": "Search the family"
+  "search": "Search the family",
+  "empty": {
+    "title": "Nobody is in the tree yet",
+    "body": "Add yourself first, or someone of your family.",
+    "startWithMe": "Start with me",
+    "addSomeoneElse": "Add someone else"
+  }
 }

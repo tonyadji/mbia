@@ -160,7 +160,9 @@ function fakeApi({
       const tree = trees[focus];
       return tree ? jsonResponse(tree) : problemResponse('PERSON_NOT_FOUND', 404);
     }
-    const personId = new RegExp(`^/families/${FAMILY_ID}/persons/([^/]+)/memories$`).exec(path)?.[1];
+    const personId = new RegExp(`^/families/${FAMILY_ID}/persons/([^/]+)/memories$`).exec(
+      path,
+    )?.[1];
     if (personId !== undefined) {
       memoryRequests.push(`${personId}${url.search}`);
       const total = memoryCounts[personId] ?? 0;
@@ -386,16 +388,53 @@ describe('Family tree (SCREEN-003)', () => {
     ).toBeNull();
   });
 
-  it('shows the Family Home empty state for a Family without Persons', async () => {
+  it.each(['ADMIN', 'CONTRIBUTOR'])(
+    'shows its own empty state with Start with me and Add someone else to a %s',
+    async (myRole) => {
+      fakeApi({
+        familyBody: family({
+          myRole,
+          myLinkedPersonId: null,
+          stats: { personCount: 0, memoryCount: 0 },
+        }),
+        defaultTree: { focusPersonId: null, nodes: [], edges: [] },
+      });
+      renderApp(treePath);
+      expect(
+        await screen.findByRole('heading', { name: "Personne n'est encore dans l'arbre" }),
+      ).toBeVisible();
+      expect(screen.getByRole('link', { name: 'Commencer par moi' })).toHaveAttribute(
+        'href',
+        `/families/${FAMILY_ID}/persons/new?mode=me`,
+      );
+      expect(screen.getByRole('link', { name: "Ajouter quelqu'un d'autre" })).toHaveAttribute(
+        'href',
+        `/families/${FAMILY_ID}/persons/new`,
+      );
+      // It no longer mirrors Family Home, which starts with a memory (mvp.md §14).
+      expect(
+        screen.queryByRole('link', { name: 'Raconter un premier souvenir' }),
+      ).not.toBeInTheDocument();
+    },
+  );
+
+  it('shows only the explanation of the empty tree to a VIEWER', async () => {
     fakeApi({
-      familyBody: family({ myLinkedPersonId: null, stats: { personCount: 0, memoryCount: 0 } }),
+      familyBody: family({
+        myRole: 'VIEWER',
+        myLinkedPersonId: null,
+        stats: { personCount: 0, memoryCount: 0 },
+      }),
       defaultTree: { focusPersonId: null, nodes: [], edges: [] },
     });
     renderApp(treePath);
     expect(
-      await screen.findByRole('heading', { name: 'Bienvenue dans la famille ADJI' }),
+      await screen.findByText("Ajoutez-vous d'abord, ou quelqu'un de votre famille."),
     ).toBeVisible();
-    expect(screen.getByRole('link', { name: 'Commencer par moi' })).toBeVisible();
+    expect(screen.queryByRole('link', { name: 'Commencer par moi' })).not.toBeInTheDocument();
+    expect(
+      screen.queryByRole('link', { name: "Ajouter quelqu'un d'autre" }),
+    ).not.toBeInTheDocument();
   });
 
   it('zooms in and out within limits', async () => {

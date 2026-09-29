@@ -19,5 +19,11 @@
     "center": "Centrer l'arbre sur {{name}}",
     "add": "Ajouter…"
   },
-  "search": "Rechercher dans la famille"
+  "search": "Rechercher dans la famille",
+  "empty": {
+    "title": "Personne n'est encore dans l'arbre",
+    "body": "Ajoutez-vous d'abord, ou quelqu'un de votre famille.",
+    "startWithMe": "Commencer par moi",
+    "addSomeoneElse": "Ajouter quelqu'un d'autre"
+  }
 }

@@ -26,7 +26,8 @@ const DEBOUNCE_MS = 250;
  * up to the entry point (`onSelect`). `status="ARCHIVED"` is the ADMIN "Archived people" view.
  * `excludedMessage` replaces the "no result" message when every Person found is excluded.
  * `claimable` lists only the Persons the User can claim, with their parent (mvp.md §18); `describe`
- * then replaces the years under each name.
+ * then replaces the years under each name. With `addNew`, a button offers to add the typed name as a
+ * new Person (SCREEN-006 `Add {typed name}`).
  */
 export function PersonSearch({
   familyId,
@@ -39,6 +40,7 @@ export function PersonSearch({
   excludedMessage,
   claimable = false,
   describe = lifeYears,
+  addNew,
 }: {
   familyId: string;
   label: string;
@@ -50,6 +52,7 @@ export function PersonSearch({
   excludedMessage?: string;
   claimable?: boolean;
   describe?: (person: PersonSummary) => string | null;
+  addNew?: { label: (text: string) => string; onAdd: (text: string) => void };
 }) {
   const { t } = useTranslation('person');
   const [text, setText] = useState('');
@@ -135,6 +138,16 @@ export function PersonSearch({
         }}
       />
       {results}
+      {addNew && text.trim() !== '' && (
+        <Button
+          variant="secondary"
+          onClick={() => {
+            addNew.onAdd(text.trim());
+          }}
+        >
+          {addNew.label(text.trim())}
+        </Button>
+      )}
     </div>
   );
 }

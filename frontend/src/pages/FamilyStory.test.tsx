@@ -235,7 +235,9 @@ describe('Family story', () => {
       fakeApi({ personCount: 0 });
       renderApp(familyHomePath(ADJI_ID));
 
-      expect(await screen.findByRole('link', { name: 'Commencer par moi' })).toBeVisible();
+      expect(
+        await screen.findByRole('link', { name: 'Raconter un premier souvenir' }),
+      ).toBeVisible();
       expect(screen.queryByRole('region', { name: 'Notre histoire' })).not.toBeInTheDocument();
     });
   });

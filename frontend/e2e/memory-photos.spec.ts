@@ -1,6 +1,7 @@
 import { fileURLToPath } from 'node:url';
 import { expect, test, type Locator, type Page } from '@playwright/test';
 import { expectAccessibleControls } from './support/accessibility';
+import { openStartWithMe } from './support/family';
 import { t, type Language } from './support/i18n';
 import { newUser, registerAndVerify } from './support/keycloak';
 
@@ -32,7 +33,7 @@ for (const { language, locale } of [
       const familyUrl = await startFamily(page, request, language);
 
       // A story with three photos: a caption on the first, a year on the second.
-      await page.getByRole('link', { name: t(language, 'family:home.addMemory') }).click();
+      await page.getByRole('link', { name: t(language, 'memory:story.tell') }).click();
       const title = language === 'fr' ? 'Le marché du samedi' : 'The Saturday market';
       const story =
         language === 'fr'
@@ -202,7 +203,7 @@ async function startFamily(
   await page.getByRole('button', { name: t(language, 'family:create.submit') }).click();
   await expect(page).toHaveURL(/\/families\/[0-9a-f-]{36}$/);
   const familyUrl = page.url();
-  await page.getByRole('link', { name: t(language, 'family:home.startWithMe') }).click();
+  await openStartWithMe(page, language);
   await page.getByLabel(t(language, 'person:form.firstName'), { exact: true }).fill('Alice');
   await page.getByRole('button', { name: t(language, 'person:form.submitMe') }).click();
   await expect(page).toHaveURL(familyUrl);

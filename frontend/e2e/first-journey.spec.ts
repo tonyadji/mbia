@@ -1,4 +1,5 @@
 import { expect, test } from '@playwright/test';
+import { openStartWithMe } from './support/family';
 import { t, type Language } from './support/i18n';
 import { newUser, registerAndVerify, signInOnKeycloak } from './support/keycloak';
 
@@ -46,7 +47,7 @@ for (const { language, locale } of [
       const familyUrl = page.url();
 
       // "Start with me" (SCREEN-004): only the first name is required.
-      await page.getByRole('link', { name: t(language, 'family:home.startWithMe') }).click();
+      await openStartWithMe(page, language);
       await expect(
         page.getByRole('heading', { level: 1, name: t(language, 'person:form.titleMe') }),
       ).toBeVisible();

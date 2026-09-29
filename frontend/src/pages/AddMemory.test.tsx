@@ -203,10 +203,10 @@ describe('Add a Memory (SCREEN-006)', () => {
   });
 
   describe('Family Home entry point', () => {
-    it.each(['ADMIN', 'CONTRIBUTOR'])('offers Add a memory to a %s', async (myRole) => {
+    it.each(['ADMIN', 'CONTRIBUTOR'])('offers Tell a memory to a %s', async (myRole) => {
       fakeApi({ familyOverrides: { myRole } });
       renderApp(familyHomePath(ADJI_ID));
-      expect(await screen.findByRole('link', { name: 'Ajouter un souvenir' })).toHaveAttribute(
+      expect(await screen.findByRole('link', { name: 'Raconter un souvenir' })).toHaveAttribute(
         'href',
         addMemoryPath(ADJI_ID),
       );
@@ -216,10 +216,10 @@ describe('Add a Memory (SCREEN-006)', () => {
       fakeApi({ familyOverrides: { myRole: 'VIEWER' } });
       renderApp(familyHomePath(ADJI_ID));
       await screen.findByRole('link', { name: "Voir l'arbre familial" });
-      expect(screen.queryByRole('link', { name: 'Ajouter un souvenir' })).not.toBeInTheDocument();
+      expect(screen.queryByRole('link', { name: 'Raconter un souvenir' })).not.toBeInTheDocument();
     });
 
-    it('offers nothing while the Family has no Person, since a Memory needs one', async () => {
+    it('offers Tell a first memory while the Family has no Person (mvp.md §14)', async () => {
       fakeApi({
         familyOverrides: {
           myLinkedPersonId: null,
@@ -227,14 +227,15 @@ describe('Add a Memory (SCREEN-006)', () => {
         },
       });
       renderApp(familyHomePath(ADJI_ID));
-      await screen.findByRole('link', { name: 'Commencer par moi' });
-      expect(screen.queryByRole('link', { name: 'Ajouter un souvenir' })).not.toBeInTheDocument();
+      expect(
+        await screen.findByRole('link', { name: 'Raconter un premier souvenir' }),
+      ).toHaveAttribute('href', addMemoryPath(ADJI_ID));
     });
 
     it('opens the one Memory form directly, without a photo or story choice', async () => {
       fakeApi();
       const { router } = renderApp(familyHomePath(ADJI_ID));
-      fireEvent.click(await screen.findByRole('link', { name: 'Ajouter un souvenir' }));
+      fireEvent.click(await screen.findByRole('link', { name: 'Raconter un souvenir' }));
       expect(
         await screen.findByRole('heading', { level: 1, name: 'Raconter une histoire' }),
       ).toBeInTheDocument();

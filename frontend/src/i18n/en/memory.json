@@ -54,6 +54,21 @@
     "chooseTitle": "Choose a person",
     "searchLabel": "Search the family",
     "allChosen": "The people found are already chosen.",
+    "newPerson": "To be added to the family",
+    "newTitle": "Add a person",
+    "addNew": "Add {{name}}",
+    "backToSearch": "Back to the search",
+    "addThisPerson": "Add this person",
+    "subject": {
+      "question": "Who is this memory about?",
+      "me": "Me",
+      "someoneElse": "Someone else",
+      "meHint": "Your name, as it will appear in the family tree.",
+      "choose": "Choose who this memory is about to publish it.",
+      "added": "{{name}} is now part of the family."
+    },
+    "personsAdded_one": "{{names}} is now part of the family, but the memory was not published. Everything you wrote is still here: you can publish again.",
+    "personsAdded_other": "{{names}} are now part of the family, but the memory was not published. Everything you wrote is still here: you can publish again.",
     "publish": "Publish",
     "readOnly": "Your role in this family does not allow adding a memory."
   },

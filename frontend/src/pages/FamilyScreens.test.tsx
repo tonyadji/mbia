@@ -94,7 +94,9 @@ describe('Family screens', () => {
 
       expect(await screen.findByRole('heading', { level: 1, name: 'ADJI' })).toBeInTheDocument();
       expect(router.state.location.pathname).toBe(`/families/${ADJI_ID}`);
-      expect(screen.getByText('0 personne')).toBeInTheDocument();
+      expect(
+        screen.getByRole('link', { name: 'Raconter un premier souvenir' }),
+      ).toBeInTheDocument();
     });
 
     it('lets a User with several Families choose one', async () => {
@@ -192,7 +194,7 @@ describe('Family screens', () => {
 
   describe('Family home (SCREEN-002)', () => {
     it.each(['ADMIN', 'CONTRIBUTOR'])(
-      'welcomes a Family without Persons with both add actions for %s, in French then English',
+      'welcomes a Family without Persons with Tell a first memory and Add a person for %s, in French then English',
       async (role) => {
         fakeApi({
           [`GET /families/${ADJI_ID}`]: () => jsonResponse(family(ADJI_ID, 'ADJI', 0, 0, role)),
@@ -202,15 +204,20 @@ describe('Family screens', () => {
         expect(
           await screen.findByRole('heading', { level: 2, name: 'Bienvenue dans la famille ADJI' }),
         ).toBeInTheDocument();
-        expect(screen.getByText('Ajoutons la première personne.')).toBeInTheDocument();
-        expect(screen.getByRole('link', { name: 'Commencer par moi' })).toHaveAttribute(
+        expect(
+          screen.getByText("Racontez l'histoire de votre famille, un souvenir à la fois."),
+        ).toBeInTheDocument();
+        // The first memory asks who it is about (SCREEN-006, OQ-065); the tree can come first.
+        expect(screen.getByRole('link', { name: 'Raconter un premier souvenir' })).toHaveAttribute(
           'href',
-          `/families/${ADJI_ID}/persons/new?mode=me`,
+          `/families/${ADJI_ID}/memories/new`,
         );
-        expect(screen.getByRole('link', { name: "Ajouter quelqu'un d'autre" })).toHaveAttribute(
+        expect(screen.getByRole('link', { name: 'Ajouter une personne' })).toHaveAttribute(
           'href',
           `/families/${ADJI_ID}/persons/new`,
         );
+        expect(screen.queryByRole('link', { name: 'Commencer par moi' })).not.toBeInTheDocument();
+        expect(screen.queryByRole('region', { name: 'Notre histoire' })).not.toBeInTheDocument();
         expect(screen.queryByRole('status')).not.toBeInTheDocument();
 
         await act(() => i18n.changeLanguage('en'));
@@ -218,10 +225,11 @@ describe('Family screens', () => {
         expect(
           screen.getByRole('heading', { level: 2, name: 'Welcome to the ADJI family' }),
         ).toBeInTheDocument();
-        expect(screen.getByText("Let's add the first person.")).toBeInTheDocument();
-        expect(screen.getByText('0 people')).toBeInTheDocument();
-        expect(screen.getByRole('link', { name: 'Start with me' })).toBeInTheDocument();
-        expect(screen.getByRole('link', { name: 'Add someone else' })).toBeInTheDocument();
+        expect(
+          screen.getByText('Tell the story of your family, one memory at a time.'),
+        ).toBeInTheDocument();
+        expect(screen.getByRole('link', { name: 'Tell a first memory' })).toBeInTheDocument();
+        expect(screen.getByRole('link', { name: 'Add a person' })).toBeInTheDocument();
       },
     );
 
@@ -231,11 +239,13 @@ describe('Family screens', () => {
       });
       renderApp(`/families/${ADJI_ID}`);
 
-      expect(await screen.findByText('Ajoutons la première personne.')).toBeInTheDocument();
-      expect(screen.queryByRole('link', { name: 'Commencer par moi' })).not.toBeInTheDocument();
       expect(
-        screen.queryByRole('link', { name: "Ajouter quelqu'un d'autre" }),
+        await screen.findByText("Racontez l'histoire de votre famille, un souvenir à la fois."),
+      ).toBeInTheDocument();
+      expect(
+        screen.queryByRole('link', { name: 'Raconter un premier souvenir' }),
       ).not.toBeInTheDocument();
+      expect(screen.queryByRole('link', { name: 'Ajouter une personne' })).not.toBeInTheDocument();
     });
 
     it('shows the Person and Memory counts and Add a person once Persons exist', async () => {
@@ -246,7 +256,9 @@ describe('Family screens', () => {
 
       expect(await screen.findByText('3 personnes')).toBeInTheDocument();
       expect(screen.getByText('1 souvenir')).toBeInTheDocument();
-      expect(screen.queryByText('Ajoutons la première personne.')).not.toBeInTheDocument();
+      expect(
+        screen.queryByText("Racontez l'histoire de votre famille, un souvenir à la fois."),
+      ).not.toBeInTheDocument();
       expect(screen.getByRole('link', { name: 'Ajouter une personne' })).toHaveAttribute(
         'href',
         `/families/${ADJI_ID}/persons/new`,
@@ -385,10 +397,9 @@ describe('Family screens', () => {
       return (await post?.json()) as Record<string, unknown>;
     }
 
-    it('starts with me from the empty Family Home, then shows 1 person', async () => {
+    it('starts with me (the empty tree, SCREEN-003), then Family Home shows 1 person', async () => {
       const api = personApi();
-      const { router } = renderApp(`/families/${ADJI_ID}`);
-      fireEvent.click(await screen.findByRole('link', { name: 'Commencer par moi' }));
+      const { router } = renderApp(`/families/${ADJI_ID}/persons/new?mode=me`);
 
       expect(
         await screen.findByRole('heading', { level: 1, name: 'Commencer par moi' }),
