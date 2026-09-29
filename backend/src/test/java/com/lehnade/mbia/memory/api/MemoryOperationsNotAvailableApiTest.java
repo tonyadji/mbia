@@ -6,7 +6,6 @@ import com.lehnade.mbia.ApiTestSupport;
 import com.lehnade.mbia.family.FamilyFixtures.FamilyWithMembers;
 import com.lehnade.mbia.genealogy.PersonFixtures;
 import com.lehnade.mbia.memory.MemoryFixtures;
-import java.util.List;
 import java.util.UUID;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -41,19 +40,6 @@ class MemoryOperationsNotAvailableApiTest extends ApiTestSupport {
                         """.formatted(UUID.randomUUID(), person))
                 .exchange());
         assertThat(new MemoryFixtures(mvc, jdbc).count(family.familyId())).isEqualTo(1);
-    }
-
-    /** Until PR-59 (Phase 6 plan): the family story strip and filters are declared, not delivered. */
-    @Test
-    void theFamilyStoryAnswers404UntilItIsDelivered() {
-        assertNotAvailable(mvc.get().uri("/api/v1/families/{familyId}/story/years", family.familyId())
-                .header(HttpHeaders.AUTHORIZATION, family.admin().bearer())
-                .exchange());
-        for (String filter : List.of("year=1975", "undated=true")) {
-            assertNotAvailable(mvc.get().uri("/api/v1/families/{familyId}/memories?" + filter, family.familyId())
-                    .header(HttpHeaders.AUTHORIZATION, family.admin().bearer())
-                    .exchange());
-        }
     }
 
     private static void assertNotAvailable(MvcTestResult result) {

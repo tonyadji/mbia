@@ -5,6 +5,7 @@ import com.lehnade.mbia.api.generated.model.ActivityActor;
 import com.lehnade.mbia.api.generated.model.CreatePhotoMemoryRequest;
 import com.lehnade.mbia.api.generated.model.CreateStoryMemoryRequest;
 import com.lehnade.mbia.api.generated.model.DatePrecision;
+import com.lehnade.mbia.api.generated.model.FamilyStoryYear;
 import com.lehnade.mbia.api.generated.model.FamilyStoryYears;
 import com.lehnade.mbia.api.generated.model.MemoryDate;
 import com.lehnade.mbia.api.generated.model.MemoryPhotoInput;
@@ -18,6 +19,7 @@ import com.lehnade.mbia.api.generated.model.PartialDate;
 import com.lehnade.mbia.api.generated.model.PersonStatus;
 import com.lehnade.mbia.api.generated.model.RelatedPersonReference;
 import com.lehnade.mbia.api.generated.model.UpdateMemoryRequest;
+import com.lehnade.mbia.memory.application.FamilyStoryYearsView;
 import com.lehnade.mbia.memory.application.MemoryPageView;
 import com.lehnade.mbia.memory.application.MemoryPhotoView;
 import com.lehnade.mbia.memory.application.MemoryView;
@@ -28,6 +30,7 @@ import com.lehnade.mbia.memory.application.createstorymemory.CreateStoryMemoryUs
 import com.lehnade.mbia.memory.application.getmemory.GetMemoryUseCase;
 import com.lehnade.mbia.memory.application.listfamilymemories.ListFamilyMemoriesCommand;
 import com.lehnade.mbia.memory.application.listfamilymemories.ListFamilyMemoriesUseCase;
+import com.lehnade.mbia.memory.application.listfamilystoryyears.ListFamilyStoryYearsUseCase;
 import com.lehnade.mbia.memory.application.listpersonmemories.ListPersonMemoriesCommand;
 import com.lehnade.mbia.memory.application.listpersonmemories.ListPersonMemoriesUseCase;
 import com.lehnade.mbia.memory.application.updatememory.UpdateMemoryCommand;
@@ -62,16 +65,19 @@ class MemoriesController implements MemoriesApi {
     private final CreateStoryMemoryUseCase createStoryMemory;
     private final GetMemoryUseCase getMemory;
     private final ListFamilyMemoriesUseCase listFamilyMemories;
+    private final ListFamilyStoryYearsUseCase listFamilyStoryYears;
     private final ListPersonMemoriesUseCase listPersonMemories;
     private final UpdateMemoryUseCase updateMemory;
     private final ArchiveMemoryUseCase archiveMemory;
 
     MemoriesController(CreateStoryMemoryUseCase createStoryMemory, GetMemoryUseCase getMemory,
-            ListFamilyMemoriesUseCase listFamilyMemories, ListPersonMemoriesUseCase listPersonMemories,
-            UpdateMemoryUseCase updateMemory, ArchiveMemoryUseCase archiveMemory) {
+            ListFamilyMemoriesUseCase listFamilyMemories, ListFamilyStoryYearsUseCase listFamilyStoryYears,
+            ListPersonMemoriesUseCase listPersonMemories, UpdateMemoryUseCase updateMemory,
+            ArchiveMemoryUseCase archiveMemory) {
         this.createStoryMemory = createStoryMemory;
         this.getMemory = getMemory;
         this.listFamilyMemories = listFamilyMemories;
+        this.listFamilyStoryYears = listFamilyStoryYears;
         this.listPersonMemories = listPersonMemories;
         this.updateMemory = updateMemory;
         this.archiveMemory = archiveMemory;
@@ -105,18 +111,17 @@ class MemoriesController implements MemoriesApi {
     @Override
     public ResponseEntity<MemoryPage> listFamilyMemories(UUID familyId, Integer year, Boolean undated,
             MemoryType type, Integer page, Integer size) {
-        // The family story filters arrive with PR-59 (Phase 6 plan).
-        if (year != null || undated != null) {
-            throw notAvailableYet();
-        }
         return ResponseEntity.ok(toPage(listFamilyMemories.list(new ListFamilyMemoriesCommand(familyId,
+                Optional.ofNullable(year), Optional.ofNullable(undated),
                 Optional.ofNullable(type).map(MemoryType::name), page, size))));
     }
 
-    /** The strip of years of the family story arrives with PR-59 (Phase 6 plan). */
     @Override
     public ResponseEntity<FamilyStoryYears> listFamilyStoryYears(UUID familyId) {
-        throw notAvailableYet();
+        FamilyStoryYearsView story = listFamilyStoryYears.list(familyId);
+        return ResponseEntity.ok(new FamilyStoryYears(story.years().stream()
+                .map(year -> new FamilyStoryYear(year.year(), Math.toIntExact(year.memoryCount())))
+                .toList(), Math.toIntExact(story.undatedMemoryCount())));
     }
 
     @Override
