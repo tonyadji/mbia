@@ -359,7 +359,7 @@ updatedAt
 A Memory may say when it happened, with the precision of a birth date (§6): an exact date, a year only, or unknown (the default). It is the date of the story, not of its photos: a photo keeps its own optional taken date, and neither fills the other.
 
 - One date per Memory: a Memory spanning several years ("her childhood in Mokolo, 1950–1960") takes one year in the MVP; periods are out of scope.
-- A date in the future is refused (provisional, OQ-063).
+- A date in the future is refused (OQ-063).
 - The date can be set, changed or removed when the Memory is written or edited.
 - Memories written before this rule have no date: they are undated.
 - The year of a Memory places it in the family story (§20).
@@ -495,7 +495,7 @@ Show at minimum:
 
 - Family name;
 - the family story (below), first on the screen;
-- add Memory action (the primary action, provisional, OQ-066);
+- add Memory action (the primary action, OQ-066);
 - recent activity (below);
 - Person count;
 - Memory count;
@@ -506,7 +506,7 @@ Show at minimum:
 
 The family story answers "what is the story of my family?" by showing the Family's Memories through time. It is visible to every member, VIEWER included, and shows only ACTIVE Memories.
 
-On Family Home, a strip of years that scrolls sideways (provisional details, OQ-064):
+On Family Home, a strip of years that scrolls sideways (OQ-064):
 
 - one entry per year that has at least one Memory, in chronological order, opened on the most recent year, each with its number of Memories;
 - a last entry for the Memories without a year, when there are any;
@@ -514,7 +514,7 @@ On Family Home, a strip of years that scrolls sideways (provisional details, OQ-
 
 A year opens "What happened in {year}" (SCREEN-016):
 
-- the Memories of that year: those with an exact date first, in date order, then those with the year only, in the order they were added (provisional, OQ-064);
+- the Memories of that year: those with an exact date first, in date order, then those with the year only, in the order they were added (OQ-064);
 - a way to move to another year of the strip without going back.
 
 The Memories without a year open the same screen, titled with the undated label (OQ-067), most recently added first.

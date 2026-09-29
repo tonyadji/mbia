@@ -82,7 +82,7 @@ The family story first, from the human's product review: Mbia answers "what is t
 - a new Family starts by telling a first memory, the Person created on the way; `Start with me` stays on the empty tree and in the invitee's onboarding (`mvp.md` §14, SCREEN-002, SCREEN-003, SCREEN-006, OQ-065); Family Home's primary action becomes `Tell a memory` (OQ-066);
 - funnel, metrics, release criteria and definition of complete follow the new value path; new event `family_story_viewed` (`mvp.md` §25, §26, §28, §29);
 - out of scope: the family timeline leaves the list; events, ceremonies and periods stay out; family questions recorded for V1 (OQ-068); the idea of ephemeral contributors recorded, not decided (`mvp.md` §27);
-- open: OQ-063 to OQ-068; the specs follow their recommendations, marked provisional. The contract, the data model and a Phase 6 delivery plan follow once they are decided.
+- decided with the human: OQ-063 to OQ-067 (recommendations accepted); open: OQ-068 (family questions, V1). The contract, the data model and a Phase 6 delivery plan follow.
 
 ### 0.6.7 — 2026-09-27
 

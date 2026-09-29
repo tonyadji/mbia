@@ -21,7 +21,7 @@ Rules:
 - transactional emails are sent in the recipient's language when known, otherwise in the language chosen by the sender (invitations use the inviter's current language);
 - dates are formatted according to the active language (`12 mars 1954` / `March 12, 1954`); a `YEAR_ONLY` date shows only the year;
 - the product term for Memory is **Souvenir** in French and **Memory** in English.
-- the family story (`mvp.md` §20, SCREEN-002, SCREEN-016) uses these labels (provisional, OQ-067):
+- the family story (`mvp.md` §20, SCREEN-002, SCREEN-016) uses these labels (OQ-067):
 
 | Use | French | English |
 |---|---|---|

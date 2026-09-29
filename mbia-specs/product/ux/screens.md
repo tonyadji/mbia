@@ -74,7 +74,7 @@ On the first arrival after accepting an invitation (SCREEN-010), a short message
 
 ## Primary action
 
-ADMIN / CONTRIBUTOR: `Tell a memory` (SCREEN-006) (provisional, OQ-066). A VIEWER has no primary action: the family story is the content of the screen.
+ADMIN / CONTRIBUTOR: `Tell a memory` (SCREEN-006) (OQ-066). A VIEWER has no primary action: the family story is the content of the screen.
 
 ## Secondary actions
 
@@ -350,7 +350,7 @@ When launched from a Person profile, preselect that Person; otherwise preselect 
 
 ## Who is this memory about?
 
-When the Family has no Person yet (`Tell a first memory`, SCREEN-002), the form starts by asking who the memory is about, before the title (provisional, OQ-065):
+When the Family has no Person yet (`Tell a first memory`, SCREEN-002), the form starts by asking who the memory is about, before the title (OQ-065):
 
 ```text
 Who is this memory about?
