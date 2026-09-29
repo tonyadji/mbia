@@ -1,29 +1,31 @@
 # Mbia — MVP Functional Specification
 
-**Version:** 0.2  
+**Version:** 0.3  
 **Status:** Draft / Product discovery  
 **Target:** first commercially testable release
 
 ## 1. MVP hypothesis
 
-> Families are willing to create and collaboratively enrich a private digital space that represents their family relationships and preserves memories attached to family members.
+> Families are willing to create, and enrich together, a private space where they tell and pass on the stories and memories of their family, the family tree showing who is who.
 
-The MVP must support the complete value path:
+The MVP answers "what is the story of my family?" before "what is my family tree?" (`vision.md` §1). It must support the complete value path:
 
 ```text
 Create family
     ↓
 Add people
     ↓
-Create relationships
-    ↓
-View family tree
-    ↓
 Add memories
+    ↓
+View family story
     ↓
 Invite relatives
     ↓
 Collaborate
+    ↓
+Create relationships
+    ↓
+View family tree
 ```
 
 ## 2. Platform
@@ -290,16 +292,17 @@ A User creates a Family by providing its name.
 
 The creator becomes ADMIN automatically.
 
-After Family creation, onboarding should encourage:
+After Family creation, onboarding starts with the family's story:
 
 ```text
-Add myself
-→ add parent
-→ add second parent
-→ expand family
+Tell a first memory
+→ who is it about? (me, or someone else: a Person created on the way)
+→ the story, its photos, when it happened
+→ read it in the family story
+→ add relatives, invite them
 ```
 
-The User may also start with someone else.
+Building the tree first stays possible (`Add a person`), but it is no longer the first gesture. Details: SCREEN-002, SCREEN-006 (OQ-065).
 
 ## 15. Family tree
 
@@ -340,6 +343,7 @@ Fields include:
 ```text
 title            required
 content          the story text; required when the Memory has no photo
+happenedAt       optional: when it happened, with its precision (below)
 photos[]         0 to N, in the order they were added
   photo          an uploaded image (§23)
   caption        optional
@@ -349,6 +353,16 @@ createdBy
 createdAt
 updatedAt
 ```
+
+### When a Memory happened
+
+A Memory may say when it happened, with the precision of a birth date (§6): an exact date, a year only, or unknown (the default). It is the date of the story, not of its photos: a photo keeps its own optional taken date, and neither fills the other.
+
+- One date per Memory: a Memory spanning several years ("her childhood in Mokolo, 1950–1960") takes one year in the MVP; periods are out of scope.
+- A date in the future is refused (provisional, OQ-063).
+- The date can be set, changed or removed when the Memory is written or edited.
+- Memories written before this rule have no date: they are undated.
+- The year of a Memory places it in the family story (§20).
 
 ### Photos of a Memory
 
@@ -480,12 +494,32 @@ Rules:
 Show at minimum:
 
 - Family name;
-- access to tree;
+- the family story (below), first on the screen;
+- add Memory action (the primary action, provisional, OQ-066);
+- recent activity (below);
 - Person count;
 - Memory count;
-- recent activity (below);
-- add Person action;
-- add Memory action.
+- access to tree;
+- add Person action.
+
+### Family story
+
+The family story answers "what is the story of my family?" by showing the Family's Memories through time. It is visible to every member, VIEWER included, and shows only ACTIVE Memories.
+
+On Family Home, a strip of years that scrolls sideways (provisional details, OQ-064):
+
+- one entry per year that has at least one Memory, in chronological order, opened on the most recent year, each with its number of Memories;
+- a last entry for the Memories without a year, when there are any;
+- hidden while the Family has no Memory, replaced by the invitation to tell a first memory.
+
+A year opens "What happened in {year}" (SCREEN-016):
+
+- the Memories of that year: those with an exact date first, in date order, then those with the year only, in the order they were added (provisional, OQ-064);
+- a way to move to another year of the strip without going back.
+
+The Memories without a year open the same screen, titled with the undated label (OQ-067), most recently added first.
+
+Later versions add events and ceremonies to the year screen (§27); the MVP shows Memories only.
 
 ### Recent activity
 
@@ -565,6 +599,7 @@ family_created
 person_created
 relationship_created
 memory_created
+family_story_viewed
 family_invitation_sent
 family_invitation_accepted
 tree_viewed
@@ -576,13 +611,13 @@ Primary funnel:
 ```text
 User registered
 → Family created
-→ first Person
-→ 3 Persons
-→ first relationship
 → first Memory
+→ first dated Memory
+→ family story viewed
 → first invite
 → invite accepted
 → second-user contribution
+→ first relationship
 ```
 
 ## 26. MVP metrics
@@ -590,12 +625,14 @@ User registered
 Candidate metrics:
 
 - % accounts creating a Family;
-- % Families with ≥ 5 Persons;
-- % Families with ≥ 10 Persons;
 - % Families with at least 1 Memory;
+- % Families with ≥ 5 Memories;
+- % Families whose story covers ≥ 3 different years;
+- % Families whose story is viewed by ≥ 2 members;
+- % Families with Memories written by ≥ 2 members;
 - % Families sending at least 1 invite;
 - invite acceptance rate;
-- % Families with multiple active Contributors;
+- % Families with ≥ 5 Persons;
 - D+7 return;
 - D+30 return.
 
@@ -610,7 +647,7 @@ Do not add spontaneously:
 - native mobile apps;
 - video/audio;
 - voice testimonies;
-- structured events;
+- structured events, ceremonies (they will join the year screen of the family story later);
 - advanced albums;
 - facial recognition;
 - generative AI;
@@ -622,13 +659,21 @@ Do not add spontaneously:
 - public trees;
 - cross-Family matching;
 - public social network;
-- chat/comments/likes;
+- chat/comments/likes, and family questions (below);
 - advanced cousin degree engine;
 - legal/traditional marriage modeling;
 - advanced geolocation;
-- family timeline;
+- periods spanning several years in the family story;
 - mandatory billing;
 - marketplace.
+
+### Family questions (V1)
+
+Planned for V1, not in the MVP (`vision.md` §7): a member asks the family a question ("Who was grandmother Marie's father?"); it opens a thread where the other members answer; the author marks the question answered. How it joins the family story, who may ask, the kinds of answers and how members learn about new questions are open (OQ-068).
+
+### Ephemeral contributors (idea, not decided)
+
+Recorded so that the idea is not lost; not planned, no rule applies yet. A person outside the Family who knows part of its story (a family friend, for example) would contribute to one resource (a Memory, then a family question) through a single-use contribution link and a code given by the one who asked, valid 24 hours by default. Such access would be an exception to Family isolation (§22) and to authentication through Keycloak (ADR-005): it would need an ADR and its own review before any work.
 
 ## 28. Release criteria
 
@@ -637,16 +682,17 @@ The MVP is not ready until a real family can independently complete:
 ```text
 sign up
 → create Family
-→ create own Person
-→ add parents
-→ view tree
-→ add grandparent
-→ see derived kinship
-→ add a Memory with a photo and its story
+→ tell a first Memory about a Person created on the way, with a photo, its story and its year
+→ add people
+→ add memories
+→ view the family story, and what happened in a year
 → invite relative
 → relative joins
 → relative links themselves to existing Person
-→ relative contributes
+→ relative contributes a Memory, which appears in the family story
+→ create relationships (parents, a grandparent)
+→ view tree
+→ see derived kinship
 ```
 
 Cross-Family access must fail.
@@ -658,10 +704,11 @@ A family must be able to complete, without technical assistance:
 ```text
 onboarding
 → creation
-→ exploration
-→ preservation
+→ telling
+→ reading the family story
 → invitation
 → collaboration
+→ structuring the tree
 ```
 
 ## 30. Personal data rights

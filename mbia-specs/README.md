@@ -71,6 +71,19 @@ The visual mockup is a design reference. Product rules and screen behavior are d
 
 ## Changelog
 
+### 0.7 — 2026-09-29
+
+The family story first, from the human's product review: Mbia answers "what is the story of my family?" before "what is my family tree?"; the tree becomes the index of the story.
+
+- vision: tell, read, transmit, then structure; family questions planned for V1 (`vision.md` §1, §2, §4, §5, §7);
+- MVP hypothesis and value path: create family → add people → add memories → view family story → invite → collaborate → create relationships → view tree (`mvp.md` §1);
+- a Memory may say when it happened, one date with its precision; a date in the future is refused (`mvp.md` §17, SCREEN-006, SCREEN-013, SCREEN-014, OQ-063);
+- the family story: a strip of years on Family Home and "What happened in {year}", with the Memories without a year (`mvp.md` §20, SCREEN-002, new SCREEN-016, `YearStrip` in `design-guidelines.md` §7, OQ-064, OQ-067);
+- a new Family starts by telling a first memory, the Person created on the way; `Start with me` stays on the empty tree and in the invitee's onboarding (`mvp.md` §14, SCREEN-002, SCREEN-003, SCREEN-006, OQ-065); Family Home's primary action becomes `Tell a memory` (OQ-066);
+- funnel, metrics, release criteria and definition of complete follow the new value path; new event `family_story_viewed` (`mvp.md` §25, §26, §28, §29);
+- out of scope: the family timeline leaves the list; events, ceremonies and periods stay out; family questions recorded for V1 (OQ-068); the idea of ephemeral contributors recorded, not decided (`mvp.md` §27);
+- open: OQ-063 to OQ-068; the specs follow their recommendations, marked provisional. The contract, the data model and a Phase 6 delivery plan follow once they are decided.
+
 ### 0.6.7 — 2026-09-27
 
 - A group invitation link (OQ-052): deferred. Invitation links stay single-use; a reusable link and join requests are not part of Phase 5 (`mvp.md` §18; `delivery/phase-5-collaboration.md` §2.1, §5).
