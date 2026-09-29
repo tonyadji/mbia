@@ -5,6 +5,12 @@
     "titleLabel": "Titre",
     "contentLabel": "Votre histoire",
     "contentOptional": "Facultatif quand le souvenir a une photo.",
+    "happenedAt": {
+      "label": "Quand est-ce arrivé ?",
+      "date": "Date à laquelle c'est arrivé",
+      "year": "Année où c'est arrivé",
+      "future": "Cette date est dans le futur. Un souvenir raconte ce qui est déjà arrivé."
+    },
     "photos": {
       "label": "Photos",
       "add": "Ajouter une photo",
@@ -74,6 +80,8 @@
     "more": "Voir plus"
   },
   "screen": {
+    "happenedIn": "En {{year}}",
+    "happenedOn": "Le {{date}}",
     "persons": "Personnes concernées",
     "status": {
       "ARCHIVED": "Profil archivé",

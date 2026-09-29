@@ -487,6 +487,7 @@ describe('Person photo screens', () => {
               status: 'ACTIVE',
               title: 'Le marché',
               content: 'Une histoire.',
+              happenedAt: { precision: 'UNKNOWN' },
               relatedPersons: [
                 {
                   id: MARIE_ID,

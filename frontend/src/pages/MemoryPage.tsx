@@ -15,6 +15,7 @@ import { ArchiveMemoryDialog } from '../memories/ArchiveMemoryDialog';
 import { MemoryPhotos } from '../memories/MemoryPhotos';
 import { useArchiveMemory } from '../memories/useArchiveMemory';
 import { useMemory } from '../memories/useMemory';
+import { formatPartialDate } from '../persons/formatPartialDate';
 import { familyHomePath } from './FamilyHomePage';
 import { familyMemoriesPath } from './FamilyMemoriesPage';
 import { FamilyNotFoundPage } from './FamilyNotFoundPage';
@@ -155,6 +156,14 @@ function MemoryView({
   const language = isSupportedLanguage(i18n.resolvedLanguage)
     ? i18n.resolvedLanguage
     : DEFAULT_LANGUAGE;
+  // "In 1975", "On 12 March 1975" in the reader's language; nothing when unknown (OQ-063).
+  const happenedOn = formatPartialDate(memory.happenedAt, language);
+  const happenedAt =
+    happenedOn === null
+      ? null
+      : memory.happenedAt.precision === 'YEAR_ONLY'
+        ? t('screen.happenedIn', { year: happenedOn })
+        : t('screen.happenedOn', { date: happenedOn });
   const actor = memory.createdBy.deleted
     ? t('screen.formerMember')
     : (memory.createdBy.displayName ?? t('screen.member'));
@@ -191,6 +200,8 @@ function MemoryView({
         <h1 ref={heading} tabIndex={-1} className="text-display break-words text-text outline-none">
           {memory.title}
         </h1>
+        {/* Plain text until the year of the family story exists (PR-61). */}
+        {happenedAt !== null && <p className="text-body text-text">{happenedAt}</p>}
         <p className="text-caption text-text-muted">
           {t('screen.addedBy', { actor, date: formatDate(new Date(memory.createdAt), language) })}
         </p>

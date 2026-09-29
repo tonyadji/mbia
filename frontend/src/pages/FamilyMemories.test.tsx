@@ -55,6 +55,7 @@ function memory(overrides: Record<string, unknown> = {}) {
     status: 'ACTIVE',
     title: 'Le marché de Yaoundé',
     content: 'Grand-mère vendait du plantain.',
+    happenedAt: { precision: 'UNKNOWN' },
     relatedPersons: [{ id: AWA_ID, displayName: 'Awa Ngo', status: 'ACTIVE' }],
     createdBy: { userId: 'u1', displayName: 'Tony', deleted: false },
     createdAt: '2026-09-20T10:00:00Z',

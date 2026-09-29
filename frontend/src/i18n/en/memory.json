@@ -5,6 +5,12 @@
     "titleLabel": "Title",
     "contentLabel": "Your story",
     "contentOptional": "Optional when the memory has a photo.",
+    "happenedAt": {
+      "label": "When did it happen?",
+      "date": "Date it happened",
+      "year": "Year it happened",
+      "future": "This date is in the future. A memory tells what has already happened."
+    },
     "photos": {
       "label": "Photos",
       "add": "Add a photo",
@@ -74,6 +80,8 @@
     "more": "Show more"
   },
   "screen": {
+    "happenedIn": "In {{year}}",
+    "happenedOn": "On {{date}}",
     "persons": "People in this memory",
     "status": {
       "ARCHIVED": "Archived profile",

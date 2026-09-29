@@ -134,6 +134,7 @@ function fakeApi({ limit = 3, limits = [] as number[], create = [] as (() => Res
               status: 'ACTIVE',
               title: body.title,
               content: body.content,
+              happenedAt: { precision: 'UNKNOWN' },
               photos: [],
               relatedPersons: [{ id: MARIE_ID, displayName: 'Marie Adji', status: 'ACTIVE' }],
               createdBy: { userId: 'u1', displayName: 'Marie', deleted: false },
@@ -416,6 +417,44 @@ describe('Photos in Add Memory (SCREEN-006)', () => {
 
     expect(await screen.findByText('Indiquez une année entre 1 et 9999.')).toBeInTheDocument();
     expect(api.posted).toHaveLength(0);
+  });
+
+  it('keeps the taken date of a photo as before: only the date of the Memory refuses the future', async () => {
+    const api = fakeApi();
+    renderApp();
+    await fillTitle('Le marché');
+    pick([jpeg('a.jpg')]);
+    await finishUploads(1);
+    await screen.findByRole('img', { name: 'Photo 1' });
+
+    fireEvent.click(screen.getByRole('button', { name: "Plus d'informations sur la photo 1" }));
+    const takenAt = screen.getByRole('combobox', {
+      name: 'Quand cette photo a-t-elle été prise ?',
+    });
+    fireEvent.change(takenAt, { target: { value: 'EXACT' } });
+    expect(screen.getByLabelText('Date de la photo')).not.toHaveAttribute('max');
+    fireEvent.change(takenAt, { target: { value: 'YEAR_ONLY' } });
+    fireEvent.change(screen.getByRole('textbox', { name: 'Année de la photo' }), {
+      target: { value: '2099' },
+    });
+    await waitFor(() => {
+      expect(publish()).toBeEnabled();
+    });
+    fireEvent.click(publish());
+
+    await waitFor(() => {
+      expect(api.posted).toHaveLength(1);
+    });
+    expect(api.posted[0]).toMatchObject({
+      photos: [
+        {
+          mediaAssetId: assetId(1),
+          caption: null,
+          takenAt: { precision: 'YEAR_ONLY', year: 2099 },
+        },
+      ],
+    });
+    expect(api.posted[0]).not.toHaveProperty('happenedAt');
   });
 
   it.each([
