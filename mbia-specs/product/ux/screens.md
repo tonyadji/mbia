@@ -1,6 +1,6 @@
 # Mbia MVP — UI Screens Specification
 
-**Version:** 0.2  
+**Version:** 0.3  
 **Status:** Draft
 
 ## 1. Source of truth
@@ -60,7 +60,10 @@ ACTIVE ADMIN / CONTRIBUTOR / VIEWER.
 
 ## Data
 
+In this order (`mvp.md` §20):
+
 - Family name;
+- **the family story**: the strip of years of `mvp.md` §20 under the title "Our story" (OQ-067). Each entry is a button with its year and its number of Memories ("1975 · 3 memories"); the last entry, when there are Memories without a year, uses the undated label. The strip scrolls sideways, by swipe and by keyboard, and opens on the most recent year (OQ-064). An entry opens SCREEN-016. While the Family has Persons but no Memory, the strip is replaced by a short invitation: "Your family's story starts with a first memory", with `Tell a memory` for ADMIN / CONTRIBUTOR (text only for a VIEWER);
 - Person count;
 - Memory count;
 - recent activity: the 10 most recent lines of `mvp.md` §20, each with who, what and when ("Tony added 6 people · 2 hours ago"), leading to its Person or Memory while it is ACTIVE (OQ-054). Without any activity yet, the section is not shown.
@@ -71,14 +74,12 @@ On the first arrival after accepting an invitation (SCREEN-010), a short message
 
 ## Primary action
 
-`View family tree`
+ADMIN / CONTRIBUTOR: `Tell a memory` (SCREEN-006) (provisional, OQ-066). A VIEWER has no primary action: the family story is the content of the screen.
 
 ## Secondary actions
 
-ADMIN / CONTRIBUTOR only:
-
-- `Add a relative` when the current User has a linked Person (choices: `family-tree-ux.md` §9.1; the Family carries `myLinkedPersonId`, OQ-010), otherwise `Add a person`;
-- add Memory.
+- `View family tree`, for every member;
+- ADMIN / CONTRIBUTOR only: `Add a relative` when the current User has a linked Person (choices: `family-tree-ux.md` §9.1; the Family carries `myLinkedPersonId`, OQ-010), otherwise `Add a person`.
 
 ## Empty state
 
@@ -87,15 +88,15 @@ When the Family has no Persons:
 ```text
 Welcome to the {familyName} family
 
-Let's add the first person.
+Tell the story of your family, one memory at a time.
 
-[ Start with me ]
-[ Add someone else ]
+[ Tell a first memory ]
+[ Add a person ]
 ```
 
 ADMIN / CONTRIBUTOR see both actions; a VIEWER sees the explanatory text only.
 
-`Start with me` opens SCREEN-004 in "Start with me" mode.
+`Tell a first memory` opens SCREEN-006, which asks first who the memory is about (SCREEN-006 "Who is this memory about?", OQ-065). `Add a person` opens SCREEN-004 in "Standalone Person" mode.
 
 ---
 
@@ -123,7 +124,7 @@ Primary visible structure (layout rules: `family-tree-ux.md` §6.1):
 - children;
 - siblings chip.
 
-Empty state (Family without Persons): same as the Family Home empty state.
+Empty state (Family without Persons): explains that nobody is in the tree yet; ADMIN / CONTRIBUTOR see `Start with me` (SCREEN-004 "Start with me" mode) and `Add someone else`; a VIEWER sees the text only. It no longer mirrors Family Home, which starts with a memory (`mvp.md` §14).
 
 Loading: skeleton Person cards. When recentering, keep the current tree visible until the new one is loaded; never blank the canvas.
 
@@ -324,6 +325,8 @@ One form, with no initial choice (OQ-042):
 ```text
 title *
 content            required when no photo is added
+happenedAt         optional: `When did it happen?`, as exact date, year only or unknown,
+                   like a birth date; a date in the future is refused (`mvp.md` §17, OQ-063)
 photos[]           0 to the Family's limit (3 at launch)
   caption          optional
   takenAt          optional, behind `More information`: `When was this photo taken?`,
@@ -345,6 +348,21 @@ A story is plain text: line breaks are kept; no formatting is interpreted (OQ-03
 
 When launched from a Person profile, preselect that Person; otherwise preselect the User's linked Person when it exists.
 
+## Who is this memory about?
+
+When the Family has no Person yet (`Tell a first memory`, SCREEN-002), the form starts by asking who the memory is about, before the title (provisional, OQ-065):
+
+```text
+Who is this memory about?
+
+[ Me ]            creates the User's own Person, linked to them (as SCREEN-004 "Start with me")
+[ Someone else ]  first name *, last name
+```
+
+In every other case, the related Persons are chosen as today, and a Person who is not in the tree yet can be added from the same field (`Add {typed name}`: first name and last name only).
+
+A Person created from this form is created when the Memory is published, just before it; possible duplicates (`mvp.md` §11) are offered as choices. When the Person is created but the Memory is then refused, the Person stays created, the form keeps what was written and says so, and the User can publish again (OQ-065).
+
 ---
 
 # SCREEN-013 — Memory
@@ -362,6 +380,7 @@ Any ACTIVE Family member. An archived Memory is not found (OQ-037).
 ## Display
 
 - its title;
+- when it happened, when known ("In 1975", "On 12 March 1975"), linking to the year of the family story (SCREEN-016);
 - its photos, in the order they were added, as a grid of square thumbnails without text (2 columns on a phone, 3 from tablet width). Each thumbnail is a button named by the photo's alternative text: its caption, otherwise "Photo {n} of {count}". A tap opens the photo viewer on that photo. This layout is provisional until the human has confirmed it (OQ-048: the stacked layout was not kept);
 - its full text, as plain text with line breaks kept, when there is one;
 - the related Persons, each linking to their profile; an archived Person is shown by name, marked "archived", and links to their profile only for the ADMIN (OQ-035);
@@ -390,7 +409,7 @@ The creator or an ADMIN, with a role that can write (OQ-041).
 
 ## Fields
 
-The fields of SCREEN-006, with the Memory's photos: their caption and `More information` can be changed, a photo can be removed, and `Add a photo` adds new ones within the limit. A photo is not replaced in place, nor reordered.
+The fields of SCREEN-006, with the Memory's date, which can be changed or removed, and its photos: their caption and `More information` can be changed, a photo can be removed, and `Add a photo` adds new ones within the limit. A photo is not replaced in place, nor reordered.
 
 When a lowered limit leaves the Memory with more photos than allowed, its photos stay; `Add a photo` stays disabled until enough are removed (`mvp.md` §17).
 
@@ -429,6 +448,32 @@ ADMIN / CONTRIBUTOR see `Add a memory` (SCREEN-006).
 Explains that the Family has no Memory yet; ADMIN / CONTRIBUTOR also see `Add a memory`, a VIEWER sees the text only.
 
 (OQ-032)
+
+---
+
+# SCREEN-016 — What happened in {year}
+
+## Logical route
+
+```text
+/families/{familyId}/story/{year}
+/families/{familyId}/story/undated
+```
+
+## Access
+
+Any ACTIVE Family member, VIEWER included (`mvp.md` §20).
+
+## Display
+
+- the title "What happened in {year}", or the undated label for the Memories without a year (OQ-067);
+- the strip of years of SCREEN-002, the current entry marked (not by color only) and kept in view, so that another year opens without going back; `Previous year` and `Next year` move to the neighbouring entries of the strip, disabled at its ends;
+- the ACTIVE Memories of that year, in the order of `mvp.md` §20 (OQ-064), 20 at a time with `Show more`: Memory cards as on SCREEN-015, each with its date ("12 March" when exact, nothing more when the year only), opening SCREEN-013;
+- ADMIN / CONTRIBUTOR see `Tell a memory` (SCREEN-006).
+
+A year with no ACTIVE Memory left (its last Memory archived or moved to another year) shows an empty state that explains it and offers the other years of the strip. An invalid year (not a number from 1 to 9999) is not found.
+
+Later, events and ceremonies of the year appear on this screen too (`mvp.md` §27); the MVP shows Memories only.
 
 ---
 

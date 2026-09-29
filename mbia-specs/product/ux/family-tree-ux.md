@@ -276,12 +276,16 @@ Every Memory must be linked to at least one Person. When the flow starts from a 
 Flow:
 
 ```text
-title
+(who is it about?, only for a first memory when the Family has no Person, SCREEN-006)
+→ title
 → story text (optional when there is a photo)
+→ when it happened (optional: exact date, year only or unknown)
 → photos (optional, up to the Family's limit), each with an optional caption and taken date
-→ related Persons
+→ related Persons (a Person not in the tree yet can be added on the way)
 → publish
 ```
+
+A published Memory takes its place in the family story, in its year or among the undated Memories (`mvp.md` §20, SCREEN-016).
 
 Each photo is sent as soon as it is chosen: show its progress; on failure, explain in human language and allow retry or removal. "Publish" waits until every chosen photo is ready.
 
@@ -305,14 +309,18 @@ This link cannot be added because it would make Paul one of his own ancestors.
 
 ### First value moment
 
-The User sees a small family tree they created themselves.
+The User tells a first memory and finds it in the family story, in its year.
 
 ### Second value moment
 
-The User opens a grandparent and sees photos or stories attached to them.
+The User reads "what happened in {year}" and finds stories and photos of the family together.
 
 ### Third value moment
 
-An invited relative contributes a memory the original User did not have.
+An invited relative contributes a memory the original User did not have, and it appears in the family story.
+
+### Fourth value moment
+
+The User opens a grandparent in the tree and sees the stories told about them, knowing exactly how they are related.
 
 These moments should guide prioritization of UX polish.
