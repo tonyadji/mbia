@@ -1,0 +1,52 @@
+{
+  "realm": "mbia",
+  "enabled": true,
+  "sslRequired": "none",
+  "registrationEmailAsUsername": true,
+  "loginWithEmailAllowed": true,
+  "duplicateEmailsAllowed": false,
+  "internationalizationEnabled": true,
+  "supportedLocales": ["fr", "en"],
+  "defaultLocale": "fr",
+  "clients": [
+    {
+      "clientId": "mbia-api-test",
+      "name": "Test-only client: direct access grants for backend integration tests",
+      "enabled": true,
+      "protocol": "openid-connect",
+      "publicClient": true,
+      "standardFlowEnabled": false,
+      "implicitFlowEnabled": false,
+      "directAccessGrantsEnabled": true,
+      "serviceAccountsEnabled": false,
+      "defaultClientScopes": ["basic", "profile", "email"],
+      "optionalClientScopes": [],
+      "protocolMappers": [
+        {
+          "name": "mbia-api audience",
+          "protocol": "openid-connect",
+          "protocolMapper": "oidc-audience-mapper",
+          "consentRequired": false,
+          "config": {
+            "included.custom.audience": "mbia-api",
+            "access.token.claim": "true",
+            "id.token.claim": "false",
+            "introspection.token.claim": "true"
+          }
+        }
+      ]
+    }
+  ],
+  "users": [
+    {
+      "username": "dana@mbia.test",
+      "email": "dana@mbia.test",
+      "firstName": "Dana",
+      "lastName": "Test",
+      "enabled": true,
+      "emailVerified": true,
+      "attributes": { "locale": ["en"] },
+      "credentials": [{ "type": "password", "value": "dana-test-1", "temporary": false }]
+    }
+  ]
+}

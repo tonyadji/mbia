@@ -1,0 +1,129 @@
+{
+  "create": {
+    "title": "Create your family",
+    "intro": "Give it a name: you can then add your relatives and your memories.",
+    "nameLabel": "Family name",
+    "namePlaceholder": "For example: Adji family",
+    "nameRequired": "Enter the family name.",
+    "nameTooLong": "The name cannot be longer than {{max}} characters.",
+    "submit": "Create the family"
+  },
+  "home": {
+    "personCount_one": "{{count}} person",
+    "personCount_other": "{{count}} people",
+    "memoryCount_one": "{{count}} memory",
+    "memoryCount_other": "{{count}} memories",
+    "created": "The {{name}} family has been created.",
+    "emptyTitle": "Welcome to the {{name}} family",
+    "emptyBody": "Tell the story of your family, one memory at a time.",
+    "tellFirstMemory": "Tell a first memory",
+    "addPerson": "Add a person",
+    "personAdded": "{{name}} is now part of the family.",
+    "selfAdded": "You are now part of the {{family}} family.",
+    "viewProfile": "View profile",
+    "viewTree": "View family tree",
+    "addRelative": "Add a relative",
+    "relatives": {
+      "FATHER": "My father",
+      "MOTHER": "My mother",
+      "PARTNER": "My partner",
+      "CHILD": "My child",
+      "someoneElse": "Someone else"
+    },
+    "addMemory": "Add a memory",
+    "search": "Search the family…",
+    "welcome": {
+      "title": "Welcome to the {{name}} family",
+      "viewTree": "View the family tree",
+      "close": "Close the welcome message"
+    },
+    "activity": {
+      "title": "Recent activity",
+      "formerMember": "Former member",
+      "member": "A member",
+      "someone": "someone",
+      "lines": {
+        "PERSON_CREATED": "{{actor}} added {{name}}",
+        "PERSON_ARCHIVED": "{{actor}} archived {{name}}",
+        "PERSON_RESTORED": "{{actor}} restored {{name}}",
+        "PERSON_MERGED": "{{actor}} merged {{merged}} into {{name}}",
+        "RELATIONSHIP_CREATED": "{{actor}} linked {{source}} and {{target}}",
+        "RELATIONSHIP_ARCHIVED": "{{actor}} removed the link between {{source}} and {{target}}",
+        "MEMORY_CREATED": "{{actor}} added the memory “{{title}}”",
+        "MEMORY_CREATED_untitled": "{{actor}} added a memory",
+        "INVITATION_ACCEPTED": "{{member}} joined the family",
+        "MEMBER_LEFT": "{{member}} left the family",
+        "MEMBER_REMOVED": "{{actor}} removed {{member}} from the family"
+      },
+      "groups": {
+        "PERSON_CREATED": "{{actor}} added {{count}} people",
+        "PERSON_ARCHIVED": "{{actor}} archived {{count}} people",
+        "PERSON_RESTORED": "{{actor}} restored {{count}} people",
+        "PERSON_MERGED": "{{actor}} merged {{count}} duplicates",
+        "RELATIONSHIP_CREATED": "{{actor}} added {{count}} family links",
+        "RELATIONSHIP_ARCHIVED": "{{actor}} removed {{count}} family links",
+        "MEMORY_CREATED": "{{actor}} added {{count}} memories",
+        "INVITATION_ACCEPTED": "{{actor}} joined the family",
+        "MEMBER_LEFT": "{{actor}} left the family",
+        "MEMBER_REMOVED": "{{actor}} removed {{count}} members"
+      }
+    }
+  },
+  "chooser": {
+    "title": "Your families"
+  },
+  "notFound": {
+    "title": "Family not found",
+    "body": "This family does not exist, or you are not one of its members.",
+    "back": "Back to my families"
+  },
+  "navigation": {
+    "label": "Family navigation",
+    "home": "Home",
+    "tree": "Tree",
+    "memories": "Memories",
+    "members": "Members"
+  },
+  "members": {
+    "title": "Members",
+    "invite": "Invite a relative",
+    "unnamed": "Member without a name",
+    "linkedTo": "Profile: {{name}}",
+    "roles": {
+      "ADMIN": "Family administrator"
+    },
+    "roleOf": "Permission of {{name}}",
+    "remove": "Remove",
+    "removeName": "Remove {{name}} from the family",
+    "removeConfirm": "Remove {{name}} from the family?",
+    "contributionsStay": "The people, links and memories {{name}} added stay in the family. Their profile stays in the tree, no longer linked to them. They can come back only with a new invitation.",
+    "removeConfirmAction": "Remove from the family",
+    "cancel": "Cancel",
+    "close": "Close",
+    "leave": "Leave this family",
+    "leaveConfirm": "Leave this family?",
+    "leaveHelp": "The people, links and memories you added stay in the family. Your profile stays in the tree, no longer linked to you. To come back, you will need a new invitation.",
+    "leaveAction": "Leave the family",
+    "onlyAdmin": "A family always keeps its administrator, so you cannot leave it. To hand this role over to someone else, contact Mbia support.",
+    "refused": {
+      "CONCURRENT_MODIFICATION": "{{name}}'s membership changed in the meantime. The list is up to date: try again.",
+      "RESOURCE_NOT_FOUND": "{{name}} is no longer a member of the family."
+    },
+    "invitations": {
+      "title": "Pending invitations",
+      "for": "For {{name}}",
+      "sharedLink": "Shared link",
+      "renewFor": "Renew the invitation: {{target}}",
+      "revoke": "Revoke",
+      "revokeFor": "Revoke the invitation: {{target}}",
+      "revokeConfirm": "Revoke the invitation? {{target}}",
+      "revokeHelp": "Its link will stop working at once. This cannot be undone: to invite this relative again, create a new invitation.",
+      "revokeAction": "Revoke the invitation",
+      "refused": {
+        "CONCURRENT_MODIFICATION": "This invitation changed in the meantime. The list is up to date: try again.",
+        "INVITATION_ALREADY_USED": "This invitation has just been used: the relative has probably joined the family.",
+        "INVITATION_REVOKED": "This invitation was already revoked."
+      }
+    }
+  }
+}

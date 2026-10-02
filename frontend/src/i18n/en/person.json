@@ -1,0 +1,320 @@
+{
+  "form": {
+    "title": "Add a person",
+    "titleMe": "Start with me",
+    "intro": "Only the first name is required. You can add more later.",
+    "introMe": "Add yourself to the family. Only your first name is required.",
+    "firstName": "First name",
+    "lastName": "Last name",
+    "more": "More information",
+    "middleNames": "Middle names",
+    "preferredName": "Preferred name or nickname",
+    "gender": "Gender",
+    "genders": {
+      "UNKNOWN": "Not specified",
+      "FEMALE": "Female",
+      "MALE": "Male",
+      "OTHER": "Other"
+    },
+    "birth": "Birth",
+    "birthPrecision": "Date of birth",
+    "birthDate": "Exact date of birth",
+    "birthYear": "Year of birth",
+    "death": "Death",
+    "isDeceased": "This person has died",
+    "deathPrecision": "Date of death",
+    "deathDate": "Exact date of death",
+    "deathYear": "Year of death",
+    "precision": {
+      "UNKNOWN": "Unknown",
+      "YEAR_ONLY": "Year only",
+      "EXACT": "Exact date"
+    },
+    "biography": "Biography",
+    "required": "Enter the first name.",
+    "tooLong": "This field cannot be longer than {{max}} characters.",
+    "dateRequired": "Enter the date.",
+    "invalidYear": "Enter a year between {{min}} and {{max}}.",
+    "submit": "Add to the family",
+    "submitMe": "Add me to the family"
+  },
+  "profile": {
+    "edit": "Edit",
+    "birthYear": "Birth: {{year}}",
+    "deathYear": "Death: {{year}}",
+    "relationship": {
+      "NONE_KNOWN": "No known relationship in Mbia yet"
+    },
+    "family": "Family",
+    "noRelatives": "No relatives are linked to this person yet.",
+    "relatives": {
+      "parents": "Parents",
+      "partners": "Partners",
+      "children": "Children",
+      "siblings": "Siblings"
+    },
+    "about": "About",
+    "name": "First and last name",
+    "claim": "This is me",
+    "unclaim": "This is not me",
+    "claimed": "You are now linked to this person.",
+    "unclaimed": "This person is no longer linked to you."
+  },
+  "edit": {
+    "title": "Edit {{name}}",
+    "identity": "Identity",
+    "life": "Life",
+    "about": "About",
+    "submit": "Save",
+    "cancel": "Cancel",
+    "conflict": "This person was changed since you opened the page.",
+    "reload": "Reload latest version"
+  },
+  "notFound": {
+    "title": "Person not found",
+    "body": "This person does not exist in this family.",
+    "back": "Back to the family"
+  },
+  "relative": {
+    "menu": "Add a relative",
+    "parents": "Add a parent",
+    "children": "Add a child",
+    "choices": {
+      "FATHER": "Father",
+      "MOTHER": "Mother",
+      "PARENT": "Other parent",
+      "SON": "Son",
+      "DAUGHTER": "Daughter",
+      "CHILD": "Child",
+      "PARTNER": "Add a partner"
+    },
+    "title": {
+      "FATHER": "Add {{name}}'s father",
+      "MOTHER": "Add {{name}}'s mother",
+      "PARENT": "Add a parent of {{name}}",
+      "SON": "Add {{name}}'s son",
+      "DAUGHTER": "Add {{name}}'s daughter",
+      "CHILD": "Add {{name}}'s child",
+      "PARTNER": "Add {{name}}'s partner"
+    },
+    "titleMe": {
+      "FATHER": "Add my father",
+      "MOTHER": "Add my mother",
+      "PARENT": "Add one of my parents",
+      "SON": "Add my son",
+      "DAUGHTER": "Add my daughter",
+      "CHILD": "Add my child",
+      "PARTNER": "Add my partner"
+    },
+    "intro": "Only the first name is required. Mbia creates the family link for you.",
+    "warnings": {
+      "title": "These dates look unusual",
+      "PARENT_BORN_AFTER_CHILD": "{{parent}} would become {{child}}'s parent, but their birth year ({{parentYear}}) is not before {{child}}'s ({{childYear}}).",
+      "IMPLAUSIBLE_PARENT_AGE": "{{parent}} would have been {{age}} at {{child}}'s birth (birth years: {{parentYear}} and {{childYear}}).",
+      "correct": "Correct information",
+      "confirm": "Add relationship anyway"
+    },
+    "notLinked": "{{name}} was added to the family, but is not linked to {{anchor}}. You can create this link later from their profile.",
+    "added": "{{name}} was added to the family and linked to {{anchor}}.",
+    "viewProfile": "View their profile",
+    "existing": {
+      "title": "Already in the family?",
+      "search": "Search the family",
+      "chosen": "Person chosen",
+      "change": "Choose someone else",
+      "link": "Link {{name}} to {{anchor}}",
+      "orNew": "Or add someone new"
+    },
+    "linked": "{{name}} is now linked to {{anchor}}."
+  },
+  "removeLink": {
+    "action": "Remove link",
+    "actionFor": "Remove the link with {{name}}",
+    "warning": "Removing this link may change family relationships calculated by Mbia.",
+    "confirm": "Remove link",
+    "cancel": "Cancel",
+    "done": "The link with {{name}} was removed."
+  },
+  "removedLinks": {
+    "title": "Removed links",
+    "removedOn": "Removed on {{date}}",
+    "restore": "Restore",
+    "restoreFor": "Restore the link with {{name}}",
+    "restored": "The link was restored.",
+    "restoredWithWarnings": "The link was restored. The birth dates of these two people look unusual: check them on their profiles.",
+    "status": {
+      "ARCHIVED": "Archived profile",
+      "MERGED": "Merged profile"
+    },
+    "refused": {
+      "PERSON_NOT_ACTIVE": "This link cannot be restored: {{name}}'s profile was archived or merged.",
+      "RELATIONSHIP_ALREADY_EXISTS": "This link cannot be restored: these two people are already linked this way.",
+      "RELATIONSHIP_CREATES_CYCLE": "This link cannot be restored: with the current links, it would make someone one of their own ancestors."
+    }
+  },
+  "kinship": {
+    "label": {
+      "SELF": "You",
+      "FATHER": "Your father",
+      "MOTHER": "Your mother",
+      "PARENT": "Your parent",
+      "SON": "Your son",
+      "DAUGHTER": "Your daughter",
+      "CHILD": "Your child",
+      "GRANDFATHER": "Your grandfather",
+      "GRANDMOTHER": "Your grandmother",
+      "GRANDPARENT": "Your grandparent",
+      "GRANDSON": "Your grandson",
+      "GRANDDAUGHTER": "Your granddaughter",
+      "GRANDCHILD": "Your grandchild",
+      "BROTHER": "Your brother",
+      "SISTER": "Your sister",
+      "SIBLING": "Your sibling",
+      "UNCLE": "Your uncle",
+      "AUNT": "Your aunt",
+      "PARENT_SIBLING": "Your parent's sibling",
+      "NEPHEW": "Your nephew",
+      "NIECE": "Your niece",
+      "SIBLING_CHILD": "Your sibling's child",
+      "FIRST_COUSIN": {
+        "male": "Your first cousin",
+        "female": "Your first cousin",
+        "neutral": "Your first cousin"
+      },
+      "PARTNER": "Your partner",
+      "RELATED": "Your relative"
+    },
+    "step": {
+      "PARENT": {
+        "male": "{{to}} is {{from}}'s father",
+        "female": "{{to}} is {{from}}'s mother",
+        "neutral": "{{to}} is {{from}}'s parent"
+      },
+      "CHILD": {
+        "male": "{{to}} is {{from}}'s son",
+        "female": "{{to}} is {{from}}'s daughter",
+        "neutral": "{{to}} is {{from}}'s child"
+      },
+      "PARTNER": {
+        "male": "{{to}} is {{from}}'s partner",
+        "female": "{{to}} is {{from}}'s partner",
+        "neutral": "{{to}} is {{from}}'s partner"
+      }
+    }
+  },
+  "search": {
+    "title": "Search",
+    "label": "Name",
+    "placeholder": "First name, last name or usual name",
+    "results": "People found",
+    "more": "Show more",
+    "emptyFamily": "No one in this family yet.",
+    "noResult": "No one in this family matches “{{text}}”."
+  },
+  "archive": {
+    "action": "Archive this profile",
+    "warning": "{{name}} will no longer appear in the family tree or in search. An administrator can restore this profile at any time.",
+    "confirm": "Archive",
+    "cancel": "Cancel",
+    "done": "{{name}}'s profile was archived.",
+    "refused": {
+      "PERSON_ALREADY_CLAIMED": "This profile is linked to a member of the family. Remove this link before archiving it."
+    }
+  },
+  "archived": {
+    "notice": "This profile is archived. It no longer appears in the family tree or in search.",
+    "restore": "Restore this profile",
+    "restored": "{{name}}'s profile was restored."
+  },
+  "archivedPeople": {
+    "title": "Archived people",
+    "intro": "Archived profiles no longer appear in the family tree or in search. Open one to restore it.",
+    "empty": "No archived profile.",
+    "adminOnly": "Only an administrator can see archived profiles."
+  },
+  "duplicate": {
+    "title_one": "A similar person is already in the family",
+    "title_other": "Similar people are already in the family",
+    "view": "View existing person",
+    "viewNamed": "View existing person: {{name}}",
+    "createAnyway": "Create anyway"
+  },
+  "merge": {
+    "action": "Merge with another profile",
+    "title": "Which profile describes the same person as {{name}}?",
+    "search": "Search for the profile to keep",
+    "kept": "Profile kept",
+    "merged": "Duplicate profile",
+    "explain": {
+      "kept": "{{name}}'s profile remains.",
+      "merged": "{{name}}'s profile is merged into {{kept}}'s and no longer appears in the family.",
+      "links": "Family links are moved to the kept profile, without doubles.",
+      "values": "When both profiles have a value, the kept profile's value stays."
+    },
+    "confirm": "Merge the profiles",
+    "change": "Choose another profile",
+    "cancel": "Cancel",
+    "done": "{{name}}'s duplicate profile was merged into {{kept}}'s profile.",
+    "refused": {
+      "DIFFERENT_LINKED_USERS": "These two profiles are linked to two different members of the family, so they cannot be merged.",
+      "SELF_RELATIONSHIP": "These two profiles are linked to each other. Remove this link first, then merge them.",
+      "PARENTAL_CYCLE": "Merging these profiles would make someone one of their own ancestors. Check their family links first."
+    }
+  },
+  "merged": {
+    "notice": "This profile was merged into another profile, which describes the same person.",
+    "open": "Open the kept profile"
+  },
+  "history": {
+    "title": "History",
+    "empty": "No changes recorded yet.",
+    "more": "Show more",
+    "byOn": "{{date}} · {{actor}}",
+    "formerMember": "Former member",
+    "member": "A member",
+    "noValue": "(empty)",
+    "yes": "Yes",
+    "no": "No",
+    "biographyChanged": "Biography changed",
+    "fieldChanged": "{{field}}: {{from}} → {{to}}",
+    "fields": {
+      "firstName": "First name",
+      "middleNames": "Middle names",
+      "lastName": "Last name",
+      "preferredName": "Preferred name or nickname",
+      "gender": "Gender",
+      "birth": "Birth",
+      "isDeceased": "Deceased",
+      "death": "Death",
+      "biography": "Biography"
+    },
+    "actions": {
+      "PERSON_CREATED": "Profile created",
+      "PERSON_UPDATED": "Profile changed",
+      "PERSON_CLAIMED": "Linked to a member's account",
+      "PERSON_UNCLAIMED": "No longer linked to a member's account",
+      "PERSON_ARCHIVED": "Profile archived",
+      "PERSON_RESTORED": "Profile restored",
+      "PERSONS_MERGED": "Merged with a duplicate profile"
+    }
+  },
+  "photo": {
+    "label": "Photo",
+    "add": "Add a photo",
+    "change": "Change the photo",
+    "remove": "Remove the photo",
+    "removedHint": "The photo will be removed when you save.",
+    "preparing": "Preparing the photo…",
+    "uploading": "Sending the photo… {{percent}} %",
+    "processing": "Checking the photo…",
+    "progressLabel": "Sending the photo",
+    "errors": {
+      "unsupported": "This file is not a photo Mbia can use. Choose a JPEG, PNG or WEBP photo.",
+      "tooLarge": "This photo is too large. Choose a photo of 15 MB or less.",
+      "failed": "The photo could not be sent. Check your connection and try again.",
+      "invalid": "This file cannot be used as a photo. Choose another one."
+    },
+    "retry": "Try again",
+    "chooseAnother": "Choose another photo"
+  }
+}

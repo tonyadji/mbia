@@ -1,0 +1,29 @@
+{
+  "title": "Arbre familial",
+  "loading": "Chargement de l'arbre familial",
+  "siblings_one": "Frères et sœurs ({{count}})",
+  "siblings_other": "Frères et sœurs ({{count}})",
+  "zoomIn": "Zoomer",
+  "zoomOut": "Dézoomer",
+  "card": {
+    "moreParents": "A des parents au-delà de cette vue",
+    "moreChildren": "A des enfants au-delà de cette vue"
+  },
+  "quickView": {
+    "children_one": "{{count}} enfant",
+    "children_other": "{{count}} enfants",
+    "memories_one": "{{count}} souvenir",
+    "memories_other": "{{count}} souvenirs",
+    "seeHow": "Voir le lien",
+    "viewProfile": "Voir le profil",
+    "center": "Centrer l'arbre sur {{name}}",
+    "add": "Ajouter…"
+  },
+  "search": "Rechercher dans la famille",
+  "empty": {
+    "title": "Personne n'est encore dans l'arbre",
+    "body": "Ajoutez-vous d'abord, ou quelqu'un de votre famille.",
+    "startWithMe": "Commencer par moi",
+    "addSomeoneElse": "Ajouter quelqu'un d'autre"
+  }
+}

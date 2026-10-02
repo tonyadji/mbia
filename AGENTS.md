@@ -61,17 +61,27 @@ docker compose up -d                      # PostgreSQL, RustFS, Keycloak (realm 
 cd backend && ./mvnw verify               # compile, generate API, unit + Testcontainers + architecture tests
 cd backend && ./mvnw spring-boot:run -Dspring-boot.run.profiles=local   # API on http://localhost:8080/api/v1
 cd frontend && npm ci
-cd frontend && npm run generate:api       # regenerate the TypeScript client from openapi.yaml
+cd frontend && npm run generate:api       # regenerate the TypeScript types (also run before dev, build, typecheck, lint, test)
+npx @redocly/cli@2.54.3 lint mbia-specs/technical/api/openapi.yaml   # lint the contract (rules: redocly.yaml)
+python3 -m venv .venv-fixtures && .venv-fixtures/bin/pip install Pillow==12.3.0   # once, to regenerate the image fixtures
+.venv-fixtures/bin/python backend/scripts/generate-media-fixtures.py   # regenerate backend/src/test/resources/media/ (≤ 100 KB each)
 cd frontend && npm run typecheck
 cd frontend && npm run lint
+cd frontend && npm run i18n:check        # French and English translations have the same keys, no empty value
 cd frontend && npm test                   # Vitest
-cd frontend && npm run test:e2e           # Playwright (needs backend + docker compose)
+cd frontend && npx playwright install chromium   # once, the browser used by the E2E tests
+cd frontend && npm run test:e2e           # Playwright on the built frontend (needs docker compose + backend running)
+cd frontend && npm run test:e2e:ui        # same, in the Playwright UI
 cd frontend && npm run dev                # http://localhost:5173
 ```
 
 Local services: Keycloak admin http://localhost:8081, Mailpit http://localhost:8025, RustFS console http://localhost:9001/rustfs/console/. Test users are defined in `infrastructure/keycloak/realm-mbia.json`.
 
-A change is done only when `./mvnw verify` and all frontend checks pass.
+Application settings are environment variables documented in `.env.example` (for example `MBIA_MEMORY_MAX_PHOTOS`, the photos per Memory, 1–10, default 3: the backend refuses to start outside; `MBIA_APP_BASE_URL`, the frontend address used in invitation links, required outside the `local` and `test` profiles; `MBIA_SMTP_HOST`, `MBIA_SMTP_PORT`, `MBIA_SMTP_USERNAME`, `MBIA_SMTP_PASSWORD`, `MBIA_SMTP_AUTH`, `MBIA_SMTP_STARTTLS`, the transactional email provider, Mailpit without authentication nor TLS in `local`; `MBIA_MAIL_FROM`, the sender of Mbia's emails, required outside `local` and `test`).
+
+Every email sent locally (Keycloak's and Mbia's invitation emails) lands in Mailpit, http://localhost:8025; backend tests read them from a Mailpit Testcontainers container.
+
+A change is done only when `./mvnw verify` and all frontend checks pass. CI (`.github/workflows/ci.yml`) runs the same checks on every pull request to `develop` and `main`.
 
 ## 5. Backend architecture
 
@@ -82,6 +92,7 @@ Details: `mbia-specs/technical/architecture.md`.
 - `domain/` has no dependency on Spring, JPA, Jackson, HTTP or AWS.
 - **One use case per business operation**, in `application/<operation>/` (for example `genealogy/application/createrelationship/CreateRelationshipUseCase.java`). No catch-all `PersonService`.
 - HTTP DTOs (generated from OpenAPI) ≠ commands ≠ domain objects ≠ JPA entities. Map explicitly.
+- Generated server interfaces and models live in `com.lehnade.mbia.api.generated`. A module's `api/` controller implements a generated interface; `shared/api/web/ApiPathPrefixConfiguration` serves every such controller under `/api/v1` (the contract's paths stay those of `openapi.yaml`). Actuator stays at `/actuator`.
 - No global `controller/`, `service/`, `repository/` or `entity/` packages.
 - Architecture tests (ArchUnit / Spring Modulith) enforce these rules. Never weaken or skip them to make a build pass.
 
@@ -104,6 +115,8 @@ Details: `mbia-specs/technical/architecture.md`.
   - backend: `backend/target/generated-sources/openapi/`
   - frontend: `frontend/src/api/generated/`
 - A breaking change to the contract needs explicit human approval; CI detects it.
+  - `api-lint`: Redocly with `redocly.yaml` (recommended rules; only `info-license`, `no-server-example.com` and `tag-description` are off).
+  - `api-breaking`: `oasdiff` against the pull request's base branch, with `oasdiff-levels.txt`; it fails on breaking changes unless the pull request carries the label `api-breaking-approved`.
 
 ## 7. Database migrations
 

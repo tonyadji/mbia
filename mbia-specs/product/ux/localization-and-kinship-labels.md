@@ -21,6 +21,19 @@ Rules:
 - transactional emails are sent in the recipient's language when known, otherwise in the language chosen by the sender (invitations use the inviter's current language);
 - dates are formatted according to the active language (`12 mars 1954` / `March 12, 1954`); a `YEAR_ONLY` date shows only the year;
 - the product term for Memory is **Souvenir** in French and **Memory** in English.
+- the family story (`mvp.md` §20, SCREEN-002, SCREEN-016) uses these labels (OQ-067):
+
+| Use | French | English |
+|---|---|---|
+| title of the family story on Family Home | Notre histoire | Our story |
+| title of a year | Ce qui s'est passé en {année} | What happened in {year} |
+| Memories without a year (strip entry and title) | Souvenirs sans date | Undated memories |
+| first gesture of a new Family | Raconter un premier souvenir | Tell a first memory |
+| primary action of Family Home | Raconter un souvenir | Tell a memory |
+| question before a first memory | De qui parle ce souvenir ? | Who is this memory about? |
+| date of a Memory (SCREEN-006) | Quand est-ce arrivé ? | When did it happen? |
+
+  A year is written with digits only, without separator (`1975`, never `1 975`).
 
 User-entered content (names, stories, captions) is never translated.
 
@@ -67,6 +80,17 @@ Rules:
 - `RELATED` means a path exists but no supported concise label (for example in-laws or second cousins). The UI shows the label and offers "Voir le lien" / "See how" to display the path.
 - Never invent a label that is not in this table (the mockup's "Cousin éloigné" is out of scope and shows as `RELATED`).
 - On the profile, `NONE_KNOWN` may be explained as: FR "Aucun lien connu dans Mbia pour l'instant" / EN "No known relationship in Mbia yet". Never state that the people are unrelated.
+
+## 3bis. Family section headings
+
+The profile Family section (SCREEN-005) groups the Person's relatives under these headings (OQ-016). Each relative then shows its §3 badge.
+
+| Group | FR | EN |
+|---|---|---|
+| parents | Parents | Parents |
+| partners | Partenaires | Partners |
+| children | Enfants | Children |
+| siblings | Frères et sœurs | Siblings |
 
 ## 4. Path explanation
 

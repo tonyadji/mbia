@@ -8,12 +8,96 @@ spring:
   flyway:
     enabled: true
     locations: classpath:db/migration
+  # Emails rendered server-side from localized bundles (technical-specification.md §16bis).
+  messages:
+    basename: i18n/emails
+    encoding: UTF-8
+    fallback-to-system-locale: false
+  # Transactional email provider (stack.md). No host outside local and test: sending fails and the
+  # invitation's email is FAILED (OQ-055). Short timeouts: the email is sent before the response.
+  mail:
+    host: ${MBIA_SMTP_HOST:}
+    port: ${MBIA_SMTP_PORT:587}
+    username: ${MBIA_SMTP_USERNAME:}
+    password: ${MBIA_SMTP_PASSWORD:}
+    properties:
+      "[mail.smtp.auth]": ${MBIA_SMTP_AUTH:true}
+      "[mail.smtp.starttls.enable]": ${MBIA_SMTP_STARTTLS:true}
+      "[mail.smtp.starttls.required]": ${MBIA_SMTP_STARTTLS:true}
+      "[mail.smtp.connectiontimeout]": 5000
+      "[mail.smtp.timeout]": 10000
+      "[mail.smtp.writetimeout]": 10000
+
+server:
+  error:
+    # Safety net for errors raised outside Spring MVC: never expose internals.
+    include-stacktrace: never
+    include-message: never
+    include-exception: false
 
 management:
   endpoints:
     web:
       exposure:
         include: health
+  health:
+    # The API does not depend on the mail provider (OQ-055).
+    mail:
+      enabled: false
+
+mbia:
+  problems:
+    # Base of the `type` URI of error responses (technical-specification.md §12).
+    base-uri: https://mbia.example.com/problems
+  security:
+    # Keycloak realm trusted by the API (ADR-005); no default outside local and test: startup fails without it.
+    # issuer-uri:
+    audience: mbia-api
+    cors:
+      allowed-origins: []
+  # S3-compatible object storage (ADR-004, ADR-009; Phase 3 plan §3.5). No bucket nor region outside
+  # local and test: startup fails without them. `endpoint` is the one the backend reaches (empty for
+  # the provider's default); `public-endpoint` the one the browser reaches, for which pre-signed URLs
+  # are signed (empty for `endpoint`). Credentials: empty for the default AWS credentials chain.
+  storage:
+    # bucket:
+    # region:
+    # endpoint:
+    # public-endpoint:
+    # access-key:
+    # secret-key:
+    path-style-access: true
+    # Validity of a pre-signed upload (PUT) URL, returned as `expiresAt`.
+    upload-url-validity: PT15M
+    # Validity of a pre-signed view (GET) URL of an image derivative (data-model.md §13).
+    download-url-validity: PT60M
+  media:
+    # Interval between two runs of the cleanup of expired uploads and unattached photos (ADR-007 §4, OQ-036).
+    cleanup-interval: PT1H
+  memory:
+    # Maximum number of photos of a Memory, between 1 and 10: startup fails outside (Phase 4 plan §3.5, OQ-042).
+    max-photos: ${MBIA_MEMORY_MAX_PHOTOS:3}
+  invitations:
+    # Address of the frontend, where an invitation link opens (`<base-url>/invitations/<token>`, SCREEN-010).
+    # No default outside local and test: startup fails without it.
+    base-url: ${MBIA_APP_BASE_URL:}
+  mail:
+    # Sender of Mbia's emails, for example `Mbia <no-reply@mbia.example.com>`.
+    # No default outside local and test: startup fails without it.
+    from: ${MBIA_MAIL_FROM:}
+
+---
+# Structured JSON logs everywhere except local development (technical-specification.md §19).
+# The request identifier is in the logging context as `traceId`.
+spring:
+  config:
+    activate:
+      on-profile: "!local"
+
+logging:
+  structured:
+    format:
+      console: ecs
 
 ---
 # Local development against the docker compose services. Defaults match .env.example;
@@ -27,6 +111,36 @@ spring:
     url: jdbc:postgresql://localhost:${POSTGRES_PORT:5432}/${MBIA_DB_NAME:mbia}
     username: ${MBIA_DB_USER:mbia}
     password: ${MBIA_DB_PASSWORD:mbia-local}
+  # Mailpit catches every email: http://localhost:8025
+  mail:
+    host: ${MBIA_SMTP_HOST:localhost}
+    port: ${MBIA_SMTP_PORT:${MAILPIT_SMTP_PORT:1025}}
+    properties:
+      "[mail.smtp.auth]": ${MBIA_SMTP_AUTH:false}
+      "[mail.smtp.starttls.enable]": ${MBIA_SMTP_STARTTLS:false}
+      "[mail.smtp.starttls.required]": ${MBIA_SMTP_STARTTLS:false}
+
+mbia:
+  security:
+    issuer-uri: http://localhost:${KEYCLOAK_PORT:8081}/realms/mbia
+    cors:
+      allowed-origins: http://localhost:5173
+  storage:
+    bucket: ${S3_BUCKET:mbia-media}
+    region: ${S3_REGION:us-east-1}
+    endpoint: ${S3_ENDPOINT:http://localhost:${S3_API_PORT:9000}}
+    public-endpoint: ${S3_PUBLIC_ENDPOINT:http://localhost:${S3_API_PORT:9000}}
+    access-key: ${S3_ACCESS_KEY:mbia-local}
+    secret-key: ${S3_SECRET_KEY:mbia-local-secret}
+  invitations:
+    base-url: ${MBIA_APP_BASE_URL:http://localhost:5173}
+  mail:
+    from: ${MBIA_MAIL_FROM:Mbia <no-reply@mbia.localhost>}
+
+logging:
+  pattern:
+    # Readable logs with the request identifier.
+    correlation: "[%X{traceId:-}] "
 
 management:
   endpoint:
@@ -39,8 +153,29 @@ spring:
   config:
     activate:
       on-profile: test
+  # spring.mail.host and port come from the Mailpit container of TestcontainersConfiguration.
+  mail:
+    properties:
+      "[mail.smtp.auth]": false
+      "[mail.smtp.starttls.enable]": false
+      "[mail.smtp.starttls.required]": false
 
 management:
   endpoint:
     health:
       show-components: always
+
+mbia:
+  security:
+    # Tokens are signed by a test key (TestJwts); KeycloakAuthenticationTest overrides it with a real realm.
+    issuer-uri: https://issuer.test/realms/mbia
+    cors:
+      allowed-origins: http://localhost:5173
+  invitations:
+    base-url: http://localhost:5173
+  mail:
+    from: Mbia <no-reply@mbia.test>
+  # mbia.storage.* comes from the RustFS container of TestcontainersConfiguration.
+  # Tests run the scheduled tasks themselves.
+  scheduling:
+    enabled: false

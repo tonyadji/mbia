@@ -30,6 +30,15 @@ Use **RustFS** (`rustfs/rustfs`, Apache-2.0, S3-compatible, version 1.0.0 releas
 
 Spike results (RustFS 1.0.0, 2026-09-25): bucket creation through `aws s3api` works; an anonymous `GET` on the bucket or on an object returns `403`; an `aws s3 presign` GET URL returns the object (`200`); the health endpoint `/health` returns `200`; the console is served on port 9001. Pre-signed **PUT** has not been exercised yet. It will be tested when media upload is implemented, and a failure there would reopen this ADR.
 
+Pre-signed PUT results (RustFS 1.0.0, PR-35, 2026-09-26), exercised by `PresignedUploadStorageTest` through Testcontainers with the AWS SDK v2 presigner:
+
+- a `PUT` to the pre-signed URL with the returned `Content-Type` stores the object (`200`, type and size kept);
+- the same URL with another `Content-Type`, used for another key, or used after its expiry returns `403` and stores nothing;
+- an anonymous `GET` on the uploaded object, or on the bucket, returns `403`;
+- the bucket CORS set by `rustfs-init` through `aws s3api put-bucket-cors` is applied (checked with `curl` preflights): a preflight from the allowed origin for `PUT` gets the `Access-Control-Allow-*` headers; another origin or another method gets `403`.
+
+The decision stands; nothing specific to RustFS was needed.
+
 ## Alternatives considered
 
 - **`pgsty/minio` fork:** pinnable tags and it keeps MinIO, but the image is a community rebuild of a project whose upstream no longer publishes. Its long-term maintenance is uncertain.

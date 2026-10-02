@@ -1,0 +1,172 @@
+{
+  "form": {
+    "title": "Tell a story",
+    "intro": "Write a memory and link it to the people it is about. The whole family will be able to read it.",
+    "titleLabel": "Title",
+    "contentLabel": "Your story",
+    "contentOptional": "Optional when the memory has a photo.",
+    "happenedAt": {
+      "label": "When did it happen?",
+      "date": "Date it happened",
+      "year": "Year it happened",
+      "future": "This date is in the future. A memory tells what has already happened."
+    },
+    "photos": {
+      "label": "Photos",
+      "add": "Add a photo",
+      "limit_one": "A memory can have only one photo.",
+      "limit_other": "A memory can have up to {{count}} photos.",
+      "overLimit_one": "This memory has more photos than a memory can have now (only one). Its photos stay; remove some to add a new one.",
+      "overLimit_other": "This memory has more photos than a memory can have now (up to {{count}}). Its photos stay; remove some to add a new one.",
+      "leftOut_one": "{{count}} photo was not added.",
+      "leftOut_other": "{{count}} photos were not added.",
+      "photo": "Photo {{position}}",
+      "thumbnail": "Photo {{position}}",
+      "caption": "Caption of photo {{position}}",
+      "moreInfo": "More information",
+      "moreInfoLabel": "More information about photo {{position}}",
+      "takenAt": "When was this photo taken?",
+      "takenDate": "Date the photo was taken",
+      "takenYear": "Year the photo was taken",
+      "remove": "Remove",
+      "removeLabel": "Remove photo {{position}}",
+      "retry": "Try again",
+      "retryLabel": "Try again to send photo {{position}}",
+      "preparing": "Preparing the photo…",
+      "uploading": "Sending the photo… {{percent}} %",
+      "processing": "Checking the photo…",
+      "progressLabel": "Sending photo {{position}}",
+      "errors": {
+        "unsupported": "This file is not a photo Mbia can use. Remove it and choose a JPEG, PNG or WEBP photo.",
+        "tooLarge": "This photo is too large. Remove it and choose a photo of 15 MB or less.",
+        "failed": "The photo could not be sent. Check your connection and try again.",
+        "invalid": "This file cannot be used as a photo. Remove it and choose another one."
+      }
+    },
+    "required": "This field is required.",
+    "contentOrPhoto": "Write a story, or keep a photo: a memory needs one or the other.",
+    "tooLong": "This text cannot be longer than {{max, number}} characters.",
+    "invalid": "Check this field.",
+    "persons": "Who is this memory about?",
+    "personsHint": "Choose at least one person to publish.",
+    "addPerson": "Add a person",
+    "removePerson": "Remove {{name}}",
+    "chooseTitle": "Choose a person",
+    "searchLabel": "Search the family",
+    "allChosen": "The people found are already chosen.",
+    "newPerson": "To be added to the family",
+    "newTitle": "Add a person",
+    "addNew": "Add {{name}}",
+    "backToSearch": "Back to the search",
+    "addThisPerson": "Add this person",
+    "subject": {
+      "question": "Who is this memory about?",
+      "me": "Me",
+      "someoneElse": "Someone else",
+      "meHint": "Your name, as it will appear in the family tree.",
+      "choose": "Choose who this memory is about to publish it.",
+      "added": "{{name}} is now part of the family."
+    },
+    "personsAdded_one": "{{names}} is now part of the family, but the memory was not published. Everything you wrote is still here: you can publish again.",
+    "personsAdded_other": "{{names}} are now part of the family, but the memory was not published. Everything you wrote is still here: you can publish again.",
+    "publish": "Publish",
+    "readOnly": "Your role in this family does not allow adding a memory."
+  },
+  "errors": {
+    "PERSON_NOT_ACTIVE": "One of the chosen people was archived or merged in the meantime. Remove them, then publish again.",
+    "PERSON_NOT_FOUND": "One of the chosen people is no longer part of the family. Remove them, then publish again.",
+    "MEMORY_PHOTO_LIMIT_REACHED_one": "A memory can have only one photo. Remove the extra photos, then publish again.",
+    "MEMORY_PHOTO_LIMIT_REACHED_other": "A memory can have up to {{count}} photos. Remove the extra photos, then publish again.",
+    "MEDIA_NOT_READY": "One of the photos is not ready yet. Remove it and add it again, then publish.",
+    "MEDIA_ALREADY_USED": "One of the photos is already used elsewhere. Remove it and add it again, then publish.",
+    "MEDIA_NOT_FOUND": "One of the photos can no longer be found. Remove it and add it again, then publish."
+  },
+  "published": "Your memory “{{title}}” has been published.",
+  "profile": {
+    "title": "Memories",
+    "empty": "No memory is linked to {{name}} yet.",
+    "add": "Add a memory",
+    "more": "Show more"
+  },
+  "family": {
+    "title": "Memories",
+    "empty": "The family has no memory yet. Stories told about your relatives will appear here.",
+    "add": "Add a memory",
+    "more": "Show more"
+  },
+  "screen": {
+    "happenedIn": "In {{year}}",
+    "happenedOn": "On {{date}}",
+    "persons": "People in this memory",
+    "status": {
+      "ARCHIVED": "Archived profile",
+      "MERGED": "Merged profile"
+    },
+    "addedBy": "Added by {{actor}} on {{date}}",
+    "formerMember": "Former member",
+    "member": "A member",
+    "back": "Back",
+    "notFound": {
+      "title": "Memory not found",
+      "body": "This memory does not exist or is no longer visible in this family.",
+      "back": "Back to the family"
+    },
+    "edit": "Edit",
+    "archive": "Archive",
+    "photos": {
+      "label": "Photos",
+      "alt": "Photo {{n}} of {{total}}",
+      "takenAt": "Taken: {{date}}",
+      "unavailable": "This photo cannot be shown right now.",
+      "previous": "Previous photo",
+      "next": "Next photo"
+    }
+  },
+  "saved": "Your changes to “{{title}}” have been saved.",
+  "edit": {
+    "title": "Edit the memory",
+    "submit": "Save",
+    "cancel": "Cancel",
+    "conflict": "This memory was changed since you opened the page.",
+    "reload": "Reload latest version",
+    "activePersonRequired": "Keep at least one person whose profile is not archived.",
+    "errors": {
+      "PERSON_NOT_ACTIVE": "One of the added people was archived or merged in the meantime. Remove them, then save again.",
+      "PERSON_NOT_FOUND": "One of the chosen people is no longer part of the family. Remove them, then save again.",
+      "MEMORY_PHOTO_LIMIT_REACHED_one": "A memory can have only one photo. Remove the extra photos, then save again.",
+      "MEMORY_PHOTO_LIMIT_REACHED_other": "A memory can have up to {{count}} photos. Remove the extra photos, then save again.",
+      "MEDIA_NOT_READY": "One of the added photos is not ready yet. Remove it and add it again, then save.",
+      "MEDIA_ALREADY_USED": "One of the added photos is already used elsewhere. Remove it and add it again, then save.",
+      "MEDIA_NOT_FOUND": "One of the added photos can no longer be found. Remove it and add it again, then save."
+    }
+  },
+  "archive": {
+    "warning": "Archive this memory? It will disappear for the whole family.",
+    "confirm": "Archive",
+    "cancel": "Cancel"
+  },
+  "story": {
+    "title": "Our story",
+    "strip": "The years of our story",
+    "entry_one": "{{year}} · {{count}} memory",
+    "entry_other": "{{year}} · {{count}} memories",
+    "undatedEntry_one": "Undated memories · {{count}} memory",
+    "undatedEntry_other": "Undated memories · {{count}} memories",
+    "undated": "Undated memories",
+    "yearTitle": "What happened in {{year}}",
+    "invitation": "Your family's story starts with a first memory.",
+    "tell": "Tell a memory",
+    "previous": "Previous year",
+    "next": "Next year",
+    "more": "Show more",
+    "emptyYear": "There is no memory left in {{year}}. Choose another year of the story.",
+    "emptyUndated": "There is no undated memory left. Choose a year of the story.",
+    "empty": "The family has no memory yet.",
+    "back": "Back to the family",
+    "notFound": {
+      "title": "Year not found",
+      "body": "This year does not exist in the family's story.",
+      "back": "Back to the family"
+    }
+  }
+}

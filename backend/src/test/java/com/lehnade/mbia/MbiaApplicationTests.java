@@ -9,6 +9,7 @@ import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
 import org.springframework.context.annotation.Import;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.MediaType;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.web.servlet.assertj.MockMvcTester;
 
@@ -42,7 +43,22 @@ class MbiaApplicationTests {
     }
 
     @Test
-    void flywayRunsWithNoMigrationYet() {
-        assertThat(flyway.info().applied()).isEmpty();
+    void unknownPathReturnsAProblemTracedByTheRequestId() {
+        assertThat(mvc.get().uri("/no-such-path").header("X-Request-Id", "e2e-trace-1"))
+                .hasStatus(HttpStatus.NOT_FOUND)
+                .hasContentType(MediaType.APPLICATION_PROBLEM_JSON)
+                .hasHeader("X-Request-Id", "e2e-trace-1")
+                .bodyJson()
+                .satisfies(json -> {
+                    json.assertThat().extractingPath("$.code").isEqualTo("RESOURCE_NOT_FOUND");
+                    json.assertThat().extractingPath("$.traceId").isEqualTo("e2e-trace-1");
+                });
+    }
+
+    @Test
+    void flywayAppliesEveryMigrationInOrder() {
+        assertThat(flyway.info().applied())
+                .extracting(migration -> migration.getVersion().getVersion())
+                .containsExactly("001", "002", "003", "004", "005", "006", "007", "008", "009", "010", "011", "012");
     }
 }

@@ -1,7 +1,7 @@
 openapi: 3.1.0
 info:
   title: Mbia API
-  version: 0.2.0
+  version: 0.5.0
   summary: REST contract for the Mbia commercial MVP
   description: |
     Contract-first API for Mbia, a private collaborative family heritage platform.
@@ -173,7 +173,10 @@ paths:
     get:
       tags: [Members]
       operationId: listFamilyMembers
-      summary: List active and removed family memberships
+      summary: List the family's active members
+      description: |
+        Any ACTIVE member. Only ACTIVE memberships, in the order they joined;
+        never a member's email (OQ-061).
       responses:
         '200':
           description: Family members
@@ -199,6 +202,7 @@ paths:
       description: |
         ADMIN only. MVP public API does not grant ADMIN through this operation.
         An ADMIN cannot change their own role (`LAST_ADMIN_REQUIRED`).
+        An unknown, other-Family or REMOVED membership → 404 `RESOURCE_NOT_FOUND` (OQ-061).
       parameters:
         - $ref: '#/components/parameters/IfMatch'
       requestBody:
@@ -236,6 +240,8 @@ paths:
 
         Removal is logical and does not delete contributed family data. The
         member's linked Person, if any, is released in the same transaction.
+        An unknown, other-Family or already REMOVED membership → 404
+        `RESOURCE_NOT_FOUND` (OQ-061).
       parameters:
         - $ref: '#/components/parameters/IfMatch'
       responses:
@@ -279,9 +285,19 @@ paths:
       summary: Invite someone to a family by email or shareable link
       description: |
         ADMIN only. Allowed invitation roles are CONTRIBUTOR and VIEWER.
-        Channel EMAIL requires `email` and sends the invitation email in `locale`.
+        Channel EMAIL requires `email` and sends the invitation email in `locale`,
+        after the invitation is saved and before answering: the response carries
+        `emailDelivery` SENT, or FAILED when it cannot be sent, the invitation
+        existing all the same (OQ-055, OQ-060).
         Channel LINK sends nothing; the response contains `inviteUrl` to share.
         The invitation is single-use and expires after 14 days.
+
+        `personId` names the Person the invitation is sent for, as a suggestion
+        only (OQ-050): an ACTIVE, living Person of the family linked to no user.
+        An ARCHIVED, MERGED or unknown Person returns 404 `PERSON_NOT_FOUND`; a
+        linked one 409 `PERSON_ALREADY_CLAIMED`; a deceased one 400
+        `VALIDATION_FAILED`. A Person has at most one PENDING invitation: 409
+        `INVITATION_ALREADY_PENDING` (renew it instead).
       requestBody:
         required: true
         content:
@@ -299,6 +315,8 @@ paths:
           $ref: '#/components/responses/BadRequest'
         '403':
           $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
         '409':
           $ref: '#/components/responses/Conflict'
 
@@ -312,7 +330,9 @@ paths:
       summary: Issue a new link for a pending or expired invitation
       description: |
         ADMIN only. Generates a new token, resets the expiry to 14 days and, for
-        channel EMAIL, sends the email again. The previous link stops working.
+        channel EMAIL, sends the email again in the invitation's locale, before
+        answering (`emailDelivery` SENT or FAILED in the response, OQ-055, OQ-060). The previous link stops working. An accepted or
+        revoked invitation cannot be renewed: 410 (OQ-057).
       parameters:
         - $ref: '#/components/parameters/IfMatch'
       responses:
@@ -328,6 +348,12 @@ paths:
           $ref: '#/components/responses/NotFound'
         '409':
           $ref: '#/components/responses/Conflict'
+        '410':
+          description: Invitation already used or revoked (`INVITATION_ALREADY_USED`, `INVITATION_REVOKED`, OQ-057)
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
 
   /families/{familyId}/invitations/{invitationId}/revoke:
     parameters:
@@ -337,7 +363,10 @@ paths:
       tags: [Invitations]
       operationId: revokeInvitation
       summary: Revoke a pending invitation
-      description: ADMIN only. The link stops working immediately.
+      description: |
+        ADMIN only. The link stops working immediately. A pending or expired
+        invitation can be revoked; revocation is final. An accepted or already
+        revoked invitation answers 410 (OQ-057).
       parameters:
         - $ref: '#/components/parameters/IfMatch'
       responses:
@@ -349,6 +378,12 @@ paths:
           $ref: '#/components/responses/NotFound'
         '409':
           $ref: '#/components/responses/Conflict'
+        '410':
+          description: Invitation already used or revoked (`INVITATION_ALREADY_USED`, `INVITATION_REVOKED`, OQ-057)
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
 
   /invitations/{token}:
     parameters:
@@ -368,7 +403,7 @@ paths:
         '404':
           $ref: '#/components/responses/NotFound'
         '410':
-          description: Invitation expired, revoked, renewed or already used (`INVITATION_EXPIRED`, `INVITATION_REVOKED`, `INVITATION_ALREADY_USED`)
+          description: Invitation expired, revoked or already used (`INVITATION_EXPIRED`, `INVITATION_REVOKED`, `INVITATION_ALREADY_USED`). The previous link of a renewed invitation answers 404 (OQ-058).
           content:
             application/problem+json:
               schema:
@@ -385,8 +420,14 @@ paths:
         Any authenticated, email-verified user holding the token may accept it;
         the invitation is not bound to its email address. If the user is already
         an ACTIVE member of the family, nothing changes, the invitation stays
-        PENDING and the response has `alreadyMember = true`. A REMOVED membership
-        is reactivated with the invitation role.
+        PENDING and the response has `alreadyMember = true`; an expired, revoked
+        or used invitation answers 410 first, even to a member (OQ-059). A REMOVED
+        membership is reactivated with the invitation role.
+
+        Accepting never links the user to a Person. `suggestedPerson` is the
+        Person the invitation was sent for while it is still ACTIVE and linked to
+        no user, so that the client asks "Are you {displayName}?" and links it
+        with `claimPerson` (OQ-050); null otherwise.
       responses:
         '200':
           description: Invitation accepted and membership activated, or user already a member
@@ -399,7 +440,7 @@ paths:
         '409':
           $ref: '#/components/responses/Conflict'
         '410':
-          description: Invitation expired, revoked, renewed or already used (`INVITATION_EXPIRED`, `INVITATION_REVOKED`, `INVITATION_ALREADY_USED`)
+          description: Invitation expired, revoked or already used (`INVITATION_EXPIRED`, `INVITATION_REVOKED`, `INVITATION_ALREADY_USED`). The previous link of a renewed invitation answers 404 (OQ-058).
           content:
             application/problem+json:
               schema:
@@ -411,12 +452,25 @@ paths:
     get:
       tags: [Persons]
       operationId: searchPersons
-      summary: Search or list active persons in a family
+      summary: Search or list persons in a family
+      description: |
+        Returns ACTIVE Persons by default, ordered by display name (locale-independent,
+        case- and accent-folded), then creation date, then id. `status=ARCHIVED` lists archived
+        Persons instead, so that an ADMIN can restore them; it is ADMIN only.
+        MERGED Persons are never listed.
       parameters:
+        - name: status
+          in: query
+          required: false
+          description: ACTIVE (default) or ARCHIVED. ARCHIVED requires the ADMIN role (403 otherwise).
+          schema:
+            type: string
+            enum: [ACTIVE, ARCHIVED]
+            default: ACTIVE
         - name: search
           in: query
           required: false
-          description: Search first name, last name and preferred name.
+          description: Case- and accent-insensitive substring search, after trimming, in first name, last name, preferred name and "first name last name".
           schema:
             type: string
             maxLength: 200
@@ -438,7 +492,10 @@ paths:
       description: |
         ADMIN or CONTRIBUTOR only. If the server detects likely duplicates and
         `confirmPossibleDuplicate` is false, the server returns 409 with code
-        `POSSIBLE_DUPLICATE` and candidate summaries in `details.candidates`.
+        `POSSIBLE_DUPLICATE` and candidate summaries in `details.candidates`
+        (at most 10 objects shaped as `PersonSummary`, in search order).
+        With `linkToCurrentUser`, the server returns 409 `USER_ALREADY_LINKED` when the
+        current user already has a linked Person in this family; nothing is created.
       requestBody:
         required: true
         content:
@@ -459,8 +516,44 @@ paths:
           $ref: '#/components/responses/BadRequest'
         '403':
           $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
         '409':
           $ref: '#/components/responses/Conflict'
+
+  /families/{familyId}/claimable-persons:
+    parameters:
+      - $ref: '#/components/parameters/FamilyId'
+    get:
+      tags: [Persons]
+      operationId: listClaimablePersons
+      summary: List the persons the current user can claim as "me", each with one parent
+      description: |
+        Any ACTIVE member, VIEWER included; another family answers 404. ACTIVE Persons linked
+        to no user, with the matching and order of `searchPersons`, for "Are you already in this
+        tree?" (mvp.md §18, SCREEN-010). `parent` is one ACTIVE parent reached through an ACTIVE
+        `PARENT_OF` relationship, the first in the order of the tree (OQ-015: birth, a year-only
+        date counting as the start of that year and an unknown birth last, then creation, then
+        id); null when no parent is known, and the client shows the birth year instead (OQ-050).
+      parameters:
+        - name: search
+          in: query
+          required: false
+          description: Same matching as `searchPersons`.
+          schema:
+            type: string
+            maxLength: 200
+        - $ref: '#/components/parameters/Page'
+        - $ref: '#/components/parameters/Size'
+      responses:
+        '200':
+          description: Persons that can be claimed
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ClaimablePersonPage'
+        '404':
+          $ref: '#/components/responses/NotFound'
 
   /families/{familyId}/persons/{personId}:
     parameters:
@@ -470,6 +563,10 @@ paths:
       tags: [Persons]
       operationId: getPerson
       summary: Get a person profile
+      description: |
+        Returns the Person whatever its status. An ARCHIVED Person stays readable so
+        that an ADMIN can open and restore it; a MERGED Person carries
+        `mergedIntoPersonId`. Normal lists and the tree only contain ACTIVE Persons.
       responses:
         '200':
           description: Person
@@ -491,7 +588,12 @@ paths:
       description: |
         ADMIN or authorized CONTRIBUTOR according to linked-person protection rules.
         A linked person's protected identity can be changed only by that linked user
-        or an ADMIN.
+        or an ADMIN: every field of the request is protected, and another CONTRIBUTOR
+        gets 403 `PERMISSION_DENIED`.
+        Only an ACTIVE Person can be edited: an ARCHIVED or MERGED Person returns 404
+        `PERSON_NOT_FOUND`. A request that changes nothing returns 200 with the
+        unchanged Person and version. The photo follows the same rules as the other fields
+        (OQ-040).
       parameters:
         - $ref: '#/components/parameters/IfMatch'
       requestBody:
@@ -527,7 +629,11 @@ paths:
       tags: [Persons]
       operationId: archivePerson
       summary: Archive a person
-      description: ADMIN only. A person linked to an active user must be unlinked first.
+      description: |
+        ADMIN only. A person linked to a user must be unlinked first: 409
+        `PERSON_ALREADY_CLAIMED` (OQ-023). Archiving an ARCHIVED person with its current
+        version changes nothing and returns 200 with the unchanged person and version
+        (OQ-024). A MERGED person returns 404 `PERSON_NOT_FOUND` (OQ-025).
       parameters:
         - $ref: '#/components/parameters/IfMatch'
       responses:
@@ -555,7 +661,10 @@ paths:
       tags: [Persons]
       operationId: restorePerson
       summary: Restore an archived person
-      description: ADMIN only.
+      description: |
+        ADMIN only. Restoring an ACTIVE person with its current version changes nothing and
+        returns 200 with the unchanged person and version (OQ-024). A MERGED person returns
+        404 `PERSON_NOT_FOUND` (OQ-025).
       parameters:
         - $ref: '#/components/parameters/IfMatch'
       responses:
@@ -583,6 +692,12 @@ paths:
       tags: [Persons]
       operationId: claimPerson
       summary: Link the current user to this Person as “me”
+      description: |
+        Any ACTIVE member, VIEWER included. Only an ACTIVE Person can be claimed: an ARCHIVED
+        or MERGED Person returns 404 `PERSON_NOT_FOUND`. A Person linked to another user
+        returns 409 `PERSON_ALREADY_CLAIMED`; a caller already linked to another Person of the
+        family returns 409 `USER_ALREADY_LINKED`. Claiming the Person already linked to the
+        caller returns 200 with the unchanged Person and version.
       parameters:
         - $ref: '#/components/parameters/IfMatch'
       responses:
@@ -605,7 +720,11 @@ paths:
       tags: [Persons]
       operationId: unclaimPerson
       summary: Remove the User ↔ Person link
-      description: The linked user may unlink themselves. ADMIN may correct an erroneous link.
+      description: |
+        The linked user may unlink themselves, whatever their role. ADMIN may correct an
+        erroneous link; any other caller gets 403 `PERMISSION_DENIED`. On a Person linked to
+        nobody, an ADMIN gets 200 with the unchanged Person and version. Only an ACTIVE Person
+        can be unlinked: an ARCHIVED or MERGED Person returns 404 `PERSON_NOT_FOUND`.
       parameters:
         - $ref: '#/components/parameters/IfMatch'
       responses:
@@ -636,8 +755,18 @@ paths:
       description: |
         ADMIN only. `personId` is the duplicate/source that will become MERGED.
         `targetPersonId` is retained. Scalar target values win when both sides are
-        non-empty; source values fill empty target fields. Relationships and memories
-        are transferred and deduplicated atomically.
+        non-empty; source values fill empty target fields (an absent text, `gender`
+        `UNKNOWN`, a date of precision `UNKNOWN`); the target is deceased when either
+        Person is. Relationships and memories are transferred and deduplicated
+        atomically; the source's linked user moves to a target linked to nobody. The
+        target keeps its photo, or takes the source's when it has none; the source keeps
+        no photo, and its photo becomes ARCHIVED when the target already had one (OQ-047).
+        Refusals: 409 `PERSON_MERGE_CONFLICT` with `details.reason`
+        `DIFFERENT_LINKED_USERS`, `SELF_RELATIONSHIP` (the two Persons are linked by an
+        ACTIVE relationship) or `PARENTAL_CYCLE`; 404 `PERSON_NOT_FOUND` for a MERGED
+        Person or one of another family; 409 `PERSON_NOT_ACTIVE` for an ARCHIVED one;
+        400 `VALIDATION_FAILED` when `targetPersonId` is `personId`; 409
+        `CONCURRENT_MODIFICATION` when a version is stale.
       requestBody:
         required: true
         content:
@@ -686,6 +815,32 @@ paths:
         '404':
           $ref: '#/components/responses/NotFound'
 
+  /families/{familyId}/persons/{personId}/archived-relationships:
+    parameters:
+      - $ref: '#/components/parameters/FamilyId'
+      - $ref: '#/components/parameters/PersonId'
+    get:
+      tags: [Relationships]
+      operationId: listArchivedPersonRelationships
+      summary: List the removed relationships of a person
+      description: |
+        ADMIN only. Returns the ARCHIVED relationships in which the Person is source
+        or target, most recently archived first, each with the other Person, so that
+        the ADMIN can restore them (`restoreRelationship`).
+      responses:
+        '200':
+          description: Archived relationships of the person
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/ArchivedRelationshipResponse'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
   /families/{familyId}/relationships:
     parameters:
       - $ref: '#/components/parameters/FamilyId'
@@ -694,9 +849,16 @@ paths:
       operationId: createRelationship
       summary: Create an explicit family relationship
       description: |
-        ADMIN or CONTRIBUTOR only. Certain inconsistencies (self relation, parental
-        cycle, cross-family reference) are blocking. Probable date inconsistencies
-        require explicit confirmation through `confirmWarnings=true`.
+        ADMIN or CONTRIBUTOR only. Certain inconsistencies are blocking: self relation
+        (400 `SELF_RELATIONSHIP_NOT_ALLOWED`), Person unknown or of another family
+        (404 `PERSON_NOT_FOUND`), Person ARCHIVED or MERGED (409 `PERSON_NOT_ACTIVE`),
+        exact ACTIVE duplicate, `PARTNER_OF` in either order included
+        (409 `RELATIONSHIP_ALREADY_EXISTS`), parental cycle (409 `RELATIONSHIP_CREATES_CYCLE`).
+        Probable date inconsistencies require explicit confirmation through
+        `confirmWarnings=true`: without it, nothing is created and the server returns 422
+        `RELATIONSHIP_WARNING_CONFIRMATION_REQUIRED` with the warnings in `details.warnings`
+        (same shape as `RelationshipWarning`). With it, the relationship is created and the
+        confirmed warnings are returned in `warnings`.
       requestBody:
         required: true
         content:
@@ -717,6 +879,8 @@ paths:
           $ref: '#/components/responses/BadRequest'
         '403':
           $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
         '409':
           $ref: '#/components/responses/Conflict'
         '422':
@@ -734,7 +898,11 @@ paths:
       tags: [Relationships]
       operationId: archiveRelationship
       summary: Remove/archive an explicit relationship
-      description: ADMIN or CONTRIBUTOR. Derived kinship changes immediately after archival.
+      description: |
+        ADMIN or CONTRIBUTOR. Derived kinship changes immediately after archival.
+        A relationship unknown or of another family returns 404 `RESOURCE_NOT_FOUND`.
+        Archiving an already ARCHIVED relationship with its current version changes nothing
+        and returns 204 (OQ-020).
       parameters:
         - $ref: '#/components/parameters/IfMatch'
       responses:
@@ -755,7 +923,14 @@ paths:
       tags: [Relationships]
       operationId: restoreRelationship
       summary: Restore an archived relationship
-      description: ADMIN only. Restore is rejected if the current graph would become invalid.
+      description: |
+        ADMIN only. Restore is rejected if the current graph would become invalid: Person
+        ARCHIVED or MERGED (409 `PERSON_NOT_ACTIVE`), identical ACTIVE relationship
+        (409 `RELATIONSHIP_ALREADY_EXISTS`), parental cycle (409 `RELATIONSHIP_CREATES_CYCLE`).
+        A relationship unknown or of another family returns 404 `RESOURCE_NOT_FOUND`.
+        Date warnings do not block a restore: they are recomputed from the current birth data
+        and returned in `warnings` for information (OQ-021). Restoring an already ACTIVE
+        relationship with its current version changes nothing and returns it unchanged (OQ-020).
       parameters:
         - $ref: '#/components/parameters/IfMatch'
       responses:
@@ -791,8 +966,16 @@ paths:
         Each node carries `hasMoreParents` / `hasMoreChildren` so the UI can show
         continuation indicators. When `focusPersonId` is omitted, the server uses
         the current user's linked Person, otherwise the ACTIVE Person with the most
-        active relationships (ties: earliest created). For an empty family, the
+        active relationships (ties: earliest created, then lowest id). For an empty family, the
         response has `focusPersonId = null` and no nodes.
+
+        A requested focus that is ARCHIVED or MERGED is replaced the same way, as is a
+        linked Person that is not ACTIVE; `focusPersonId` names the focus actually used.
+        A focus unknown in this family returns 404 `PERSON_NOT_FOUND`.
+
+        Order: `nodes` start with the focus, then follow birth (a year-only date counts
+        as the start of that year, unknown births last), then Person creation, then id;
+        `edges` follow relationship creation, then id.
       parameters:
         - name: focusPersonId
           in: query
@@ -833,8 +1016,11 @@ paths:
         `relationship` describes what `to` is to `from`
         (from = Tony, to = Paul → GRANDFATHER). Gendered codes are used when the
         `to` Person's gender is MALE or FEMALE, neutral codes otherwise. The path
-        starts at `from` and ends at `to`; it is the shortest known path,
-        preferring paths made only of PARENT/CHILD steps.
+        starts at `from` and ends at `to`; it is the shortest known path over
+        ACTIVE Persons and relationships, preferring paths made only of
+        PARENT/CHILD steps, then ordered deterministically by Person id.
+        When `from` or `to` is ARCHIVED or MERGED, the result is `NONE_KNOWN`
+        with an empty path (unless `from` = `to`: `SELF`).
       parameters:
         - name: from
           in: query
@@ -867,10 +1053,38 @@ paths:
       tags: [Memories]
       operationId: listFamilyMemories
       summary: List active family memories
+      description: |
+        ACTIVE Memories of the Family, for any ACTIVE member. Without `year` nor `undated`,
+        most recently added first (`createdAt` descending, then `id`) (OQ-034).
+
+        The family story (`mvp.md` §20, OQ-064): with `year`, the Memories that happened
+        that year (an EXACT `happenedAt` in that year, or a YEAR_ONLY one of that year),
+        those with an EXACT date first in date order, then those with the year only in the
+        order they were added (`createdAt` ascending), then `id`. With `undated=true`, the
+        Memories whose `happenedAt` is UNKNOWN, most recently added first. `year` and
+        `undated` together return 400 `VALIDATION_FAILED`.
       parameters:
+        - name: year
+          in: query
+          required: false
+          description: Only the Memories that happened this year (family story, OQ-064).
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 9999
+        - name: undated
+          in: query
+          required: false
+          description: "`true`: only the Memories without a year (family story, OQ-064)."
+          schema:
+            type: boolean
         - name: type
           in: query
           required: false
+          deprecated: true
+          description: |
+            Deprecated (OQ-042): every Memory is a `STORY`. `STORY` lists all Memories,
+            `PHOTO` none.
           schema:
             $ref: '#/components/schemas/MemoryType'
         - $ref: '#/components/parameters/Page'
@@ -884,6 +1098,8 @@ paths:
                 $ref: '#/components/schemas/MemoryPage'
         '403':
           $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
 
   /families/{familyId}/memories/photos:
     parameters:
@@ -892,6 +1108,10 @@ paths:
       tags: [Memories]
       operationId: createPhotoMemory
       summary: Create a photo memory from an already uploaded READY media asset
+      deprecated: true
+      description: |
+        Deprecated (OQ-042): photos belong to a story (`createStoryMemory`, `photos`).
+        Always answers 404 `RESOURCE_NOT_FOUND`.
       requestBody:
         required: true
         content:
@@ -921,7 +1141,20 @@ paths:
     post:
       tags: [Memories]
       operationId: createStoryMemory
-      summary: Create a written family story
+      summary: Create a family story, with a title, a text and up to a few photos
+      description: |
+        ADMIN or CONTRIBUTOR (VIEWER: 403 `PERMISSION_DENIED`). The title is required; the text
+        is required when the Memory has no photo (400 `VALIDATION_FAILED`). Each photo is a READY
+        `MEMORY_PHOTO` asset uploaded by the caller and used nowhere else; photos keep the order
+        of the list (OQ-042). A related Person unknown, of another Family or MERGED returns 404
+        `PERSON_NOT_FOUND`, an ARCHIVED one 409 `PERSON_NOT_ACTIVE`. A photo asset unknown or of
+        another Family returns 404 `MEDIA_NOT_FOUND`; another member's upload 403
+        `PERMISSION_DENIED`; another purpose or the same asset twice 400 `VALIDATION_FAILED`; an
+        asset not READY 409 `MEDIA_NOT_READY`; an asset already used 409 `MEDIA_ALREADY_USED`;
+        more photos than `FamilyResponse.limits.maxPhotosPerMemory` 409
+        `MEMORY_PHOTO_LIMIT_REACHED`. `happenedAt` is optional (absent: UNKNOWN); an inconsistent
+        or future date returns 400 `VALIDATION_FAILED` (OQ-063). Memory, Persons and photos are
+        stored in one transaction.
       requestBody:
         required: true
         content:
@@ -942,6 +1175,10 @@ paths:
           $ref: '#/components/responses/BadRequest'
         '403':
           $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
 
   /families/{familyId}/memories/{memoryId}:
     parameters:
@@ -951,6 +1188,9 @@ paths:
       tags: [Memories]
       operationId: getMemory
       summary: Get a memory
+      description: |
+        Any ACTIVE member. An unknown, other-Family or ARCHIVED Memory returns 404
+        `MEMORY_NOT_FOUND` (OQ-037).
       responses:
         '200':
           description: Memory
@@ -969,7 +1209,22 @@ paths:
       tags: [Memories]
       operationId: updateMemory
       summary: Update a memory
-      description: The creator may edit their own memory; ADMIN may edit any family memory.
+      description: |
+        The creator may edit their own memory; ADMIN may edit any family memory. Both need
+        a role that can write: a VIEWER gets 403 `PERMISSION_DENIED` (OQ-041).
+        A field irrelevant to the Memory type is rejected with 400 `VALIDATION_FAILED`.
+        When the set of related Persons changes, the new set must include at least one ACTIVE
+        Person (400 `VALIDATION_FAILED`, OQ-043); a Person newly added must be ACTIVE (409
+        `PERSON_NOT_ACTIVE`), while an archived Person already on the Memory may stay (OQ-035). An unknown, other-Family or ARCHIVED Memory returns
+        404 `MEMORY_NOT_FOUND` (OQ-037).
+        `photos` is the complete new list of photos (OQ-042): photos already on the Memory keep
+        their position whatever their order in the list, new ones are added after them in list
+        order, missing ones are removed (their asset becomes ARCHIVED). New photos follow the
+        rules of `createStoryMemory`; more photos than the limit after an addition returns 409
+        `MEMORY_PHOTO_LIMIT_REACHED`, while a Memory above a lowered limit may still be changed
+        without adding a photo. A Memory left without text and without photo returns 400
+        `VALIDATION_FAILED`. `happenedAt` absent or `null` keeps the date; UNKNOWN removes it;
+        an inconsistent or future date returns 400 `VALIDATION_FAILED` (OQ-063).
       parameters:
         - $ref: '#/components/parameters/IfMatch'
       requestBody:
@@ -1000,7 +1255,10 @@ paths:
       tags: [Memories]
       operationId: archiveMemory
       summary: Archive a memory
-      description: The creator may archive their own memory; ADMIN may archive any family memory.
+      description: |
+        The creator may archive their own memory; ADMIN may archive any family memory, with
+        a role that can write (OQ-041). An archived Memory is no longer listed nor returned
+        (404 `MEMORY_NOT_FOUND`).
       parameters:
         - $ref: '#/components/parameters/IfMatch'
       responses:
@@ -1021,6 +1279,9 @@ paths:
       tags: [Memories]
       operationId: listPersonMemories
       summary: List memories associated with a person
+      description: |
+        ACTIVE Memories linked to the Person, most recently added first (`createdAt`
+        descending, then `id`), for any ACTIVE member (OQ-034).
       parameters:
         - $ref: '#/components/parameters/Page'
         - $ref: '#/components/parameters/Size'
@@ -1043,6 +1304,11 @@ paths:
       tags: [Media]
       operationId: createMediaUpload
       summary: Create a pre-signed direct upload for an image
+      description: |
+        ADMIN or CONTRIBUTOR (VIEWER: 403 `PERMISSION_DENIED`). The purpose is `PROFILE_PICTURE`
+        for a Person's photo or `MEMORY_PHOTO` for a photo of a Memory (OQ-040, OQ-042). An
+        upload not completed within 24 hours, or completed but attached nowhere 24 hours after,
+        is removed (OQ-036).
       requestBody:
         required: true
         content:
@@ -1074,7 +1340,11 @@ paths:
         megapixels), generates metadata-free JPEG `display` and `thumbnail`
         derivatives, deletes the uploaded original and marks the asset READY
         (ADR-007). On invalid content the asset becomes FAILED and 400
-        `MEDIA_INVALID` is returned.
+        `MEDIA_INVALID` is returned. Only the User who created the upload may
+        complete it (403 `PERMISSION_DENIED`); completing a READY asset again
+        returns it unchanged (OQ-036). Completing a FAILED asset returns 400
+        `MEDIA_INVALID` again without processing anything; an ARCHIVED asset
+        returns 409 `MEDIA_NOT_READY` (OQ-044).
       responses:
         '200':
           description: Ready media asset
@@ -1091,6 +1361,30 @@ paths:
         '409':
           $ref: '#/components/responses/Conflict'
 
+  /families/{familyId}/story/years:
+    parameters:
+      - $ref: '#/components/parameters/FamilyId'
+    get:
+      tags: [Memories]
+      operationId: listFamilyStoryYears
+      summary: The years of the family story
+      description: |
+        The strip of years of the family story (`mvp.md` §20, SCREEN-002, OQ-064), for any
+        ACTIVE member: every year with at least one ACTIVE Memory, in chronological order, with
+        its number of ACTIVE Memories, and the number of ACTIVE Memories without a year. A
+        Family without Memory returns an empty list and 0.
+      responses:
+        '200':
+          description: The years of the family story
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/FamilyStoryYears'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
   /families/{familyId}/activities:
     parameters:
       - $ref: '#/components/parameters/FamilyId'
@@ -1098,6 +1392,14 @@ paths:
       tags: [Activity]
       operationId: listFamilyActivities
       summary: List recent presentation-safe family activity
+      description: |
+        Any ACTIVE member, VIEWER included; another Family answers 404
+        FAMILY_NOT_FOUND. Most recent first. Consecutive
+        activities of the same actor and type, each within one hour of the
+        previous one, are returned as one item with their `count` (OQ-054).
+        Types: PERSON_CREATED, PERSON_ARCHIVED, PERSON_RESTORED, PERSON_MERGED,
+        RELATIONSHIP_CREATED, RELATIONSHIP_ARCHIVED, MEMORY_CREATED,
+        INVITATION_ACCEPTED, MEMBER_LEFT, MEMBER_REMOVED.
       parameters:
         - $ref: '#/components/parameters/Page'
         - $ref: '#/components/parameters/Size'
@@ -1110,6 +1412,8 @@ paths:
                 $ref: '#/components/schemas/ActivityPage'
         '403':
           $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
 
 components:
   securitySchemes:
@@ -1309,6 +1613,19 @@ components:
           type: integer
           minimum: 0
 
+    FamilyLimits:
+      type: object
+      description: Limits the API enforces in this Family (application settings).
+      required: [maxPhotosPerMemory]
+      properties:
+        maxPhotosPerMemory:
+          type: integer
+          minimum: 1
+          maximum: 10
+          description: |
+            Maximum number of photos of a Memory, enforced on every addition (OQ-042).
+            A Memory above a lowered limit keeps its photos.
+
     FamilySummary:
       type: object
       required: [id, name, myRole, stats]
@@ -1320,6 +1637,10 @@ components:
           type: string
         myRole:
           $ref: '#/components/schemas/MembershipRole'
+        myLinkedPersonId:
+          type: [string, 'null']
+          format: uuid
+          description: The Person linked to the current User in this family ("me"), or null.
         stats:
           $ref: '#/components/schemas/FamilyStats'
 
@@ -1327,12 +1648,14 @@ components:
       allOf:
         - $ref: '#/components/schemas/FamilySummary'
         - type: object
-          required: [version, createdAt, updatedAt]
+          required: [version, createdAt, updatedAt, limits]
           properties:
             version:
               type: integer
               format: int64
               minimum: 0
+            limits:
+              $ref: '#/components/schemas/FamilyLimits'
             createdAt:
               type: string
               format: date-time
@@ -1373,6 +1696,7 @@ components:
         email:
           type: string
           format: email
+          description: Not returned in the MVP (OQ-061).
         role:
           $ref: '#/components/schemas/MembershipRole'
         status:
@@ -1380,6 +1704,17 @@ components:
         linkedPersonId:
           type: [string, 'null']
           format: uuid
+        linkedPersonDisplayName:
+          type: [string, 'null']
+          description: Display name of the linked Person, when there is one.
+        relationshipToCurrentUser:
+          description: |
+            What this member's linked Person is to the current user's linked
+            Person (OQ-050). Null when either has no linked Person, and for the
+            current user themselves.
+          oneOf:
+            - $ref: '#/components/schemas/KinshipCode'
+            - type: 'null'
         joinedAt:
           type: string
           format: date-time
@@ -1407,6 +1742,10 @@ components:
           maxLength: 320
         role:
           $ref: '#/components/schemas/InvitationRole'
+        personId:
+          type: [string, 'null']
+          format: uuid
+          description: The Person the invitation is sent for, a suggestion only (OQ-050).
         locale:
           $ref: '#/components/schemas/Locale'
           description: Language of the invitation email. Defaults to the inviter's preferred locale.
@@ -1439,6 +1778,20 @@ components:
           $ref: '#/components/schemas/InvitationRole'
         status:
           $ref: '#/components/schemas/InvitationStatus'
+        person:
+          description: |
+            The Person the invitation was sent for while that Person is ACTIVE;
+            null otherwise (OQ-050, OQ-056).
+          oneOf:
+            - $ref: '#/components/schemas/InvitationPerson'
+            - type: 'null'
+        emailDelivery:
+          description: |
+            For channel EMAIL: PENDING until the email of the last creation or
+            renewal is sent, then SENT or FAILED (OQ-055). Null for LINK.
+          oneOf:
+            - $ref: '#/components/schemas/EmailDelivery'
+            - type: 'null'
         invitedBy:
           $ref: '#/components/schemas/ActivityActor'
         expiresAt:
@@ -1463,8 +1816,23 @@ components:
               format: uri
               example: https://app.mbia.example.com/invitations/Zk3...
 
+    EmailDelivery:
+      type: string
+      enum: [PENDING, SENT, FAILED]
+
+    InvitationPerson:
+      type: object
+      required: [id, displayName]
+      properties:
+        id:
+          type: string
+          format: uuid
+        displayName:
+          type: string
+
     InvitationPreviewResponse:
       type: object
+      description: Public. Never names the Person the invitation was sent for (OQ-050).
       required: [familyId, familyName, invitedByDisplayName, role, status, expiresAt]
       properties:
         familyId:
@@ -1489,6 +1857,13 @@ components:
         alreadyMember:
           type: boolean
           description: True when the user was already an ACTIVE member; the invitation was not consumed.
+        suggestedPerson:
+          description: |
+            The Person the invitation was sent for, while it is ACTIVE and linked to
+            no user; null otherwise, and when `alreadyMember` is true (OQ-050).
+          oneOf:
+            - $ref: '#/components/schemas/InvitationPerson'
+            - type: 'null'
         family:
           $ref: '#/components/schemas/FamilySummary'
         membership:
@@ -1623,6 +1998,11 @@ components:
         profileMediaAssetId:
           type: [string, 'null']
           format: uuid
+          description: |
+            A READY `PROFILE_PICTURE` asset, uploaded by the caller and not yet used, that
+            becomes the Person's photo (OQ-040). Otherwise 409 `MEDIA_NOT_READY` or
+            `MEDIA_ALREADY_USED`, 403 for another member's asset, or 404 `MEDIA_NOT_FOUND`
+            (OQ-036).
         linkToCurrentUser:
           type: boolean
           default: false
@@ -1634,6 +2014,10 @@ components:
     UpdatePersonRequest:
       type: object
       minProperties: 1
+      description: |
+        Partial update. An absent or `null` field is left unchanged. A blank string clears
+        `middleNames`, `lastName`, `preferredName` or `biography`; `{precision: UNKNOWN}`
+        clears a date and `gender: UNKNOWN` the gender. `firstName` cannot be cleared.
       properties:
         firstName:
           type: string
@@ -1662,6 +2046,16 @@ components:
         profileMediaAssetId:
           type: [string, 'null']
           format: uuid
+          description: |
+            A READY `PROFILE_PICTURE` asset, uploaded by the caller and not yet used, that
+            replaces the current photo (OQ-040). Otherwise 409 `MEDIA_NOT_READY` or
+            `MEDIA_ALREADY_USED`, 403 for another member's asset, or 404 `MEDIA_NOT_FOUND`
+            (OQ-036).
+        removeProfilePicture:
+          type: boolean
+          description: |
+            `true` removes the Person's photo (OQ-040). Sent with `profileMediaAssetId`,
+            the request is rejected with 400 `VALIDATION_FAILED`.
 
     MergePersonRequest:
       type: object
@@ -1696,6 +2090,39 @@ components:
         totalPages:
           type: integer
           minimum: 0
+
+    ClaimablePersonPage:
+      type: object
+      required: [items, page]
+      properties:
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/ClaimablePerson'
+        page:
+          $ref: '#/components/schemas/PageMeta'
+
+    ClaimablePerson:
+      allOf:
+        - $ref: '#/components/schemas/PersonSummary'
+        - type: object
+          required: [parent]
+          properties:
+            parent:
+              description: One known parent, to tell apart two Persons with the same name (OQ-050); null when none is known.
+              oneOf:
+                - $ref: '#/components/schemas/ClaimablePersonParent'
+                - type: 'null'
+
+    ClaimablePersonParent:
+      type: object
+      required: [id, displayName]
+      properties:
+        id:
+          type: string
+          format: uuid
+        displayName:
+          type: string
 
     PersonPage:
       type: object
@@ -1815,6 +2242,35 @@ components:
           type: string
           format: date-time
 
+    ArchivedRelationshipResponse:
+      type: object
+      required: [id, type, sourcePersonId, targetPersonId, version, archivedAt, relatedPerson]
+      properties:
+        id:
+          type: string
+          format: uuid
+        type:
+          $ref: '#/components/schemas/RelationshipType'
+        sourcePersonId:
+          type: string
+          format: uuid
+          description: For PARENT_OF, this is the parent.
+        targetPersonId:
+          type: string
+          format: uuid
+          description: For PARENT_OF, this is the child.
+        version:
+          type: integer
+          format: int64
+          description: Current version, to send in `If-Match` when restoring.
+        archivedAt:
+          type: string
+          format: date-time
+        relatedPerson:
+          allOf:
+            - $ref: '#/components/schemas/PersonSummary'
+          description: The other Person of the relationship; it may itself be ARCHIVED or MERGED.
+
     TreeNode:
       allOf:
         - $ref: '#/components/schemas/PersonSummary'
@@ -1928,6 +2384,7 @@ components:
 
     MemoryType:
       type: string
+      description: Every Memory is a `STORY` (OQ-042); `PHOTO` is deprecated and never returned.
       enum: [PHOTO, STORY]
 
     MemoryStatus:
@@ -1936,13 +2393,18 @@ components:
 
     RelatedPersonReference:
       type: object
-      required: [id, displayName]
+      required: [id, displayName, status]
       properties:
         id:
           type: string
           format: uuid
         displayName:
           type: string
+        status:
+          description: |
+            An archived Person stays on the Memory and is shown as archived (OQ-035).
+          allOf:
+            - $ref: '#/components/schemas/PersonStatus'
         profilePictureUrl:
           type: [string, 'null']
           format: uri
@@ -1955,6 +2417,8 @@ components:
         - type
         - status
         - relatedPersons
+        - photos
+        - happenedAt
         - createdBy
         - createdAt
         - updatedAt
@@ -1968,19 +2432,32 @@ components:
           format: uuid
         type:
           $ref: '#/components/schemas/MemoryType'
+        happenedAt:
+          $ref: '#/components/schemas/MemoryDate'
         status:
           $ref: '#/components/schemas/MemoryStatus'
         title:
           type: [string, 'null']
         content:
           type: [string, 'null']
+        photos:
+          type: array
+          description: The photos of the Memory in position order (order of addition); empty without photo.
+          items:
+            $ref: '#/components/schemas/MemoryPhotoResponse'
         caption:
           type: [string, 'null']
+          deprecated: true
+          description: Deprecated (OQ-042), always null. Each photo has its own `caption`.
         media:
+          deprecated: true
+          description: Deprecated (OQ-042), always null. See `photos`.
           oneOf:
             - $ref: '#/components/schemas/MediaAssetResponse'
             - type: 'null'
         takenAt:
+          deprecated: true
+          description: Deprecated (OQ-042), always null. Each photo has its own `takenAt`.
           oneOf:
             - $ref: '#/components/schemas/PartialDate'
             - type: 'null'
@@ -2001,8 +2478,89 @@ components:
           type: integer
           format: int64
 
+    MemoryDate:
+      description: |
+        When a Memory happened (`mvp.md` §17, OQ-063): a `PartialDate` that is never in the
+        future. An EXACT date after the current day, or a YEAR_ONLY year after the current
+        year, is refused with 400 `VALIDATION_FAILED` (field `happenedAt`). The current day is
+        the server's in UTC, with one day of tolerance for time zones ahead of UTC.
+      allOf:
+        - $ref: '#/components/schemas/PartialDate'
+
+    FamilyStoryYears:
+      type: object
+      required: [years, undatedMemoryCount]
+      properties:
+        years:
+          type: array
+          description: The years with at least one ACTIVE Memory, oldest first.
+          items:
+            $ref: '#/components/schemas/FamilyStoryYear'
+        undatedMemoryCount:
+          type: integer
+          minimum: 0
+          description: The number of ACTIVE Memories without a year.
+
+    FamilyStoryYear:
+      type: object
+      required: [year, memoryCount]
+      properties:
+        year:
+          type: integer
+          minimum: 1
+          maximum: 9999
+        memoryCount:
+          type: integer
+          minimum: 1
+
+    MemoryPhotoInput:
+      type: object
+      required: [mediaAssetId]
+      properties:
+        mediaAssetId:
+          type: string
+          format: uuid
+          description: A READY `MEMORY_PHOTO` asset uploaded by the caller, or a photo already on the Memory.
+        caption:
+          type: [string, 'null']
+          maxLength: 5000
+        takenAt:
+          oneOf:
+            - $ref: '#/components/schemas/PartialDate'
+            - type: 'null'
+
+    MemoryPhotoResponse:
+      type: object
+      required: [mediaAssetId, url, thumbnailUrl]
+      properties:
+        mediaAssetId:
+          type: string
+          format: uuid
+        caption:
+          type: [string, 'null']
+        takenAt:
+          oneOf:
+            - $ref: '#/components/schemas/PartialDate'
+            - type: 'null'
+        url:
+          type: string
+          format: uri
+          description: Display derivative (long edge ≤ 2048 px). Pre-signed, valid 60 minutes.
+        thumbnailUrl:
+          type: string
+          format: uri
+          description: Thumbnail derivative (long edge ≤ 480 px). Pre-signed, valid 60 minutes.
+        widthPx:
+          type: [integer, 'null']
+          description: Width of the display derivative.
+        heightPx:
+          type: [integer, 'null']
+          description: Height of the display derivative.
+
     CreatePhotoMemoryRequest:
       type: object
+      deprecated: true
+      description: Deprecated (OQ-042), see `createPhotoMemory`.
       required: [mediaAssetId, relatedPersonIds]
       properties:
         mediaAssetId:
@@ -2025,16 +2583,28 @@ components:
 
     CreateStoryMemoryRequest:
       type: object
-      required: [title, content, relatedPersonIds]
+      required: [title, relatedPersonIds]
       properties:
         title:
           type: string
           minLength: 1
           maxLength: 250
         content:
-          type: string
+          type: [string, 'null']
           minLength: 1
           maxLength: 50000
+          description: Not blank when present; required when the Memory has no photo.
+        happenedAt:
+          description: When it happened (OQ-063); absent or `null` means UNKNOWN.
+          oneOf:
+            - $ref: '#/components/schemas/MemoryDate'
+            - type: 'null'
+        photos:
+          type: array
+          maxItems: 10
+          description: The photos, in this order. At most `FamilyResponse.limits.maxPhotosPerMemory`.
+          items:
+            $ref: '#/components/schemas/MemoryPhotoInput'
         relatedPersonIds:
           type: array
           minItems: 1
@@ -2054,10 +2624,31 @@ components:
         content:
           type: [string, 'null']
           maxLength: 50000
+          description: |
+            An absent or `null` value keeps the text (OQ-008, OQ-049); a blank string empties it,
+            allowed only if a photo remains (OQ-042).
+        happenedAt:
+          description: |
+            When it happened (OQ-063). An absent or `null` value keeps it (OQ-008); UNKNOWN
+            removes it.
+          oneOf:
+            - $ref: '#/components/schemas/MemoryDate'
+            - type: 'null'
+        photos:
+          type: array
+          maxItems: 10
+          description: |
+            The complete new list of photos; absent means unchanged (OQ-008). See `updateMemory`.
+          items:
+            $ref: '#/components/schemas/MemoryPhotoInput'
         caption:
           type: [string, 'null']
           maxLength: 5000
+          deprecated: true
+          description: Deprecated (OQ-042), rejected with 400 `VALIDATION_FAILED`. See `photos`.
         takenAt:
+          deprecated: true
+          description: Deprecated (OQ-042), rejected with 400 `VALIDATION_FAILED`. See `photos`.
           oneOf:
             - $ref: '#/components/schemas/PartialDate'
             - type: 'null'
@@ -2142,13 +2733,17 @@ components:
           $ref: '#/components/schemas/MediaStatus'
         mimeType:
           type: string
+          description: MIME type declared at upload. The served derivatives are always JPEG (OQ-045).
         sizeBytes:
           type: [integer, 'null']
           format: int64
+          description: Size declared at upload, in bytes (OQ-045).
         widthPx:
           type: [integer, 'null']
+          description: Width of the display derivative. Present when READY.
         heightPx:
           type: [integer, 'null']
+          description: Height of the display derivative. Present when READY.
         url:
           type: [string, 'null']
           format: uri
@@ -2174,6 +2769,10 @@ components:
     ActivityResponse:
       type: object
       required: [id, type, actor, occurredAt]
+      description: |
+        One activity, or a group of consecutive activities of the same actor and
+        type (OQ-054). `id`, `resourceType`, `resourceId`, `data` and `occurredAt`
+        are those of the most recent activity of the group.
       properties:
         id:
           type: string
@@ -2181,6 +2780,22 @@ components:
         type:
           type: string
           examples: [PERSON_CREATED]
+        count:
+          type: integer
+          minimum: 1
+          default: 1
+          description: Number of activities in the group.
+        resourceIds:
+          type: array
+          items:
+            type: string
+            format: uuid
+          description: The resources of the group's activities, most recent first.
+        resourceActive:
+          type: boolean
+          description: |
+            Whether `resourceId` is still ACTIVE, so that the client links to it.
+            False for an archived or merged resource and for member activities.
         actor:
           $ref: '#/components/schemas/ActivityActor'
         resourceType:
@@ -2231,10 +2846,12 @@ components:
             - PERMISSION_DENIED
             - POSSIBLE_DUPLICATE
             - PERSON_ALREADY_CLAIMED
+            - USER_ALREADY_LINKED
             - RELATIONSHIP_ALREADY_EXISTS
             - SELF_RELATIONSHIP_NOT_ALLOWED
             - RELATIONSHIP_CREATES_CYCLE
             - RELATIONSHIP_WARNING_CONFIRMATION_REQUIRED
+            - PERSON_NOT_ACTIVE
             - PERSON_MERGE_CONFLICT
             - EMAIL_NOT_VERIFIED
             - LAST_ADMIN_REQUIRED
@@ -2242,9 +2859,22 @@ components:
             - INVITATION_EXPIRED
             - INVITATION_REVOKED
             - INVITATION_ALREADY_USED
+            - INVITATION_ALREADY_PENDING
             - MEDIA_TOO_LARGE
             - MEDIA_INVALID
             - MEDIA_NOT_READY
+            - MEDIA_ALREADY_USED
+            - MEDIA_NOT_FOUND
+            - MEMORY_NOT_FOUND
+            - MEMORY_PHOTO_LIMIT_REACHED
+            - VALIDATION_FAILED
+            - INTERNAL_ERROR
+            - AUTHENTICATION_REQUIRED
+            - FAMILY_NOT_FOUND
+            - RESOURCE_NOT_FOUND
+            - METHOD_NOT_ALLOWED
+            - NOT_ACCEPTABLE
+            - UNSUPPORTED_MEDIA_TYPE
         detail:
           type: string
         traceId:

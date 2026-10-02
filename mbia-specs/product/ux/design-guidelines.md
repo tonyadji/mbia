@@ -82,12 +82,15 @@ Select
 Avatar
 PersonCard
 MemoryCard
+YearStrip
 BottomSheet
 Modal
 Toast
 NavigationBar
 Skeleton
 ```
+
+`YearStrip` is the strip of years of the family story (`mvp.md` §20, SCREEN-002, SCREEN-016): a row of year buttons that scrolls sideways, each with its number of Memories, the current one marked by more than its color.
 
 ## 8. Animation
 

@@ -1,11 +1,11 @@
 # Mbia — Product Specification
 
-**Version:** 0.1  
+**Version:** 0.2  
 **Status:** Work in progress
 
 ## 1. Purpose
 
-Mbia is a digital family heritage platform centered on family members and the relationships between them.
+Mbia is a digital family heritage platform that answers one question: **what is the story of my family?** It gathers the stories and memories of a family, and places them among the family members and the relationships between them.
 
 The product specification has two goals:
 
@@ -16,9 +16,9 @@ The product must therefore be precise enough that an implementation agent does n
 
 ## 2. Product vision
 
-Mbia enables a family to build, preserve and transmit its shared history across generations.
+Mbia enables a family to tell, preserve and transmit its shared history across generations.
 
-The genealogy graph is the organizing structure for that heritage. The long-term product may contain:
+The family's story comes first: what happened, what the elders remember, what the family wants to pass on. The genealogy graph is the index of that story: it shows who is who and how everyone is related. The long-term product may contain:
 
 - people;
 - family relationships;
@@ -27,9 +27,10 @@ The genealogy graph is the organizing structure for that heritage. The long-term
 - videos;
 - documents;
 - stories and testimonies;
-- family timelines and memories.
+- family timelines and memories;
+- family questions asked to the elders and the whole family.
 
-Mbia is not merely a family-tree drawing tool. The tree is the human graph around which the family's digital heritage is organized.
+Mbia is not a family-tree drawing tool. A family comes to Mbia to answer "what is the story of my family?", not "what is my family tree?". The tree is the human graph that indexes that story.
 
 ## 3. Initial positioning
 
@@ -50,9 +51,9 @@ The product must be able to evolve toward cases such as:
 
 ## 4. Core value proposition
 
-> Allow a family to build, preserve and transmit its history across generations.
+> Allow a family to tell, preserve and transmit its history across generations.
 
-A user should eventually be able to open the profile of a grandparent and find photographs, stories, wedding memories, family testimonies and other historical material while understanding exactly how that person is related to them.
+A user reads the story of their family through time, year after year, and tells what they know of it. They should eventually be able to open the profile of a grandparent and find photographs, stories, wedding memories, family testimonies and other historical material while understanding exactly how that person is related to them.
 
 ## 5. Fundamental concepts
 
@@ -80,7 +81,7 @@ An explicit relationship fact between Persons. The MVP persists a small set of s
 
 ### Memory
 
-A piece of family heritage associated with one or more Persons. The MVP supports photos and written stories.
+A moment of the family's story, told about one or more Persons and dated when the family knows when it happened. The MVP supports written stories with photos.
 
 ## 6. Graph principle
 
@@ -106,19 +107,22 @@ Derived relations are not persisted as independent facts when they can be calcul
 
 ### MVP — validate commercial interest
 
-Test whether families find enough value in a private collaborative family space to begin documenting their relatives and shared memories.
+Test whether families find enough value in a private collaborative family space to tell and read their family's story together.
 
-Core loops:
+Core loops, in this order:
 
 ```text
-STRUCTURE
-Person + relationship + tree
+TELL
+Person + Memory (story, photos, when it happened)
 
-PRESERVE
-Photo + Story
+READ
+Family story through time (year by year)
 
 TRANSMIT
 Invitation + collaboration
+
+STRUCTURE
+Relationships + tree, as the index of the story
 ```
 
 ### V1 — family heritage
@@ -131,7 +135,8 @@ Candidates:
 - richer profiles;
 - improved permissions;
 - search and history;
-- timelines and event-oriented memories.
+- family questions: a member asks the family a question, the others answer (`mvp.md` §27);
+- events and ceremonies in the family story.
 
 ### V2 — intelligent family memory
 
@@ -143,7 +148,7 @@ Candidates:
 - audio transcription;
 - contradiction detection;
 - relationship suggestions;
-- family timelines and summaries;
+- family summaries;
 - document import assistance.
 
 ## 8. Specification rule

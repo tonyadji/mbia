@@ -1,6 +1,6 @@
 # Mbia MVP — Data Model
 
-**Version:** 0.2  
+**Version:** 0.3  
 **Status:** Draft for implementation  
 **Database:** PostgreSQL 18  
 **Scope:** Commercial MVP
@@ -144,8 +144,8 @@ relationship_status:
   ARCHIVED
 
 memory_type:
-  PHOTO
   STORY
+  PHOTO            (reserved, never created: a Memory carries its photos, OQ-042)
 
 memory_status:
   ACTIVE
@@ -182,8 +182,8 @@ family_memberships     families
                          │
                          ├──────── memories
                          │           │
-                         │           ▼
-                         │      memory_persons
+                         │           ├──▶ memory_persons
+                         │           └──▶ memory_photos ──▶ media_assets
                          │
                          ├──────── media_assets
                          │
@@ -289,9 +289,9 @@ ON family_memberships (family_id, status);
 Rules:
 
 - only `ACTIVE` memberships grant access;
-- changing a membership role is an audited operation;
+- changing a membership role is an audited operation (`MEMBERSHIP_ROLE_CHANGED`);
 - removing a membership does not delete the user or family data;
-- removing a membership (removal by ADMIN or leaving) sets `linked_user_id = NULL` on the User's Person in that Family, in the same transaction, with an audit entry;
+- removing a membership (removal by ADMIN or leaving) sets `linked_user_id = NULL` on the User's Person in that Family, in the same transaction, with an audit entry (`MEMBERSHIP_REMOVED` or `MEMBERSHIP_LEFT`, and `PERSON_UNCLAIMED` on the Person);
 - a Family must keep at least one ACTIVE `ADMIN` membership; the use case locks the Family's ADMIN memberships before removing or demoting one (`LAST_ADMIN_REQUIRED`);
 - accepting a new invitation for a `REMOVED` membership reactivates the existing row (`status = ACTIVE`, new role, new `joined_at`, `removed_at = NULL`).
 
@@ -307,6 +307,8 @@ family_invitations (
     email              VARCHAR(320),
     locale             VARCHAR(5) NOT NULL,
     role               membership_role NOT NULL,
+    person_id          UUID,
+    email_delivery     VARCHAR(20),
     token_hash         VARCHAR(255) NOT NULL UNIQUE,
     status             invitation_status NOT NULL DEFAULT 'PENDING',
     invited_by         UUID NOT NULL REFERENCES users(id),
@@ -322,7 +324,10 @@ family_invitations (
 
     CHECK (channel <> 'EMAIL' OR email IS NOT NULL),
     CHECK (role <> 'ADMIN'),
-    CHECK (locale IN ('fr', 'en'))
+    CHECK (locale IN ('fr', 'en')),
+    CHECK ((channel = 'EMAIL') = (email_delivery IS NOT NULL)),
+    CHECK (email_delivery IS NULL OR email_delivery IN ('PENDING', 'SENT', 'FAILED')),
+    FOREIGN KEY (person_id, family_id) REFERENCES persons(id, family_id)
 )
 ```
 
@@ -333,19 +338,28 @@ Rules:
 - `expires_at = created_at + 14 days` (or `renewed_at + 14 days` after renewal);
 - the invitation is not bound to `email`: any authenticated, email-verified User holding the raw token may accept it;
 - accepting an invitation atomically creates or reactivates the membership and marks the invitation `ACCEPTED` (single use);
-- if the accepting User already has an `ACTIVE` membership in the Family, nothing changes and the invitation stays `PENDING`;
-- renewal replaces `token_hash`, resets `expires_at`, sets `renewed_at` and, for `EMAIL`, sends the email again; the old token stops working immediately;
+- if the accepting User already has an `ACTIVE` membership in the Family, nothing changes and the invitation stays `PENDING`; the invitation's state is checked first, so an expired, revoked or accepted invitation answers 410 even to an ACTIVE member (OQ-059);
+- renewal replaces `token_hash`, resets `expires_at`, sets `renewed_at` and, for `EMAIL`, sends the email again; the old token stops working immediately and, since only the current hash is stored, answers like an unknown token (404 `INVITATION_NOT_FOUND`, OQ-058);
 - revocation sets `status = REVOKED`, `revoked_at`, `revoked_by`;
+- a `PENDING` or `EXPIRED` invitation can be renewed or revoked; an `ACCEPTED` or `REVOKED` one cannot (410 `INVITATION_ALREADY_USED`, `INVITATION_REVOKED`; OQ-057); revocation is final;
 - `EXPIRED` is set lazily when an expired `PENDING` invitation is read or accepted, and may also be set by a scheduled task;
 - `role = ADMIN` is not allowed in MVP;
-- expired, revoked or accepted invitations cannot be accepted.
+- expired, revoked or accepted invitations cannot be accepted;
+- `person_id` is the Person the invitation was sent for, a suggestion only (OQ-050): an ACTIVE, living Person of the same Family linked to no User when the invitation is created; accepting never links it by itself;
+- a Person has at most one `PENDING` invitation (unique partial index below; `INVITATION_ALREADY_PENDING`); an expired one is marked `EXPIRED` before the check, so that a new invitation can be created;
+- when its Person is archived or merged, a pending invitation stays valid and keeps `person_id`; the Person is offered on acceptance and shown with the invitation only while it is ACTIVE (a restored Person is offered again); a merge never moves `person_id` (OQ-056);
+- `email_delivery` is null for `LINK`. For `EMAIL`, it is `PENDING` when the invitation is created or renewed, and the email is sent after the transaction commits, in the invitation's `locale`, before the API answers (OQ-060); it then becomes `SENT`, or `FAILED` when the mail provider refuses or cannot be reached. A failure is logged without the address or the link; the ADMIN retries with a renewal (OQ-055).
 
-Recommended partial index:
+Recommended partial indexes:
 
 ```sql
 CREATE INDEX idx_invitations_family_pending
 ON family_invitations (family_id, lower(email))
 WHERE status = 'PENDING';
+
+CREATE UNIQUE INDEX uq_invitations_person_pending
+ON family_invitations (person_id)
+WHERE status = 'PENDING' AND person_id IS NOT NULL;
 ```
 
 ## 9. Partial-date representation
@@ -420,7 +434,9 @@ persons (
 )
 ```
 
-Additional foreign keys are added after `media_assets` exists:
+`profile_media_asset_id` and its foreign key are created by the migration that introduces `media_assets`; the `persons` migration does not create them. The self-referencing merge foreign key is created with the table.
+
+Additional foreign keys:
 
 ```sql
 ALTER TABLE persons
@@ -638,29 +654,35 @@ Rules (processing details: ADR-007):
 - `completeMediaUpload` validates and processes the upload synchronously, writes the `display` and `thumbnail` JPEG derivatives without metadata, deletes the uploaded original, and sets `READY`; `width_px`/`height_px` describe the display derivative;
 - on validation failure the asset becomes `FAILED` with a `failure_reason`;
 - `PENDING_UPLOAD` assets older than 24 hours become `FAILED` and their objects are deleted by a scheduled task;
-- only `READY` media may be attached to a person profile or photo memory;
+- only the User who uploaded an asset may complete it and attach it; another member gets `PERMISSION_DENIED` (OQ-036);
+- completing a `READY` asset again returns it unchanged; completing a `FAILED` asset answers `MEDIA_INVALID` again without processing anything, and an `ARCHIVED` one `MEDIA_NOT_READY` (OQ-044);
+- the API describes an asset by the MIME type and size declared at upload (`upload_mime_type`, `upload_size_bytes`), and by the dimensions of its `display` derivative (OQ-045);
+- an asset is attached once, to a single use of its purpose: a `PROFILE_PICTURE` to one Person, a `MEMORY_PHOTO` to one Memory; attaching it again is refused with `MEDIA_ALREADY_USED` (OQ-036, OQ-042);
+- a `READY` asset still unattached 24 hours after `ready_at` becomes `FAILED` and its objects are deleted by the same scheduled task (OQ-036);
+- a replaced or removed Person photo becomes `ARCHIVED` and no URL is served for it (OQ-040); its objects are kept, as the rest of the soft lifecycle;
+- a photo removed from a Memory becomes `ARCHIVED` in the same way (OQ-042); the photos of an archived Memory stay attached and `READY`, and are served again if support restores the Memory;
+- a Person's photo is served as the pre-signed URL of its `thumbnail` derivative (`profilePictureUrl`), signed from the Person row without reading `media_assets`: an attached asset is always `READY`;
+- only `READY` media of the matching purpose may be attached: a `PROFILE_PICTURE` to a Person, a `MEMORY_PHOTO` to a Memory;
 - storage keys are internal and must not be exposed as public permanent URLs;
 - views use pre-signed GET URLs valid for 60 minutes.
 
 ## 14. Table: `memories`
 
-Stores both stories and photo memories.
+Stores Memories: a title, an optional story text and, in `memory_photos`, up to a few photos (`mvp.md` §17, OQ-042).
 
 ```sql
 memories (
     id                  UUID PRIMARY KEY,
     family_id           UUID NOT NULL REFERENCES families(id),
-    type                memory_type NOT NULL,
+    type                memory_type NOT NULL DEFAULT 'STORY',
     status              memory_status NOT NULL DEFAULT 'ACTIVE',
 
-    title               VARCHAR(250),
+    title               VARCHAR(250) NOT NULL,
     content             TEXT,
-    caption             TEXT,
-    media_asset_id      UUID,
 
-    taken_date          DATE,
-    taken_year          SMALLINT,
-    taken_date_precision date_precision NOT NULL DEFAULT 'UNKNOWN',
+    happened_date           DATE,
+    happened_year           SMALLINT,
+    happened_date_precision date_precision NOT NULL DEFAULT 'UNKNOWN',
 
     created_by          UUID NOT NULL REFERENCES users(id),
     updated_by          UUID NOT NULL REFERENCES users(id),
@@ -669,30 +691,71 @@ memories (
     archived_at         TIMESTAMPTZ,
     version             BIGINT NOT NULL DEFAULT 0,
 
-    FOREIGN KEY (media_asset_id, family_id)
-        REFERENCES media_assets(id, family_id),
+    CHECK (type = 'STORY'),
+    CONSTRAINT ck_memory_happened_date CHECK (
+        (happened_date_precision = 'EXACT' AND happened_date IS NOT NULL AND happened_year IS NULL)
+     OR (happened_date_precision = 'YEAR_ONLY' AND happened_date IS NULL AND happened_year IS NOT NULL
+         AND happened_year BETWEEN 1 AND 9999)
+     OR (happened_date_precision = 'UNKNOWN' AND happened_date IS NULL AND happened_year IS NULL)),
 
     UNIQUE (id, family_id)
 )
 ```
 
-Type invariants:
+Invariants (the second one spans `memory_photos` and is enforced in the application transaction):
 
 ```text
-PHOTO:
-  media_asset_id required
-  title optional
-  content must be null
-  caption optional
-
-STORY:
-  title required
-  content required
-  media_asset_id null in MVP
-  caption null
+title        required, not blank, at most 250 characters
+content      at most 50,000 characters; required and not blank when the Memory has no photo
+happened_*   when it happened (mvp.md §17, OQ-063): a partial date (§9), never in the future
 ```
 
+The date of a Memory follows §9 with one source of truth; the check names `happened_year IS NOT NULL` because a check accepts the NULL result of `BETWEEN`. Its **story year**, used by the family story (`mvp.md` §20), is `COALESCE(EXTRACT(YEAR FROM happened_date), happened_year)`: null when the precision is UNKNOWN. "Never in the future" is the application's rule, since it depends on the current day (`openapi.yaml` `MemoryDate`). `V012__memory_happened_date.sql` adds the three columns and their check; every existing Memory becomes UNKNOWN, that is undated.
+
+`V007__memories.sql` created the table without the media columns of the earlier draft (`media_asset_id`, `caption`, taken date): they belong to each photo in `memory_photos`. Its check that a STORY has a title and a text is relaxed by `V009__memory_photos.sql` to the title only; the text rule, which depends on the photos, is the application's.
+
 A memory must be associated with at least one active person in MVP. This is enforced in the application transaction because it spans `memory_persons`.
+
+## 14bis. Table: `memory_photos`
+
+The photos of a Memory, in the order they were added (OQ-042).
+
+```sql
+memory_photos (
+    family_id             UUID NOT NULL,
+    memory_id             UUID NOT NULL,
+    media_asset_id        UUID NOT NULL,
+    position              SMALLINT NOT NULL,
+    caption               TEXT,
+    taken_date            DATE,
+    taken_year            SMALLINT,
+    taken_date_precision  date_precision NOT NULL DEFAULT 'UNKNOWN',
+    created_at            TIMESTAMPTZ NOT NULL,
+
+    PRIMARY KEY (memory_id, media_asset_id),
+    UNIQUE (media_asset_id),
+    UNIQUE (memory_id, position),
+
+    FOREIGN KEY (memory_id, family_id)
+        REFERENCES memories(id, family_id),
+
+    FOREIGN KEY (media_asset_id, family_id)
+        REFERENCES media_assets(id, family_id),
+
+    CHECK (caption IS NULL OR char_length(caption) <= 5000)
+)
+```
+
+The taken date follows the partial-date representation of §9 (OQ-033).
+
+Rules:
+
+- a Memory has at most N photos, N being the application setting `mbia.memory.max-photos` (3 at launch, between 1 and 10); the application refuses an addition beyond N with `MEMORY_PHOTO_LIMIT_REACHED`. A Memory above a lowered N keeps its photos: only additions are refused;
+- an attached asset is `READY`, of purpose `MEMORY_PHOTO`, was uploaded by the member who attaches it, and is attached to no other Memory or Person (§13, OQ-036);
+- `position` is the order of addition: a new photo takes the next position; removing a photo leaves a gap and never renumbers; photos are not reordered;
+- removing a photo from a Memory deletes its row and makes its asset `ARCHIVED` (§13): the photo is a part of the Memory, not a Memory itself, like a Person's photo (§10);
+- merge and Person archival do not touch photos: they belong to the Memory, not to its Persons;
+- photos are signed for the API in one batch per response, from the stored keys, without a query per photo.
 
 ## 15. Table: `memory_persons`
 
@@ -717,10 +780,10 @@ memory_persons (
 
 Rules:
 
-- a photo/story can reference multiple people;
+- a Memory can reference multiple people;
 - no duplicate association;
 - a `MERGED` source person must be replaced with the merge target during merge;
-- archived persons remain historically referenced but are not selectable for new associations.
+- archived persons remain historically referenced but are not selectable for new associations: on create, and on an edit that changes the set (OQ-043), the resulting set has at least one ACTIVE Person, and every Person newly added is ACTIVE; archiving a Person leaves its associations and Memories unchanged (OQ-035).
 
 ## 16. Table: `activities`
 
@@ -739,13 +802,13 @@ activities (
 )
 ```
 
-Examples of `activity_type`:
+`activity_type` (OQ-054):
 
 ```text
 PERSON_CREATED
-PERSON_UPDATED
 PERSON_ARCHIVED
 PERSON_RESTORED
+PERSON_MERGED
 RELATIONSHIP_CREATED
 RELATIONSHIP_ARCHIVED
 MEMORY_CREATED
@@ -755,6 +818,27 @@ MEMBER_REMOVED
 ```
 
 `payload` contains presentation-safe contextual data such as display names, never secrets.
+
+Rules (OQ-054):
+
+- activities are written in the transaction of the operation they record;
+- the types written and shown are `PERSON_CREATED`, `PERSON_ARCHIVED`, `PERSON_RESTORED`, `PERSON_MERGED`, `RELATIONSHIP_CREATED`, `RELATIONSHIP_ARCHIVED`, `MEMORY_CREATED`, `INVITATION_ACCEPTED`, `MEMBER_LEFT` and `MEMBER_REMOVED`; edits, role changes and invitations sent stay in `audit_entries` only;
+- `payload` holds the display names at the time of the activity (the Person, both Persons of a relationship, the Memory title, the member), never a story text, a caption, an email address, a token or a storage key;
+- `listFamilyActivities` groups consecutive activities of the Family (in `occurred_at DESC, id DESC` order) that have the same actor and type, each within one hour of the previous one; a group is returned as one item with its count and the resource ids of its activities;
+- each item links to its resource only while it is ACTIVE: the API returns whether it still is;
+- no activity is rebuilt from `audit_entries`: the feed starts empty when the table is created.
+
+Resource and `payload` of each type (a name that is unknown is left out):
+
+| `activity_type` | `resource_type` / `resource_id` | `payload` keys |
+|---|---|---|
+| `PERSON_CREATED`, `PERSON_ARCHIVED`, `PERSON_RESTORED` | `PERSON` / the Person | `personDisplayName` |
+| `PERSON_MERGED` | `PERSON` / the Person kept | `personDisplayName` (the Person kept, after the merge), `mergedPersonDisplayName` (the duplicate) |
+| `RELATIONSHIP_CREATED`, `RELATIONSHIP_ARCHIVED` | `RELATIONSHIP` / the relationship | `relationshipType`, `sourcePersonId`, `sourcePersonDisplayName`, `targetPersonId`, `targetPersonDisplayName` |
+| `MEMORY_CREATED` | `MEMORY` / the Memory | `memoryTitle` (never its date, OQ-063) |
+| `INVITATION_ACCEPTED`, `MEMBER_LEFT`, `MEMBER_REMOVED` | `MEMBERSHIP` / the membership | `memberDisplayName` (the member's account name) |
+
+`actor_user_id` is the User who acted: the new member for `INVITATION_ACCEPTED` and `MEMBER_LEFT`, the ADMIN for `MEMBER_REMOVED`. A merge writes only `PERSON_MERGED`: the duplicate relationships it archives and the Person released when a member leaves write no activity of their own. An operation that changes nothing (archiving an archived Person, an ACTIVE member opening an invitation) writes none.
 
 Recommended index:
 
@@ -788,6 +872,14 @@ Rules:
 - secrets, access tokens and raw invitation tokens must never be written;
 - `old_value` / `new_value` may be field-focused rather than full entity snapshots when appropriate.
 
+Memories write (OQ-039):
+
+- `MEMORY_CREATED`: the type, the related Person ids and the photo asset ids;
+- `MEMORY_UPDATED`: one entry per changed field; for `title`, `content` and `caption` only the field name is recorded, never the text; for `happenedAt`, the dates before and after, as for a Person's birth (a date is not family text); for related Persons, the ids before and after; for `photos`, the asset ids before and after when photos are added or removed, and the field `photoDetails` with the asset id only when a caption or taken date changes (OQ-042);
+- `MEMORY_ARCHIVED`.
+
+Media operations are not audited: their state is in `media_assets`. Storage keys and pre-signed URLs are never written. Setting, replacing or removing a Person's photo changes the Person: it is a `PERSON_UPDATED` entry of the field `profilePicture`, whose values are the asset ids, and the Person history shows it without values (OQ-046).
+
 Examples:
 
 ```text
@@ -797,6 +889,7 @@ PERSONS_MERGED
 RELATIONSHIP_ARCHIVED
 MEMBERSHIP_ROLE_CHANGED
 MEMBERSHIP_REMOVED
+MEMBERSHIP_LEFT
 PERSON_CLAIMED
 PERSON_UNCLAIMED
 INVITATION_CREATED
@@ -816,6 +909,8 @@ Example response concept:
 18/09/2026 — Marie
 Birth year: 1954 → 1956
 ```
+
+What the history shows is listed in `genealogy.md` §13 (OQ-031): the Person's own entries, one per changed field, old → new except the biography, and no internal value for other actions. The actor is shown by display name, or "Former member" when the account was deleted.
 
 The UI must not expose raw internal audit JSON.
 
@@ -840,20 +935,20 @@ Transaction steps:
 
 1. lock both Person rows;
 2. verify expected versions;
-3. retain target scalar values when both source and target are non-empty; fill only empty target fields from source;
+3. retain target scalar values when both source and target are non-empty; fill only empty target fields from source (empty: absent text, `gender = UNKNOWN`, date precision `UNKNOWN`; the target is deceased when either is, and an unknown target death date takes the source's, OQ-028); the target keeps its photo or takes the source's, the source keeps none, and its photo becomes `ARCHIVED` when the target already had one (OQ-047);
 4. move `memory_persons` links from B to A, deduplicating existing links;
-5. move relationships from B to A;
+5. move relationships from B to A, ACTIVE and ARCHIVED (OQ-027); an ARCHIVED relation between A and B stays on B;
 6. canonicalize `PARTNER_OF` relations after replacement;
-7. deduplicate identical resulting relations;
-8. reject any resulting self relation;
+7. deduplicate identical resulting relations: an ACTIVE relation of B identical to an ACTIVE relation of A is archived and stays on B;
+8. reject any resulting self relation (an ACTIVE relation between A and B);
 9. reject any resulting parental cycle;
-10. transfer linked user only when unambiguous;
+10. transfer linked user only when unambiguous: B's user moves to A when A has none, and B keeps no linked user;
 11. mark B as `MERGED`;
 12. set `B.merged_into_person_id = A.id`;
 13. write audit entries;
 14. commit.
 
-No partial merge may remain persisted.
+No partial merge may remain persisted. Refusals answer `PERSON_MERGE_CONFLICT` with a `reason` (OQ-026).
 
 ## 20. Relationship archival transaction
 
@@ -894,13 +989,19 @@ person.linked_user_id = currentUser.id
 
 and writes audit/activity as applicable.
 
+Creating a Person with `linkToCurrentUser = true` ("Start with me") applies the same rules in the transaction that creates the Person. When the current User already has a non-MERGED linked Person in the Family, the request is refused with 409 `USER_ALREADY_LINKED` and nothing is created; `uq_person_linked_user_per_family` is the final guard against concurrent requests.
+
+Claiming the Person already linked to the current User changes nothing. A Person linked to another User is refused with 409 `PERSON_ALREADY_CLAIMED`; a User already linked to another non-MERGED Person of the Family with 409 `USER_ALREADY_LINKED`, and `uq_person_linked_user_per_family` is the final guard against concurrent claims.
+
+Unclaim sets `person.linked_user_id = null` and is allowed to the linked User (any role) and to an ADMIN; on a Person linked to nobody, an ADMIN's unclaim changes nothing and anyone else is refused (OQ-009).
+
 Admin unclaim is an audited operation.
 
 ## 22. Duplicate detection
 
 Duplicate detection is advisory.
 
-Initial implementation may score candidates using normalized values:
+Candidates are selected with the deterministic rule of `product/domain/person-relationships-collaboration.md` §4.1, on normalized values of:
 
 ```text
 first_name
@@ -925,9 +1026,11 @@ status = ACTIVE
 first_name / last_name / preferred_name
 ```
 
-For MVP, normalized B-tree indexes plus `ILIKE` may be sufficient for small/medium family sizes.
+Matching is case- and accent-insensitive (`product/mvp.md` §19). The `unaccent` extension is created in its own migration (`V005__unaccent.sql`, `genealogy.md` §11). The query filters on `family_id` and `status` (index `idx_persons_family_status`) and compares `lower(unaccent(...))` of `first_name`, `last_name`, `preferred_name` and `first_name || ' ' || last_name` with a `LIKE` pattern; it orders by `lower(unaccent(display name)) COLLATE "C"`, `created_at`, `id` (OQ-022). `unaccent` is not `IMMUTABLE`, so there is no expression index: the Family filter is enough for small/medium family sizes (a 250-Person Family is covered by a smoke test).
 
 If usage requires it, PostgreSQL `pg_trgm` can be enabled later without changing the domain model.
+
+`listClaimablePersons` ("Are you already in this tree?", `mvp.md` §18) is the same query with `linked_user_id IS NULL`, plus one query for the page: the first ACTIVE parent of each Person through an ACTIVE `PARENT_OF` relationship (`DISTINCT ON` the child, ordered like the tree, OQ-015), through `idx_rel_target_active` (§23.2).
 
 ### 23.2 Tree local graph
 
@@ -953,12 +1056,27 @@ ON family_relationships (family_id, target_person_id, type)
 WHERE status = 'ACTIVE';
 ```
 
+### 23.2bis Removed relationships of a Person
+
+Used by the ADMIN "Removed links" area:
+
+```text
+family_id
+status = ARCHIVED
+source_person_id = person or target_person_id = person
+order by archived_at desc
+```
+
+Volumes are small; indexes `(family_id, status, source_person_id)` and `(family_id, status, target_person_id)` serve both this query and the active traversal.
+
 ### 23.3 Person memories
 
 ```sql
 CREATE INDEX idx_memory_person_person
 ON memory_persons (family_id, person_id, memory_id);
 ```
+
+Person Memories are listed most recently added first: `memories.created_at DESC`, then `memories.id` (OQ-034).
 
 ### 23.4 Family memories
 
@@ -967,6 +1085,18 @@ CREATE INDEX idx_memories_family_recent
 ON memories (family_id, created_at DESC)
 WHERE status = 'ACTIVE';
 ```
+
+Family Memories are listed in the same order: `created_at DESC`, then `id` (OQ-034).
+
+### 23.5 Family story
+
+```sql
+CREATE INDEX idx_memories_family_story_year
+ON memories (family_id, (COALESCE(EXTRACT(YEAR FROM happened_date)::int, happened_year::int)))
+WHERE status = 'ACTIVE';
+```
+
+The strip of years (`listFamilyStoryYears`) groups the ACTIVE Memories of a Family by story year (§14) in one query; a year (`listFamilyMemories?year=`) reads that index. Inside a year: EXACT dates first by `happened_date`, then YEAR_ONLY by `created_at` ascending, then `id`; undated Memories use `idx_memories_family_recent` (OQ-064). The query that computes the story year and the index expression must stay identical, so that the index is used.
 
 ## 24. Database responsibilities vs domain responsibilities
 
@@ -1066,4 +1196,7 @@ The persistence layer is ready when automated integration tests prove at least:
 10. family-scoped queries cannot leak data across Families;
 11. an invitation token can be accepted only once, and never after expiry, revocation or renewal;
 12. a Family can never be left without an ACTIVE ADMIN;
-13. removing a membership releases the member's linked Person in the same transaction.
+13. removing a membership releases the member's linked Person in the same transaction;
+14. a Memory refuses a photo added beyond the limit, and keeps its photos when the limit is lowered (OQ-042);
+15. a media asset is attached to a single Memory or Person, never twice;
+16. a Memory is created or updated atomically with its Persons and photos.

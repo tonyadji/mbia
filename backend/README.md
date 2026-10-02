@@ -16,4 +16,8 @@ curl http://localhost:8080/actuator/health           # {"status":"UP","component
 
 The `local` profile connects to the `docker compose` PostgreSQL. Defaults match `../.env.example`; a repository-root `.env` overrides them.
 
+API interfaces and models are generated from `../mbia-specs/technical/api/openapi.yaml` during `generate-sources` into
+`target/generated-sources/openapi/` (package `com.lehnade.mbia.api.generated`), never edited by hand. Controllers that
+implement them are served under `/api/v1`.
+
 Flyway migrations live in `src/main/resources/db/migration/` (`V###__description.sql`, immutable once committed).

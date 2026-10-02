@@ -49,7 +49,7 @@ Critical actions must work comfortably on a phone:
 - navigate family;
 - open Person;
 - add Person;
-- add photo;
+- add a memory (with photos);
 - invite relative.
 
 Desktop mainly provides more room for the tree and may replace bottom sheets with side panels.
@@ -107,7 +107,9 @@ Siblings remain accessible but must not make every view unreadable.
 
 The last focused Person is remembered per Family on the device (browser storage). If it is no longer ACTIVE, fall back to the next rule.
 
-"Another suitable Person" means: the ACTIVE Person with the most active relationships; ties broken by earliest creation.
+"Another suitable Person" means: the ACTIVE Person with the most active relationships; ties broken by earliest creation, then by lowest UUID.
+
+The last focused Person is known only by the browser, which sends it as the requested focus only when the User has no linked Person, so that rule 1 keeps priority; while the User navigates, the current focus stays in the tree's URL (OQ-018). When no focus is requested, the server applies rules 1 and 3. When the requested focus is not ACTIVE (ARCHIVED or MERGED), or the linked Person is not ACTIVE, the server falls back the same way and returns the focus it actually used (OQ-014).
 
 ### 6.1 Layout
 
@@ -137,7 +139,7 @@ Row 2 — focus and partners:
 
 Row 3 — children:
 
-- children of the focus are grouped by their other parent: first one group per partner (same order as row 2), then one group for children whose other parent is unknown or is not a partner of the focus;
+- children of the focus are grouped by their other parent: first one group per partner (left to right, as the partners are drawn in row 2, OQ-019), then one group for children whose other parent is unknown or is not a partner of the focus;
 - each group is visually connected to the corresponding couple;
 - within a group, children are ordered by birth date (unknown dates last), then by creation date;
 - when authorized, a "+ Add a child" slot is shown.
@@ -267,34 +269,25 @@ The profile should feel like family memory, not a database record.
 
 Use the User-facing term **Souvenir** / **Memory** depending on locale.
 
-MVP actions:
-
-```text
-Add a photo
-Tell a story
-```
+MVP action: `Add a memory`. A Memory is a story with up to a few photos (`mvp.md` §17, OQ-042); there is no separate photo flow.
 
 Every Memory must be linked to at least one Person. When the flow starts from a Person, that Person is preselected; otherwise, the User's linked Person is preselected when it exists. "Publish" stays disabled until at least one Person is selected.
 
-Photo flow:
+Flow:
 
 ```text
-choose/take photo
-→ optional caption
-→ identify people in photo (at least one)
+(who is it about?, only for a first memory when the Family has no Person, SCREEN-006)
+→ title
+→ story text (optional when there is a photo)
+→ when it happened (optional: exact date, year only or unknown)
+→ photos (optional, up to the Family's limit), each with an optional caption and taken date
+→ related Persons (a Person not in the tree yet can be added on the way)
 → publish
 ```
 
-While the photo is uploaded and processed, show progress; on failure, explain in human language and allow retry.
+A published Memory takes its place in the family story, in its year or among the undated Memories (`mvp.md` §20, SCREEN-016).
 
-Story flow:
-
-```text
-title
-→ story text
-→ related Persons
-→ publish
-```
+Each photo is sent as soon as it is chosen: show its progress; on failure, explain in human language and allow retry or removal. "Publish" waits until every chosen photo is ready.
 
 ## 14. Error language
 
@@ -316,14 +309,18 @@ This link cannot be added because it would make Paul one of his own ancestors.
 
 ### First value moment
 
-The User sees a small family tree they created themselves.
+The User tells a first memory and finds it in the family story, in its year.
 
 ### Second value moment
 
-The User opens a grandparent and sees photos or stories attached to them.
+The User reads "what happened in {year}" and finds stories and photos of the family together.
 
 ### Third value moment
 
-An invited relative contributes a memory the original User did not have.
+An invited relative contributes a memory the original User did not have, and it appears in the family story.
+
+### Fourth value moment
+
+The User opens a grandparent in the tree and sees the stories told about them, knowing exactly how they are related.
 
 These moments should guide prioritization of UX polish.

@@ -1,0 +1,92 @@
+package com.lehnade.mbia.invitation.application.renewinvitation;
+
+import com.lehnade.mbia.family.application.FamilyAccess;
+import com.lehnade.mbia.family.application.FamilyRole;
+import com.lehnade.mbia.identity.application.CurrentUserAccessor;
+import com.lehnade.mbia.invitation.application.CreatedInvitation;
+import com.lehnade.mbia.invitation.application.InvitationEmailDelivery;
+import com.lehnade.mbia.invitation.application.InvitationErrors;
+import com.lehnade.mbia.invitation.application.InvitationSettings;
+import com.lehnade.mbia.invitation.application.InvitationViews;
+import com.lehnade.mbia.invitation.domain.Invitation;
+import com.lehnade.mbia.invitation.domain.InvitationId;
+import com.lehnade.mbia.invitation.domain.InvitationRepository;
+import com.lehnade.mbia.invitation.domain.InvitationStatus;
+import com.lehnade.mbia.invitation.domain.InvitationToken;
+import com.lehnade.mbia.shared.application.audit.AuditEntry;
+import com.lehnade.mbia.shared.application.audit.AuditLog;
+import com.lehnade.mbia.shared.domain.Versions;
+import java.time.Clock;
+import java.time.Instant;
+import java.util.Objects;
+import java.util.UUID;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.support.TransactionTemplate;
+
+/**
+ * Gives a PENDING or EXPIRED invitation a new link and a new 14-day expiry, from its current
+ * version (openapi {@code renewInvitation}, mvp.md §18): the previous link stops working. ADMIN
+ * only; an ACCEPTED or REVOKED invitation answers 410 (OQ-057). Its Person stays as it was, even
+ * if it was archived, merged or linked since (OQ-056). Audited as {@code INVITATION_RENEWED}.
+ *
+ * <p>The email of an EMAIL invitation is sent again, in the invitation's locale, once the renewal
+ * has committed; the response says whether it was sent (OQ-055).
+ */
+@Service
+public class RenewInvitationUseCase {
+
+    private final FamilyAccess familyAccess;
+    private final CurrentUserAccessor currentUserAccessor;
+    private final InvitationRepository invitations;
+    private final InvitationViews views;
+    private final InvitationSettings settings;
+    private final AuditLog auditLog;
+    private final InvitationEmailDelivery emailDelivery;
+    private final TransactionTemplate transaction;
+    private final Clock clock;
+
+    public RenewInvitationUseCase(FamilyAccess familyAccess, CurrentUserAccessor currentUserAccessor,
+            InvitationRepository invitations, InvitationViews views, InvitationSettings settings, AuditLog auditLog,
+            InvitationEmailDelivery emailDelivery, TransactionTemplate transaction, Clock clock) {
+        this.familyAccess = familyAccess;
+        this.currentUserAccessor = currentUserAccessor;
+        this.invitations = invitations;
+        this.views = views;
+        this.settings = settings;
+        this.auditLog = auditLog;
+        this.emailDelivery = emailDelivery;
+        this.transaction = transaction;
+        this.clock = clock;
+    }
+
+    /** The email, for channel EMAIL, is sent after the renewal's transaction has committed. */
+    public CreatedInvitation renew(RenewInvitationCommand command) {
+        CreatedInvitation renewed = Objects.requireNonNull(transaction.execute(status -> renewNow(command)));
+        return emailDelivery.deliver(renewed, currentUserAccessor.currentUser().displayName());
+    }
+
+    private CreatedInvitation renewNow(RenewInvitationCommand command) {
+        familyAccess.requireRole(command.familyId(), FamilyRole.ADMIN);
+        UUID callerId = currentUserAccessor.currentUser().id();
+        Invitation invitation = invitations.findInFamily(command.familyId(), new InvitationId(command.invitationId()))
+                .orElseThrow(InvitationErrors::notFound);
+        Versions.requireCurrent(command.expectedVersion(), invitation.version());
+
+        Instant now = clock.instant();
+        InvitationToken token = InvitationToken.generate();
+        Invitation renewed = invitation.renew(token.hash(), now);
+        if (invitation.status() == InvitationStatus.EXPIRED && invitation.personId().isPresent()) {
+            // Another invitation may have been sent for the Person since this one expired. This one
+            // is not PENDING, so expiring the others does not touch it.
+            invitations.expireDue(command.familyId(), now);
+            if (invitations.existsPendingForPerson(invitation.personId().get())) {
+                throw InvitationErrors.alreadyPending();
+            }
+        }
+        Invitation stored = invitations.update(renewed);
+        auditLog.append(new AuditEntry(stored.familyId(), callerId, "INVITATION_RENEWED", AuditEntry.INVITATION,
+                stored.id().value(), InvitationViews.auditValues(invitation), InvitationViews.auditValues(stored),
+                now));
+        return new CreatedInvitation(views.of(stored), settings.inviteUrl(token));
+    }
+}

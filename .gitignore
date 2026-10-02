@@ -25,6 +25,9 @@ target/
 *.log
 hs_err_pid*
 
+# Python environment of backend/scripts/generate-media-fixtures.py
+.venv-fixtures/
+
 # Node / frontend
 node_modules/
 dist/
@@ -32,6 +35,7 @@ coverage/
 .vite/
 *.tsbuildinfo
 npm-debug.log*
+frontend/src/api/generated/
 
 # Playwright
 test-results/

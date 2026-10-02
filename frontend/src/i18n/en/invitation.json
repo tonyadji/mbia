@@ -1,0 +1,96 @@
+{
+  "invite": {
+    "title": "Invite a relative",
+    "titlePerson": "Invite {{name}}",
+    "channel": "How to invite",
+    "channels": {
+      "EMAIL": "Send by email",
+      "LINK": "Share a link"
+    },
+    "email": "Email address",
+    "emailRequired": "Enter the email address.",
+    "emailInvalid": "Enter a valid email address, for example awa@example.com.",
+    "intro": "Mbia creates a link that you send yourself, for example on WhatsApp.",
+    "introEmail": "Mbia sends the invitation link to this address, in your language.",
+    "role": "Permission",
+    "roles": {
+      "CONTRIBUTOR": "Can contribute",
+      "VIEWER": "Read only"
+    },
+    "roleHelp": {
+      "CONTRIBUTOR": "Can add people, links and memories.",
+      "VIEWER": "Can look at the family, without changing anything."
+    },
+    "submit": "Create the link",
+    "submitEmail": "Send the invitation",
+    "notAdmin": "Only the family's administrator can invite relatives.",
+    "backToProfile": "Back to {{name}}'s profile",
+    "cannot": {
+      "linked": "{{name}} is already linked to a member of the family: there is no one to invite.",
+      "deceased": "{{name}} is recorded as deceased, so they cannot be invited.",
+      "inactive": "{{name}} was archived or merged, so they cannot be invited.",
+      "pending": "An invitation for {{name}} is already waiting. Renew it from their profile to get a new link."
+    }
+  },
+  "share": {
+    "done": "The link is ready",
+    "link": "Invitation link",
+    "copy": "Copy link",
+    "copied": "Link copied.",
+    "copyFailed": "The link could not be copied. Select it and copy it yourself.",
+    "share": "Share",
+    "message": "Message to send",
+    "withPerson": "{{inviter}} invites you to the {{family}} family on Mbia, your profile {{person}} is waiting for you: {{link}}",
+    "withoutPerson": "{{inviter}} invites you to the {{family}} family on Mbia: {{link}}",
+    "once": "This link works only once and expires in 14 days.",
+    "notShownAgain": "It will not be shown again: if needed, renew the invitation to get a new link.",
+    "inviteSomeoneElse": "Invite someone else"
+  },
+  "email": {
+    "sent": "Invitation sent",
+    "sentTo": "The link was sent to {{email}}. It works only once and expires in 14 days.",
+    "failed": "The email could not be sent",
+    "failedHelp": "The invitation is saved. Renew it later to send the email again."
+  },
+  "profile": {
+    "invite": "Invite {{name}}",
+    "pending": "Invitation pending",
+    "expires": "Expires on {{date}}",
+    "renew": "Renew",
+    "renewFor": "Renew the invitation of {{name}}",
+    "renewed": "New link created. The previous link no longer works.",
+    "refused": {
+      "INVITATION_ALREADY_USED": "This invitation has just been used: {{name}} has probably joined the family.",
+      "INVITATION_REVOKED": "This invitation was revoked.",
+      "CONCURRENT_MODIFICATION": "This invitation changed in the meantime. Check it and try again."
+    }
+  },
+  "join": {
+    "title": "Join the {{family}} family",
+    "invitedBy": "{{name}} invites you to join the family on Mbia.",
+    "permission": "Your permission",
+    "expires": "This invitation expires on {{date}}.",
+    "submit": "Join the family",
+    "invalid": {
+      "INVITATION_EXPIRED": "This invitation has expired",
+      "INVITATION_REVOKED": "This invitation was cancelled",
+      "INVITATION_ALREADY_USED": "This invitation has already been used",
+      "INVITATION_NOT_FOUND": "This link no longer works",
+      "askAgain": "Ask the family's administrator to send you a new link."
+    }
+  },
+  "onboarding": {
+    "areYou": "Are you {{name}}?",
+    "yes": "Yes, it's me",
+    "no": "No",
+    "later": "Later",
+    "inTreeTitle": "Are you already in this tree?",
+    "inTreeBody": "Someone may have already added you. Choose yourself in the list to be linked to your profile.",
+    "searchLabel": "Find yourself",
+    "notInTree": "I'm not in the tree",
+    "viewerTitle": "A contributor can add you",
+    "viewerBody": "With read-only access, you cannot add people. Ask a contributor of the family to add you, then choose yourself from your profile.",
+    "suggestionGone": "The profile prepared for you is no longer available. Look for yourself in the tree.",
+    "claimGone": "{{name}} can no longer be chosen: they may have been linked to someone else in the meantime."
+  }
+}

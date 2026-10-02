@@ -1,0 +1,89 @@
+package com.lehnade.mbia.memory.infrastructure.persistence;
+
+import java.util.Collection;
+import java.util.List;
+import java.util.Optional;
+import java.util.UUID;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Query;
+
+interface MemoryJpaRepository extends JpaRepository<MemoryJpaEntity, UUID> {
+
+    Optional<MemoryJpaEntity> findByIdAndFamilyIdAndStatus(UUID id, UUID familyId, String status);
+
+    /** The Person's ACTIVE Memories, most recently added first, then by id (data-model.md §23.3, OQ-034). */
+    @Query("""
+            SELECT m FROM MemoryJpaEntity m
+            JOIN MemoryPersonJpaEntity mp ON mp.memoryId = m.id AND mp.familyId = m.familyId
+            WHERE mp.familyId = :familyId AND mp.personId = :personId AND m.status = 'ACTIVE'
+            ORDER BY m.createdAt DESC, m.id ASC
+            """)
+    List<MemoryJpaEntity> findActiveForPerson(UUID familyId, UUID personId, Pageable pageable);
+
+    @Query("""
+            SELECT COUNT(m) FROM MemoryJpaEntity m
+            JOIN MemoryPersonJpaEntity mp ON mp.memoryId = m.id AND mp.familyId = m.familyId
+            WHERE mp.familyId = :familyId AND mp.personId = :personId AND m.status = 'ACTIVE'
+            """)
+    long countActiveForPerson(UUID familyId, UUID personId);
+
+    /** The Family's ACTIVE Memories, most recently added first, then by id (data-model.md §23.4, OQ-034). */
+    @Query("""
+            SELECT m FROM MemoryJpaEntity m
+            WHERE m.familyId = :familyId AND m.status = 'ACTIVE' AND (:type IS NULL OR m.type = :type)
+            ORDER BY m.createdAt DESC, m.id ASC
+            """)
+    List<MemoryJpaEntity> findActiveInFamily(UUID familyId, String type, Pageable pageable);
+
+    @Query("""
+            SELECT COUNT(m) FROM MemoryJpaEntity m
+            WHERE m.familyId = :familyId AND m.status = 'ACTIVE' AND (:type IS NULL OR m.type = :type)
+            """)
+    long countActiveInFamily(UUID familyId, String type);
+
+    /** Each row is {@code [story_year, memory_count]}; a null story year counts the undated Memories (§23.5). */
+    @Query(nativeQuery = true, value = StoryYearSql.YEARS)
+    List<Object[]> countActiveByStoryYear(UUID familyId);
+
+    /** The Family's ACTIVE Memories of a story year, in the order of OQ-064 (data-model.md §23.5). */
+    @Query(nativeQuery = true, value = StoryYearSql.MEMORIES_OF_YEAR)
+    List<MemoryJpaEntity> findActiveOfStoryYear(UUID familyId, int year, Pageable pageable);
+
+    @Query(nativeQuery = true, value = StoryYearSql.COUNT_OF_YEAR)
+    long countActiveOfStoryYear(UUID familyId, int year);
+
+    /** The Family's ACTIVE Memories without a year, most recently added first, then by id (OQ-064). */
+    @Query("""
+            SELECT m FROM MemoryJpaEntity m
+            WHERE m.familyId = :familyId AND m.status = 'ACTIVE' AND m.happenedDatePrecision = 'UNKNOWN'
+            ORDER BY m.createdAt DESC, m.id ASC
+            """)
+    List<MemoryJpaEntity> findActiveUndated(UUID familyId, Pageable pageable);
+
+    @Query("""
+            SELECT COUNT(m) FROM MemoryJpaEntity m
+            WHERE m.familyId = :familyId AND m.status = 'ACTIVE' AND m.happenedDatePrecision = 'UNKNOWN'
+            """)
+    long countActiveUndated(UUID familyId);
+
+    @Query("""
+            SELECT new com.lehnade.mbia.memory.infrastructure.persistence.MemoryCountRow(m.familyId, COUNT(m))
+            FROM MemoryJpaEntity m
+            WHERE m.familyId IN :familyIds AND m.status = 'ACTIVE'
+            GROUP BY m.familyId
+            """)
+    List<MemoryCountRow> countActiveByFamily(Collection<UUID> familyIds);
+
+    /** Each row is {@code [id, display_name, status]}. */
+    @Query(nativeQuery = true, value = "SELECT id, display_name, status FROM users WHERE id IN (:userIds)")
+    List<Object[]> findAuthors(Collection<UUID> userIds);
+
+    @Query(nativeQuery = true,
+            value = "SELECT media_asset_id FROM memory_photos WHERE media_asset_id IN (:mediaAssetIds)")
+    List<UUID> findPhotosAmong(Collection<UUID> mediaAssetIds);
+
+    /** The ACTIVE Memories among {@code ids}, in the Family (OQ-054). */
+    @Query("SELECT m.id FROM MemoryJpaEntity m WHERE m.familyId = :familyId AND m.id IN :ids AND m.status = 'ACTIVE'")
+    List<UUID> findActiveIds(UUID familyId, Collection<UUID> ids);
+}

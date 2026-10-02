@@ -1,29 +1,31 @@
 # Mbia — MVP Functional Specification
 
-**Version:** 0.2  
+**Version:** 0.3  
 **Status:** Draft / Product discovery  
 **Target:** first commercially testable release
 
 ## 1. MVP hypothesis
 
-> Families are willing to create and collaboratively enrich a private digital space that represents their family relationships and preserves memories attached to family members.
+> Families are willing to create, and enrich together, a private space where they tell and pass on the stories and memories of their family, the family tree showing who is who.
 
-The MVP must support the complete value path:
+The MVP answers "what is the story of my family?" before "what is my family tree?" (`vision.md` §1). It must support the complete value path:
 
 ```text
 Create family
     ↓
 Add people
     ↓
-Create relationships
-    ↓
-View family tree
-    ↓
 Add memories
+    ↓
+View family story
     ↓
 Invite relatives
     ↓
 Collaborate
+    ↓
+Create relationships
+    ↓
+View family tree
 ```
 
 ## 2. Platform
@@ -158,6 +160,16 @@ UNKNOWN
 
 The system must never fabricate a precise date from an approximate year.
 
+If the Person is not deceased, the death date is `UNKNOWN`. A deceased Person may still have an unknown death date.
+
+### Display name
+
+1. When `preferredName` is not blank, it is the display name.
+2. Otherwise the display name is `firstName` followed by `lastName` when present.
+3. `middleNames` appear on the full profile, not in tree cards.
+
+The display name is computed for presentation; it is not stored.
+
 ### Person lifecycle
 
 ```text
@@ -243,6 +255,8 @@ View existing person
 Create anyway
 ```
 
+The matching rule is defined in `domain/person-relationships-collaboration.md` §4.1.
+
 ## 12. Person merge
 
 ADMIN only.
@@ -270,22 +284,25 @@ ADMIN and CONTRIBUTOR may remove a relationship; removal archives it.
 
 Restoration of a relationship is ADMIN-only and must re-run graph validity checks.
 
+Archived items stay hidden from the tree and normal search, but the ADMIN can find them to restore them: the list of archived Persons, and the removed relationships of each Person.
+
 ## 14. Family creation
 
 A User creates a Family by providing its name.
 
 The creator becomes ADMIN automatically.
 
-After Family creation, onboarding should encourage:
+After Family creation, onboarding starts with the family's story:
 
 ```text
-Add myself
-→ add parent
-→ add second parent
-→ expand family
+Tell a first memory
+→ who is it about? (me, or someone else: a Person created on the way)
+→ the story, its photos, when it happened
+→ read it in the family story
+→ add relatives, invite them
 ```
 
-The User may also start with someone else.
+Building the tree first stays possible (`Add a person`), but it is no longer the first gesture. Details: SCREEN-002, SCREEN-006 (OQ-065).
 
 ## 15. Family tree
 
@@ -319,46 +336,46 @@ Display at least:
 
 ## 17. Memories
 
-MVP types:
-
-```text
-PHOTO
-STORY
-```
-
-### Photo
-
-A photo may be linked to multiple Persons.
+A Memory is a story told about one or more Persons: a title, a text and up to a few photos (OQ-042). There is one kind of Memory; photos are added to it rather than being a separate kind of Memory.
 
 Fields include:
 
 ```text
-file/media reference
-caption
-takenAt
-takenAtPrecision
-relatedPersons[]
-createdBy
-createdAt
-```
-
-### Story
-
-Fields include:
-
-```text
-title
-content
+title            required
+content          the story text; required when the Memory has no photo
+happenedAt       optional: when it happened, with its precision (below)
+photos[]         0 to N, in the order they were added
+  photo          an uploaded image (§23)
+  caption        optional
+  takenAt        optional, with takenAtPrecision (exact date, year only or unknown)
 relatedPersons[]
 createdBy
 createdAt
 updatedAt
 ```
 
+### When a Memory happened
+
+A Memory may say when it happened, with the precision of a birth date (§6): an exact date, a year only, or unknown (the default). It is the date of the story, not of its photos: a photo keeps its own optional taken date, and neither fills the other.
+
+- One date per Memory: a Memory spanning several years ("her childhood in Mokolo, 1950–1960") takes one year in the MVP; periods are out of scope.
+- A date in the future is refused (OQ-063).
+- The date can be set, changed or removed when the Memory is written or edited.
+- Memories written before this rule have no date: they are undated.
+- The year of a Memory places it in the family story (§20).
+
+### Photos of a Memory
+
+- N is an application setting, 3 at launch and never above 10. The limit applies only when photos are added: a Memory that already has more photos than a lowered limit keeps them, and may lose some, but gains none until it is below the limit.
+- Photos are uploaded while the Memory is written or edited, and belong to it once it is published or saved.
+- Photos keep the order in which they were added; they are not reordered. A photo can be removed from the Memory; it is not replaced in place.
+- A photo of a Memory is never used as a Person's photo, and a Person's photo is never added to a Memory (OQ-040).
+- More photos per Memory, albums or a gallery of the Family stay out of scope (§27).
+
 ### Common Memory rules
 
-- Every Memory is linked to **at least one** ACTIVE Person.
-- The creator may edit or archive their own Memory; ADMIN may edit or archive any Memory of the Family.
+- Every Memory is linked to **at least one** ACTIVE Person. The rule is checked when a Memory is created, and when an edit changes its related Persons (an edit of the title or text alone is not refused, OQ-043); a Person newly linked must be ACTIVE, while an archived Person already linked may stay. Archiving a Person never changes nor hides its Memories (OQ-035).
+- The creator may edit or archive their own Memory; ADMIN may edit or archive any Memory of the Family. Both need a role that can write: a VIEWER, even the creator, is read-only (OQ-041).
 - Archiving hides the Memory everywhere. Restoring an archived Memory is not available in the MVP product; support may restore it on request.
 
 Structured events are out of scope for the MVP.
@@ -383,6 +400,18 @@ LINK   -> Mbia shows the link; the ADMIN shares it (WhatsApp, SMS, …)
 
 For `LINK`, the email address is optional and only informative.
 
+### Inviting a Person of the tree
+
+Most relatives invited are already in the tree. An ADMIN may therefore invite **from a Person's profile** (`Invite {firstName}`), as well as from the Members screen (OQ-050):
+
+- the Person must be ACTIVE, living and linked to no User;
+- the invitation then carries this Person as a suggestion; it never binds the invitee to it;
+- when that Person is archived or merged before acceptance, the invitation stays valid; the Person is neither offered to the invitee nor shown with the invitation while it is not ACTIVE, and a merge does not move it to the kept Person (OQ-056);
+- a Person has at most one pending invitation (`INVITATION_ALREADY_PENDING`): the ADMIN renews it instead;
+- the Person is never shown before the invitee is signed in.
+
+Only the ADMIN invites (OQ-051). A link works once: a reusable group link is deferred (OQ-052).
+
 Rules:
 
 - one invitation = one link = one role; the link is **single-use**;
@@ -392,7 +421,9 @@ Rules:
 - ADMIN can see pending invitations, **revoke** one, or **renew** one (new link, new expiry; the previous link stops working; for `EMAIL`, the email is sent again);
 - the invitation email is sent in the inviter's current language;
 - an ACTIVE member who opens a link for their own Family is simply taken to the Family; the invitation stays pending;
-- expired, revoked or already used links show a clear message and suggest asking the ADMIN for a new link.
+- expired, revoked or already used links show a clear message and suggest asking the ADMIN for a new link;
+- the browser remembers a pending invitation until it is accepted or no longer valid, so that signing up, verifying the email or opening another tab always brings the invitee back to it (OQ-050);
+- the email is sent after the invitation is saved: when it cannot be sent, the invitation still exists, the ADMIN sees that the email could not be sent, and `Renew` tries again (OQ-055).
 
 ### Acceptance flow
 
@@ -412,7 +443,17 @@ register
 → Family access
 ```
 
-After joining, ask:
+After joining, when the invitation carries a Person that is still ACTIVE and linked to no User, ask first (OQ-050):
+
+> Are you {displayName}?
+
+```text
+Yes, it's me -> the User is linked to this Person
+No           -> the question below
+Later
+```
+
+Otherwise, or after `No`, ask:
 
 > Are you already present in this tree?
 
@@ -424,7 +465,13 @@ No -> create Person
 Later
 ```
 
+In the list of Persons to select, each Person shows one of their parents when one is known, otherwise their birth year, so that two Persons with the same name can be told apart.
+
 A VIEWER cannot create Persons: for a VIEWER, `No` explains that a contributor can add them, and offers `Later`.
+
+Then Family Home welcomes the new member once, with `View the family tree` (centred on their Person when linked) and, for a CONTRIBUTOR, `Add a memory`.
+
+Keeping the invitee inside Mbia during sign-up (an access code sent by email instead of the Keycloak pages) is an open question (OQ-053).
 
 ## 19. Search
 
@@ -436,17 +483,54 @@ lastName
 preferredName
 ```
 
+Rules:
+
+- only ACTIVE Persons are returned;
+- matching is a substring match after trimming, case-insensitive and accent-insensitive, in each of these fields and in "firstName lastName" (so "Marie Dup" finds Marie Dupont) (OQ-022);
+- results are paginated and ordered by display name (locale-independent, case- and accent-folded: "Éloïse" sorts with "Eloise"), then creation date, then UUID (OQ-022).
+
 ## 20. Family home
 
 Show at minimum:
 
 - Family name;
-- access to tree;
+- the family story (below), first on the screen;
+- add Memory action (the primary action, OQ-066);
+- recent activity (below);
 - Person count;
 - Memory count;
-- recent activity;
-- add Person action;
-- add Memory action.
+- access to tree;
+- add Person action.
+
+### Family story
+
+The family story answers "what is the story of my family?" by showing the Family's Memories through time. It is visible to every member, VIEWER included, and shows only ACTIVE Memories.
+
+On Family Home, a strip of years that scrolls sideways (OQ-064):
+
+- one entry per year that has at least one Memory, in chronological order, opened on the most recent year, each with its number of Memories;
+- a last entry for the Memories without a year, when there are any;
+- hidden while the Family has no Memory, replaced by the invitation to tell a first memory.
+
+A year opens "What happened in {year}" (SCREEN-016):
+
+- the Memories of that year: those with an exact date first, in date order, then those with the year only, in the order they were added (OQ-064);
+- a way to move to another year of the strip without going back.
+
+The Memories without a year open the same screen, titled with the undated label (OQ-067), most recently added first.
+
+Later versions add events and ceremonies to the year screen (§27); the MVP shows Memories only.
+
+### Recent activity
+
+A short, readable feed of what happened in the Family, for every member (OQ-054):
+
+- shown: a Person added, archived, restored or merged; a relationship added or removed; a Memory added; a member who joined, left or was removed. Edits, role changes and invitations are audited, not shown;
+- consecutive actions of the same member and type, each within one hour of the previous one, form one line ("Tony added 6 people");
+- each line leads to its Person or Memory while it is ACTIVE; an archived item is named without a link;
+- names are those at the time of the action;
+- Family Home shows the 10 most recent lines;
+- the feed starts when Phase 5 is deployed: earlier actions are not shown.
 
 ## 21. Authentication
 
@@ -515,6 +599,7 @@ family_created
 person_created
 relationship_created
 memory_created
+family_story_viewed
 family_invitation_sent
 family_invitation_accepted
 tree_viewed
@@ -526,13 +611,13 @@ Primary funnel:
 ```text
 User registered
 → Family created
-→ first Person
-→ 3 Persons
-→ first relationship
 → first Memory
+→ first dated Memory
+→ family story viewed
 → first invite
 → invite accepted
 → second-user contribution
+→ first relationship
 ```
 
 ## 26. MVP metrics
@@ -540,12 +625,14 @@ User registered
 Candidate metrics:
 
 - % accounts creating a Family;
-- % Families with ≥ 5 Persons;
-- % Families with ≥ 10 Persons;
 - % Families with at least 1 Memory;
+- % Families with ≥ 5 Memories;
+- % Families whose story covers ≥ 3 different years;
+- % Families whose story is viewed by ≥ 2 members;
+- % Families with Memories written by ≥ 2 members;
 - % Families sending at least 1 invite;
 - invite acceptance rate;
-- % Families with multiple active Contributors;
+- % Families with ≥ 5 Persons;
 - D+7 return;
 - D+30 return.
 
@@ -560,7 +647,7 @@ Do not add spontaneously:
 - native mobile apps;
 - video/audio;
 - voice testimonies;
-- structured events;
+- structured events, ceremonies (they will join the year screen of the family story later);
 - advanced albums;
 - facial recognition;
 - generative AI;
@@ -572,13 +659,21 @@ Do not add spontaneously:
 - public trees;
 - cross-Family matching;
 - public social network;
-- chat/comments/likes;
+- chat/comments/likes, and family questions (below);
 - advanced cousin degree engine;
 - legal/traditional marriage modeling;
 - advanced geolocation;
-- family timeline;
+- periods spanning several years in the family story;
 - mandatory billing;
 - marketplace.
+
+### Family questions (V1)
+
+Planned for V1, not in the MVP (`vision.md` §7): a member asks the family a question ("Who was grandmother Marie's father?"); it opens a thread where the other members answer; the author marks the question answered. How it joins the family story, who may ask, the kinds of answers and how members learn about new questions are open (OQ-068).
+
+### Ephemeral contributors (idea, not decided)
+
+Recorded so that the idea is not lost; not planned, no rule applies yet. A person outside the Family who knows part of its story (a family friend, for example) would contribute to one resource (a Memory, then a family question) through a single-use contribution link and a code given by the one who asked, valid 24 hours by default. Such access would be an exception to Family isolation (§22) and to authentication through Keycloak (ADR-005): it would need an ADR and its own review before any work.
 
 ## 28. Release criteria
 
@@ -587,16 +682,17 @@ The MVP is not ready until a real family can independently complete:
 ```text
 sign up
 → create Family
-→ create own Person
-→ add parents
-→ view tree
-→ add grandparent
-→ see derived kinship
-→ add photo and Story
+→ tell a first Memory about a Person created on the way, with a photo, its story and its year
+→ add people
+→ add memories
+→ view the family story, and what happened in a year
 → invite relative
 → relative joins
 → relative links themselves to existing Person
-→ relative contributes
+→ relative contributes a Memory, which appears in the family story
+→ create relationships (parents, a grandparent)
+→ view tree
+→ see derived kinship
 ```
 
 Cross-Family access must fail.
@@ -608,10 +704,11 @@ A family must be able to complete, without technical assistance:
 ```text
 onboarding
 → creation
-→ exploration
-→ preservation
+→ telling
+→ reading the family story
 → invitation
 → collaboration
+→ structuring the tree
 ```
 
 ## 30. Personal data rights

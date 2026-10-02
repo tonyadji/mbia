@@ -1,0 +1,320 @@
+{
+  "form": {
+    "title": "Ajouter une personne",
+    "titleMe": "Commencer par moi",
+    "intro": "Seul le prénom est obligatoire. Vous pourrez compléter plus tard.",
+    "introMe": "Ajoutez-vous à la famille. Seul votre prénom est obligatoire.",
+    "firstName": "Prénom",
+    "lastName": "Nom",
+    "more": "Plus d'informations",
+    "middleNames": "Autres prénoms",
+    "preferredName": "Nom d'usage ou surnom",
+    "gender": "Genre",
+    "genders": {
+      "UNKNOWN": "Non précisé",
+      "FEMALE": "Femme",
+      "MALE": "Homme",
+      "OTHER": "Autre"
+    },
+    "birth": "Naissance",
+    "birthPrecision": "Date de naissance",
+    "birthDate": "Date exacte de naissance",
+    "birthYear": "Année de naissance",
+    "death": "Décès",
+    "isDeceased": "Cette personne est décédée",
+    "deathPrecision": "Date de décès",
+    "deathDate": "Date exacte de décès",
+    "deathYear": "Année de décès",
+    "precision": {
+      "UNKNOWN": "Inconnue",
+      "YEAR_ONLY": "Seulement l'année",
+      "EXACT": "Date exacte"
+    },
+    "biography": "Biographie",
+    "required": "Indiquez le prénom.",
+    "tooLong": "Ce champ ne peut pas dépasser {{max}} caractères.",
+    "dateRequired": "Indiquez la date.",
+    "invalidYear": "Indiquez une année entre {{min}} et {{max}}.",
+    "submit": "Ajouter à la famille",
+    "submitMe": "M'ajouter à la famille"
+  },
+  "profile": {
+    "edit": "Modifier",
+    "birthYear": "Naissance : {{year}}",
+    "deathYear": "Décès : {{year}}",
+    "relationship": {
+      "NONE_KNOWN": "Aucun lien connu dans Mbia pour l'instant"
+    },
+    "family": "Famille",
+    "noRelatives": "Aucun proche n'est encore relié à cette personne.",
+    "relatives": {
+      "parents": "Parents",
+      "partners": "Partenaires",
+      "children": "Enfants",
+      "siblings": "Frères et sœurs"
+    },
+    "about": "À propos",
+    "name": "Prénom et nom",
+    "claim": "C'est moi",
+    "unclaim": "Ce n'est pas moi",
+    "claimed": "Vous êtes maintenant relié à cette personne.",
+    "unclaimed": "Cette personne n'est plus reliée à vous."
+  },
+  "edit": {
+    "title": "Modifier {{name}}",
+    "identity": "Identité",
+    "life": "Vie",
+    "about": "À propos",
+    "submit": "Enregistrer",
+    "cancel": "Annuler",
+    "conflict": "Cette personne a été modifiée depuis que vous avez ouvert la page.",
+    "reload": "Recharger la dernière version"
+  },
+  "notFound": {
+    "title": "Personne introuvable",
+    "body": "Cette personne n'existe pas dans cette famille.",
+    "back": "Retour à la famille"
+  },
+  "relative": {
+    "menu": "Ajouter un proche",
+    "parents": "Ajouter un parent",
+    "children": "Ajouter un enfant",
+    "choices": {
+      "FATHER": "Père",
+      "MOTHER": "Mère",
+      "PARENT": "Autre parent",
+      "SON": "Fils",
+      "DAUGHTER": "Fille",
+      "CHILD": "Enfant",
+      "PARTNER": "Ajouter un ou une partenaire"
+    },
+    "title": {
+      "FATHER": "Ajouter le père de {{name}}",
+      "MOTHER": "Ajouter la mère de {{name}}",
+      "PARENT": "Ajouter un parent de {{name}}",
+      "SON": "Ajouter un fils de {{name}}",
+      "DAUGHTER": "Ajouter une fille de {{name}}",
+      "CHILD": "Ajouter un enfant de {{name}}",
+      "PARTNER": "Ajouter un ou une partenaire de {{name}}"
+    },
+    "titleMe": {
+      "FATHER": "Ajouter mon père",
+      "MOTHER": "Ajouter ma mère",
+      "PARENT": "Ajouter un de mes parents",
+      "SON": "Ajouter mon fils",
+      "DAUGHTER": "Ajouter ma fille",
+      "CHILD": "Ajouter mon enfant",
+      "PARTNER": "Ajouter mon ou ma partenaire"
+    },
+    "intro": "Seul le prénom est obligatoire. Mbia crée le lien familial pour vous.",
+    "warnings": {
+      "title": "Ces dates semblent inhabituelles",
+      "PARENT_BORN_AFTER_CHILD": "{{parent}} deviendrait le parent de {{child}}, alors que son année de naissance ({{parentYear}}) n'est pas antérieure à celle de {{child}} ({{childYear}}).",
+      "IMPLAUSIBLE_PARENT_AGE": "{{parent}} aurait eu {{age}} ans à la naissance de {{child}} (années de naissance : {{parentYear}} et {{childYear}}).",
+      "correct": "Corriger les informations",
+      "confirm": "Ajouter le lien quand même"
+    },
+    "notLinked": "{{name}} a été ajouté à la famille, mais n'est pas relié à {{anchor}}. Vous pourrez créer ce lien plus tard depuis son profil.",
+    "added": "{{name}} a été ajouté à la famille et relié à {{anchor}}.",
+    "viewProfile": "Voir son profil",
+    "existing": {
+      "title": "Déjà dans la famille ?",
+      "search": "Rechercher dans la famille",
+      "chosen": "Personne choisie",
+      "change": "Choisir quelqu'un d'autre",
+      "link": "Relier {{name}} à {{anchor}}",
+      "orNew": "Ou ajouter une nouvelle personne"
+    },
+    "linked": "{{name}} est maintenant relié à {{anchor}}."
+  },
+  "removeLink": {
+    "action": "Retirer le lien",
+    "actionFor": "Retirer le lien avec {{name}}",
+    "warning": "Retirer ce lien peut modifier les liens de parenté calculés par Mbia.",
+    "confirm": "Retirer le lien",
+    "cancel": "Annuler",
+    "done": "Le lien avec {{name}} a été retiré."
+  },
+  "removedLinks": {
+    "title": "Liens retirés",
+    "removedOn": "Retiré le {{date}}",
+    "restore": "Restaurer",
+    "restoreFor": "Restaurer le lien avec {{name}}",
+    "restored": "Le lien a été restauré.",
+    "restoredWithWarnings": "Le lien a été restauré. Les dates de naissance de ces deux personnes semblent inhabituelles : vérifiez-les sur leur profil.",
+    "status": {
+      "ARCHIVED": "Fiche archivée",
+      "MERGED": "Fiche fusionnée"
+    },
+    "refused": {
+      "PERSON_NOT_ACTIVE": "Ce lien ne peut pas être restauré : la fiche de {{name}} a été archivée ou fusionnée.",
+      "RELATIONSHIP_ALREADY_EXISTS": "Ce lien ne peut pas être restauré : ces deux personnes sont déjà reliées de cette façon.",
+      "RELATIONSHIP_CREATES_CYCLE": "Ce lien ne peut pas être restauré : avec les liens actuels, une personne deviendrait son propre ancêtre."
+    }
+  },
+  "kinship": {
+    "label": {
+      "SELF": "Vous",
+      "FATHER": "Votre père",
+      "MOTHER": "Votre mère",
+      "PARENT": "Votre parent",
+      "SON": "Votre fils",
+      "DAUGHTER": "Votre fille",
+      "CHILD": "Votre enfant",
+      "GRANDFATHER": "Votre grand-père",
+      "GRANDMOTHER": "Votre grand-mère",
+      "GRANDPARENT": "Votre grand-parent",
+      "GRANDSON": "Votre petit-fils",
+      "GRANDDAUGHTER": "Votre petite-fille",
+      "GRANDCHILD": "Votre petit-enfant",
+      "BROTHER": "Votre frère",
+      "SISTER": "Votre sœur",
+      "SIBLING": "Votre frère ou sœur",
+      "UNCLE": "Votre oncle",
+      "AUNT": "Votre tante",
+      "PARENT_SIBLING": "Frère ou sœur de votre parent",
+      "NEPHEW": "Votre neveu",
+      "NIECE": "Votre nièce",
+      "SIBLING_CHILD": "Enfant de votre frère ou sœur",
+      "FIRST_COUSIN": {
+        "male": "Votre cousin",
+        "female": "Votre cousine",
+        "neutral": "Votre cousin ou cousine"
+      },
+      "PARTNER": "Votre partenaire",
+      "RELATED": "Membre de votre famille"
+    },
+    "step": {
+      "PARENT": {
+        "male": "{{to}} est le père de {{from}}",
+        "female": "{{to}} est la mère de {{from}}",
+        "neutral": "{{to}} est un parent de {{from}}"
+      },
+      "CHILD": {
+        "male": "{{to}} est le fils de {{from}}",
+        "female": "{{to}} est la fille de {{from}}",
+        "neutral": "{{to}} est un enfant de {{from}}"
+      },
+      "PARTNER": {
+        "male": "{{to}} est le partenaire de {{from}}",
+        "female": "{{to}} est la partenaire de {{from}}",
+        "neutral": "{{to}} est partenaire de {{from}}"
+      }
+    }
+  },
+  "search": {
+    "title": "Rechercher",
+    "label": "Nom",
+    "placeholder": "Prénom, nom ou nom d'usage",
+    "results": "Personnes trouvées",
+    "more": "Afficher plus",
+    "emptyFamily": "Personne dans cette famille pour le moment.",
+    "noResult": "Personne dans cette famille ne correspond à « {{text}} »."
+  },
+  "archive": {
+    "action": "Archiver cette fiche",
+    "warning": "{{name}} n'apparaîtra plus dans l'arbre ni dans la recherche. Un administrateur pourra restaurer cette fiche à tout moment.",
+    "confirm": "Archiver",
+    "cancel": "Annuler",
+    "done": "La fiche de {{name}} a été archivée.",
+    "refused": {
+      "PERSON_ALREADY_CLAIMED": "Cette fiche est reliée à un membre de la famille. Retirez ce lien avant de l'archiver."
+    }
+  },
+  "archived": {
+    "notice": "Cette fiche est archivée. Elle n'apparaît plus dans l'arbre ni dans la recherche.",
+    "restore": "Restaurer cette fiche",
+    "restored": "La fiche de {{name}} a été restaurée."
+  },
+  "archivedPeople": {
+    "title": "Personnes archivées",
+    "intro": "Les fiches archivées n'apparaissent plus dans l'arbre ni dans la recherche. Ouvrez-en une pour la restaurer.",
+    "empty": "Aucune fiche archivée.",
+    "adminOnly": "Seul un administrateur peut voir les fiches archivées."
+  },
+  "duplicate": {
+    "title_one": "Une personne semblable est déjà dans la famille",
+    "title_other": "Des personnes semblables sont déjà dans la famille",
+    "view": "Voir la personne existante",
+    "viewNamed": "Voir la personne existante : {{name}}",
+    "createAnyway": "Créer quand même"
+  },
+  "merge": {
+    "action": "Fusionner avec une autre fiche",
+    "title": "Quelle fiche décrit la même personne que {{name}} ?",
+    "search": "Rechercher la fiche à conserver",
+    "kept": "Fiche conservée",
+    "merged": "Fiche en double",
+    "explain": {
+      "kept": "La fiche de {{name}} est conservée.",
+      "merged": "La fiche de {{name}} est fusionnée dans celle de {{kept}} et n'apparaît plus dans la famille.",
+      "links": "Les liens familiaux passent sur la fiche conservée, sans doublon.",
+      "values": "Quand les deux fiches ont une valeur, celle de la fiche conservée est gardée."
+    },
+    "confirm": "Fusionner les fiches",
+    "change": "Choisir une autre fiche",
+    "cancel": "Annuler",
+    "done": "La fiche en double de {{name}} a été fusionnée dans la fiche de {{kept}}.",
+    "refused": {
+      "DIFFERENT_LINKED_USERS": "Ces deux fiches sont reliées à deux membres différents de la famille : elles ne peuvent pas être fusionnées.",
+      "SELF_RELATIONSHIP": "Ces deux fiches sont reliées l'une à l'autre. Retirez d'abord ce lien, puis fusionnez-les.",
+      "PARENTAL_CYCLE": "Fusionner ces fiches ferait de quelqu'un son propre ancêtre. Vérifiez d'abord leurs liens familiaux."
+    }
+  },
+  "merged": {
+    "notice": "Cette fiche a été fusionnée dans une autre fiche, qui décrit la même personne.",
+    "open": "Ouvrir la fiche conservée"
+  },
+  "history": {
+    "title": "Historique",
+    "empty": "Aucune modification enregistrée pour l'instant.",
+    "more": "Voir plus",
+    "byOn": "{{date}} · {{actor}}",
+    "formerMember": "Ancien membre",
+    "member": "Un membre",
+    "noValue": "(vide)",
+    "yes": "Oui",
+    "no": "Non",
+    "biographyChanged": "Biographie modifiée",
+    "fieldChanged": "{{field}} : {{from}} → {{to}}",
+    "fields": {
+      "firstName": "Prénom",
+      "middleNames": "Autres prénoms",
+      "lastName": "Nom",
+      "preferredName": "Nom d'usage ou surnom",
+      "gender": "Genre",
+      "birth": "Naissance",
+      "isDeceased": "Décès déclaré",
+      "death": "Décès",
+      "biography": "Biographie"
+    },
+    "actions": {
+      "PERSON_CREATED": "Fiche créée",
+      "PERSON_UPDATED": "Fiche modifiée",
+      "PERSON_CLAIMED": "Fiche reliée au compte d'un membre",
+      "PERSON_UNCLAIMED": "Fiche plus reliée au compte d'un membre",
+      "PERSON_ARCHIVED": "Fiche archivée",
+      "PERSON_RESTORED": "Fiche restaurée",
+      "PERSONS_MERGED": "Fusionnée avec une fiche en double"
+    }
+  },
+  "photo": {
+    "label": "Photo",
+    "add": "Ajouter une photo",
+    "change": "Changer la photo",
+    "remove": "Retirer la photo",
+    "removedHint": "La photo sera retirée à l'enregistrement.",
+    "preparing": "Préparation de la photo…",
+    "uploading": "Envoi de la photo… {{percent}} %",
+    "processing": "Vérification de la photo…",
+    "progressLabel": "Envoi de la photo",
+    "errors": {
+      "unsupported": "Ce fichier n'est pas une photo utilisable par Mbia. Choisissez une photo JPEG, PNG ou WEBP.",
+      "tooLarge": "Cette photo est trop lourde. Choisissez une photo de 15 Mo maximum.",
+      "failed": "La photo n'a pas pu être envoyée. Vérifiez votre connexion et réessayez.",
+      "invalid": "Ce fichier ne peut pas être utilisé comme photo. Choisissez-en un autre."
+    },
+    "retry": "Réessayer",
+    "chooseAnother": "Choisir une autre photo"
+  }
+}

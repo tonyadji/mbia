@@ -1,0 +1,9 @@
+# Lint configuration of the HTTP contract (ADR-003), used by the `api-lint` CI job.
+extends:
+  - recommended
+
+rules:
+  # The only rules disabled; every other finding is fixed in openapi.yaml.
+  info-license: off
+  no-server-example.com: off
+  tag-description: off

@@ -1,0 +1,48 @@
+package com.lehnade.mbia.family.application.listmyfamilies;
+
+import com.lehnade.mbia.family.application.FamilyRole;
+import com.lehnade.mbia.family.application.FamilyStats;
+import com.lehnade.mbia.family.application.FamilyStatsPort;
+import com.lehnade.mbia.family.application.FamilyView;
+import com.lehnade.mbia.family.application.FamilyViews;
+import com.lehnade.mbia.family.application.LinkedPersonsPort;
+import com.lehnade.mbia.family.domain.FamilyId;
+import java.util.List;
+import java.util.Map;
+import java.util.UUID;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+
+/** Lists the Families where the current user's membership is ACTIVE (openapi {@code listMyFamilies}). */
+@Service
+public class ListMyFamiliesUseCase {
+
+    private final MyFamiliesQuery query;
+    private final FamilyStatsPort stats;
+    private final LinkedPersonsPort linkedPersons;
+    private final FamilyViews views;
+
+    public ListMyFamiliesUseCase(MyFamiliesQuery query, FamilyStatsPort stats, LinkedPersonsPort linkedPersons,
+            FamilyViews views) {
+        this.query = query;
+        this.stats = stats;
+        this.linkedPersons = linkedPersons;
+        this.views = views;
+    }
+
+    @Transactional(readOnly = true)
+    public List<FamilyView> list(UUID userId) {
+        List<MyFamiliesQuery.MyFamily> rows = query.findActiveFor(userId);
+        Map<FamilyId, FamilyStatsPort.ContentCounts> counts =
+                stats.contentCounts(rows.stream().map(row -> row.family().id()).toList());
+        Map<UUID, UUID> myLinkedPersons =
+                linkedPersons.linkedPersonIds(userId, rows.stream().map(row -> row.family().id().value()).toList());
+        return rows.stream().map(row -> {
+            FamilyStatsPort.ContentCounts content = counts.get(row.family().id());
+            return new FamilyView(row.family().id().value(), row.family().name(), FamilyRole.of(row.myRole()),
+                    myLinkedPersons.get(row.family().id().value()),
+                    new FamilyStats(content.personCount(), content.memoryCount(), row.activeMemberCount()),
+                    views.limits(), row.family().version(), row.family().createdAt(), row.family().updatedAt());
+        }).toList();
+    }
+}

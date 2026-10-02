@@ -168,7 +168,12 @@ membership -> which Family may they access?
 role + domain rule -> what may they do?
 ```
 
-Every Family-scoped backend use case verifies ACTIVE membership.
+Every Family-scoped backend use case verifies ACTIVE membership, as its first step, through the `family` module's `FamilyAccess` guard (the only entry point other modules use):
+
+- unknown Family, or caller without an ACTIVE membership in it (never a member, or `REMOVED`) → **404 `FAMILY_NOT_FOUND`, never 403**. Both cases return the same response, so an outsider cannot learn whether a Family exists;
+- ACTIVE member whose role does not allow the operation → 403 `PERMISSION_DENIED`.
+
+The same applies to any resource of a Family the caller cannot access: it answers as if it did not exist.
 
 Frontend-hidden actions are UX only, never a security mechanism.
 
@@ -243,20 +248,45 @@ FAMILY_NOT_FOUND
 MEMBERSHIP_REQUIRED
 PERMISSION_DENIED
 PERSON_ALREADY_CLAIMED
+USER_ALREADY_LINKED
 RELATIONSHIP_ALREADY_EXISTS
 SELF_RELATIONSHIP_NOT_ALLOWED
 RELATIONSHIP_CREATES_CYCLE
+RELATIONSHIP_WARNING_CONFIRMATION_REQUIRED
+PERSON_NOT_ACTIVE
 PERSON_MERGE_CONFLICT
 CONCURRENT_MODIFICATION
+MEMORY_NOT_FOUND
+MEDIA_NOT_FOUND
+MEDIA_TOO_LARGE
+MEDIA_INVALID
+MEDIA_NOT_READY
+MEDIA_ALREADY_USED
+MEMORY_PHOTO_LIMIT_REACHED
 ```
 
+Memories and media (OQ-037): an unknown, other-Family or ARCHIVED Memory → 404 `MEMORY_NOT_FOUND`; an unknown or other-Family media asset → 404 `MEDIA_NOT_FOUND`; a related Person unknown, of another Family or MERGED → 404 `PERSON_NOT_FOUND`, newly added and ARCHIVED → 409 `PERSON_NOT_ACTIVE`; a field irrelevant to the Memory type → 400 `VALIDATION_FAILED`; editing or archiving another member's Memory without being ADMIN → 403 `PERMISSION_DENIED`; completing or attaching another member's upload → 403 `PERMISSION_DENIED`; attaching an asset already used → 409 `MEDIA_ALREADY_USED` (OQ-036). Photos of a Memory (OQ-042): an asset of another purpose → 400 `VALIDATION_FAILED`; an asset that is not READY → 409 `MEDIA_NOT_READY`; more photos than the limit after an addition → 409 `MEMORY_PHOTO_LIMIT_REACHED`; a Memory left without text and without photo → 400 `VALIDATION_FAILED`.
+
 The frontend translates stable codes into localized messages. It must not parse English server messages to determine behavior.
+
+Every error response is `application/problem+json` shaped as the OpenAPI `ProblemDetails` schema:
+
+- `type` is `<problems base URI>/<code in kebab-case>`, e.g. `https://mbia.example.com/problems/validation-failed`; the base URI is configuration (`mbia.problems.base-uri`).
+- `traceId` equals the `X-Request-Id` response header. The server reuses the request's `X-Request-Id` when it is safe (`[A-Za-z0-9._-]`, at most 64 characters), otherwise it generates one.
+- Bean Validation errors return 400 `VALIDATION_FAILED` with `fieldErrors`; `fieldErrors[].code` is the constraint name in UPPER_SNAKE case (`@NotBlank` → `NOT_BLANK`).
+- Requests the framework rejects before any use case use generic codes: unreadable body, wrong parameter type or missing parameter → 400 `VALIDATION_FAILED`; unknown path → 404 `RESOURCE_NOT_FOUND`; 405 `METHOD_NOT_ALLOWED`; 406 `NOT_ACCEPTABLE`; 415 `UNSUPPORTED_MEDIA_TYPE`.
+- Unexpected errors return 500 `INTERNAL_ERROR` with a generic message; the cause is only logged. No response ever contains a stack trace, SQL or exception class name.
 
 ## 13. Optimistic concurrency
 
 Mutable resources expose a version.
 
 Stale updates return conflict rather than silently overwriting newer data.
+
+- A versioned resource returns its version as a strong `ETag`: `"<version>"`, for example `"3"`.
+- A mutation sends it back in `If-Match` (exactly one such tag; weak tags, `*` and lists are rejected). Missing or malformed `If-Match` → 400 `VALIDATION_FAILED`.
+- An `If-Match` different from the persisted version → 409 `CONCURRENT_MODIFICATION`. The write itself is also guarded by the `version` column, so a change committed between the check and the write returns the same 409.
+- Each successful mutation increments the version by one. A request that changes nothing (same values, or only ignored fields) is checked like any other, then answers 200 without writing: the version is unchanged (OQ-008).
 
 This applies especially to Person, relationship and editable Memory flows.
 
@@ -269,6 +299,7 @@ Examples:
 - Family creation + creator ADMIN membership;
 - invite acceptance + membership creation;
 - Person merge + relationship deduplication + Memory reassociation + audit;
+- Memory creation or update + its Persons + attaching, updating and removing its photos (removed assets `ARCHIVED`) + audit (OQ-042);
 - relationship archive + audit/activity.
 
 ## 15. Audit and activity
@@ -295,7 +326,7 @@ Prefer direct browser upload to S3-compatible storage via pre-signed URLs.
 
 ```text
 Browser -> request upload authorization from Mbia
-Mbia -> returns upload URL + storage key
+Mbia -> returns the media asset id + a short-lived pre-signed upload URL (the storage key stays internal)
 Browser -> uploads binary directly to object storage
 Mbia -> persists/activates media metadata
 ```
@@ -334,6 +365,8 @@ Critical automated scenarios include:
 - protect linked Person;
 - merge duplicate;
 - add Memory;
+- date a Memory, refuse a future date, and read the family story by year (`mvp.md` §17, §20);
+- tell a first Memory in a Family without Person;
 - invite Contributor (email and link);
 - reject reused, expired, revoked or renewed invitation token;
 - keep at least one ADMIN;

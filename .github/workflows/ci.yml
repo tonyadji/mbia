@@ -1,0 +1,166 @@
+name: CI
+
+on:
+  pull_request:
+    branches: [develop, main]
+    # labeled/unlabeled: adding or removing `api-breaking-approved` re-runs the contract checks.
+    types: [opened, synchronize, reopened, labeled, unlabeled]
+  push:
+    branches: [develop, main]
+
+# A new push to the same branch or pull request cancels the run still in progress.
+concurrency:
+  group: ci-${{ github.head_ref || github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  backend:
+    name: backend
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    defaults:
+      run:
+        working-directory: backend
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/setup-java@v6
+        with:
+          distribution: temurin
+          java-version: '25'
+          cache: maven
+
+      # Compiles, runs unit and Testcontainers tests (Docker is available on the runner).
+      - run: ./mvnw -B verify
+
+  frontend:
+    name: frontend
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    defaults:
+      run:
+        working-directory: frontend
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/setup-node@v7
+        with:
+          node-version-file: frontend/.nvmrc
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+
+      - run: npm ci
+      - run: npm run typecheck
+      - run: npm run lint
+      - run: npm run i18n:check
+      - run: npm test
+      - run: npm run build
+
+  api-lint:
+    name: api-lint
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/setup-node@v7
+        with:
+          node-version-file: frontend/.nvmrc
+
+      # Rules: redocly.yaml (recommended set, three rules disabled).
+      - run: npx -y @redocly/cli@2.54.3 lint mbia-specs/technical/api/openapi.yaml
+
+  api-breaking:
+    name: api-breaking
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+
+      - name: Extract the contract of the base branch
+        env:
+          BASE_REF: ${{ github.base_ref }}
+        run: git show "origin/${BASE_REF}:mbia-specs/technical/api/openapi.yaml" > "$RUNNER_TEMP/openapi-base.yaml"
+
+      # Fails on breaking changes unless the pull request carries the label `api-breaking-approved` (ADR-003).
+      # oasdiff-levels.txt raises the removal of an optional response property (INFO by default) to an error.
+      - name: Detect breaking changes
+        env:
+          APPROVED: ${{ contains(github.event.pull_request.labels.*.name, 'api-breaking-approved') }}
+        run: |
+          fail_on="--fail-on ERR"
+          if [ "$APPROVED" = "true" ]; then
+            echo "::notice::Label api-breaking-approved present: breaking changes are reported, not blocking."
+            fail_on=""
+          fi
+          docker run --rm \
+            -v "$RUNNER_TEMP/openapi-base.yaml:/specs/base.yaml:ro" \
+            -v "$PWD/mbia-specs/technical/api/openapi.yaml:/specs/head.yaml:ro" \
+            -v "$PWD/oasdiff-levels.txt:/specs/levels.txt:ro" \
+            tufin/oasdiff:v1.32.1 breaking /specs/base.yaml /specs/head.yaml \
+              --severity-levels /specs/levels.txt --format githubactions $fail_on
+
+  # Browser journeys against the real stack: docker compose services, the backend jar and the built frontend.
+  e2e:
+    name: e2e
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/setup-java@v6
+        with:
+          distribution: temurin
+          java-version: '25'
+          cache: maven
+
+      - uses: actions/setup-node@v7
+        with:
+          node-version-file: frontend/.nvmrc
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+
+      # RustFS holds the Person photos; rustfs-init creates the bucket and its CORS rule (PR-38).
+      - name: Start PostgreSQL, RustFS, Mailpit and Keycloak
+        run: |
+          docker compose up -d --wait --wait-timeout 300 postgres rustfs mailpit keycloak
+          docker compose up --exit-code-from rustfs-init rustfs-init
+
+      # Tests already ran in the backend job.
+      - name: Start the backend
+        working-directory: backend
+        run: |
+          ./mvnw -B -DskipTests package
+          nohup java -jar target/mbia-*.jar --spring.profiles.active=local > "$RUNNER_TEMP/backend.log" 2>&1 &
+          curl -fsS --retry 30 --retry-delay 2 --retry-all-errors http://localhost:8080/actuator/health
+
+      - name: Install dependencies and Chromium
+        working-directory: frontend
+        run: |
+          npm ci
+          npx playwright install --with-deps chromium
+
+      # Builds the frontend and serves it on http://localhost:5173 (playwright.config.ts).
+      - name: Run the E2E tests
+        working-directory: frontend
+        run: npm run test:e2e
+
+      - name: Collect service logs
+        if: failure()
+        run: |
+          cp "$RUNNER_TEMP/backend.log" frontend/playwright-report/ || true
+          docker compose logs keycloak > frontend/playwright-report/keycloak.log 2>&1 || true
+
+      - uses: actions/upload-artifact@v7
+        if: failure()
+        with:
+          name: playwright-report
+          path: frontend/playwright-report/
+          retention-days: 14

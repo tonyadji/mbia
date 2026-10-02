@@ -31,8 +31,7 @@ Identity fields may be edited by:
 Another CONTRIBUTOR may still:
 
 - add relationships involving the Person;
-- add photos;
-- add Stories;
+- add Memories about them, with their photos (OQ-042);
 - associate existing Memories.
 
 This gives a linked User control of their identity without preventing the family from contributing to their shared history.
@@ -68,6 +67,20 @@ Duplicate detection is advisory.
 
 No automatic merge.
 
+### 4.1 Possible duplicate candidate
+
+Detection is deterministic. An ACTIVE Person of the same Family is a **possible duplicate candidate** of the Person being created when:
+
+1. `firstName` matches after trim, whitespace collapse, case folding and accent-insensitive comparison; and
+2. at least one of `lastName` or `preferredName` matches the same way, when present on both Persons; and
+3. if both Persons have a known birth year, the years are equal.
+
+A missing optional value never counts as a match by itself.
+
+When at least one candidate exists and the User has not confirmed, creation is refused with `POSSIBLE_DUPLICATE` and the candidates. The User may view an existing candidate or create anyway.
+
+### 4.2 Merge
+
 ADMIN may merge two Persons.
 
 Merge rules:
@@ -82,11 +95,15 @@ Merge rules:
 - never create self-relations;
 - perform operation atomically.
 
+A refused merge answers `PERSON_MERGE_CONFLICT` with a reason: two different linked Users, an ACTIVE relationship between the two Persons, or a parental cycle; merging a MERGED Person is not found and an ARCHIVED one is not active (OQ-026). Every relationship of the duplicate moves to the target, removed ones included; an ACTIVE relationship identical to one of the target is removed instead, and a removed link between the two stays with the duplicate (OQ-027).
+
 ## 5. Archiving
 
 ADMIN may archive/restore a Person.
 
 A linked Person cannot be archived until its linked User association is resolved.
+
+Archiving a linked Person is refused with `PERSON_ALREADY_CLAIMED` (OQ-023). Archiving a Person that is already archived, or restoring one that is already active, changes nothing and is not an error (OQ-024). A MERGED Person can be neither archived nor restored: it is not found (OQ-025).
 
 An archived Person:
 
@@ -94,6 +111,8 @@ An archived Person:
 - cannot receive new relationships;
 - remains restorable;
 - retains historical data.
+
+Only the ADMIN can list archived Persons and open their profile to restore them.
 
 ## 6. Relationship structure
 
@@ -148,9 +167,25 @@ Block:
 - self-relation;
 - exact duplicate;
 - cross-Family relation;
+- relation involving an ARCHIVED or MERGED Person (`PERSON_NOT_ACTIVE`, OQ-011);
 - parental cycle.
 
 Warn, but permit confirmation, for probable inconsistencies such as suspicious dates or generation gaps.
+
+### 7.1 Date warnings
+
+For a `PARENT_OF` relation, when both birth years are known:
+
+- `PARENT_BORN_AFTER_CHILD` when `parentBirthYear >= childBirthYear`;
+- otherwise, `IMPLAUSIBLE_PARENT_AGE` when the parent's age at the child's birth is `< 12` or `> 80`.
+
+The age is `childBirthYear - parentBirthYear`, also when exact dates are known. A parent born the same year as the child or after gets only `PARENT_BORN_AFTER_CHILD` (OQ-012).
+
+`IMPLAUSIBLE_GENERATION_GAP` is reserved: no threshold is defined yet, so it is never emitted.
+
+When warnings exist and the User has not confirmed, the relation is not created and the warnings are returned. The User may retry with explicit confirmation.
+
+Restoring a removed relation does not ask for confirmation again: the warnings are recomputed from the current birth data and returned for information only (OQ-021).
 
 ## 8. Relationship removal
 
@@ -160,7 +195,11 @@ Removal means `ARCHIVED`, not physical delete.
 
 Before removal, UI warns that derived kinship may change.
 
-ADMIN may restore if the restored graph remains valid.
+ADMIN may restore if the restored graph remains valid. The ADMIN finds removed relationships from the profile of either Person involved.
+
+Restoring re-runs the §7 blocks against the current graph: both Persons ACTIVE (`PERSON_NOT_ACTIVE`), no identical ACTIVE relation (`RELATIONSHIP_ALREADY_EXISTS`), no parental cycle (`RELATIONSHIP_CREATES_CYCLE`). Date warnings do not block it (§7.1).
+
+Removing a relation that is already removed, or restoring one that is already active, changes nothing and is not an error (OQ-020).
 
 ## 9. Derived relations
 
@@ -194,7 +233,11 @@ Marie -> parent of -> Tony
 
 Direction convention: a kinship result always describes **what the target Person is to the reference Person** (`kinship(from = Tony, to = Paul) = GRANDFATHER`). The relationship shown on a Person "to the current User" uses the current User's linked Person as reference.
 
-When several paths exist, return the shortest one; when several shortest paths exist, prefer the one with only `PARENT`/`CHILD` steps.
+Paths use ACTIVE Persons and ACTIVE relationships only. Each step is `PARENT`, `CHILD` or `PARTNER`.
+
+A Person that is ARCHIVED or MERGED therefore has no known kinship with anyone but itself: `NONE_KNOWN`, with an empty path (OQ-013).
+
+When several paths exist, return the shortest one; when several shortest paths exist, prefer the one with only `PARENT`/`CHILD` steps; when still tied, choose deterministically by Person UUID order so that results are stable.
 
 User-facing labels (French and English, gender-aware) are defined in `../ux/localization-and-kinship-labels.md`.
 
@@ -241,7 +284,7 @@ May:
 - edit own linked Person;
 - create/remove relationships;
 - add Memories;
-- edit/archive own Memories;
+- edit/archive own Memories (only while CONTRIBUTOR: a creator who became VIEWER is read-only, OQ-041);
 - leave the Family.
 
 May not:
