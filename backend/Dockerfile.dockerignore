@@ -1,0 +1,7 @@
+# Build context of backend/Dockerfile (the repository root): only what the build reads.
+*
+!backend/.mvn/
+!backend/mvnw
+!backend/pom.xml
+!backend/src/main/
+!mbia-specs/technical/api/openapi.yaml

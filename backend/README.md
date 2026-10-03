@@ -14,6 +14,9 @@ Requires JDK 25 (the build refuses any other version) and Docker.
 curl http://localhost:8080/actuator/health           # {"status":"UP","components":{"db":{"status":"UP"},...}}
 ```
 
+The container image (`Dockerfile`, built from the repository root) and its environment variables are described in
+[`../infrastructure/staging/README.md`](../infrastructure/staging/README.md).
+
 The `local` profile connects to the `docker compose` PostgreSQL. Defaults match `../.env.example`; a repository-root `.env` overrides them.
 
 API interfaces and models are generated from `../mbia-specs/technical/api/openapi.yaml` during `generate-sources` into

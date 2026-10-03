@@ -4,6 +4,7 @@ Configuration for the local services started by the root [`docker-compose.yml`](
 
 - `postgres/init/`: creates the `mbia` and `keycloak` databases, each with its own user, on first start.
 - `keycloak/`: the `mbia` realm imported by Keycloak on first start, and its local test users (ADR-005).
+- `staging/`: the staging and closed-beta environment on AWS (ADR-010): container images, configuration, deployment.
 - The `rustfs-init` service in `docker-compose.yml` creates the private `mbia-media` bucket and sets its CORS through the S3 API (ADR-009). It runs on every `docker compose up -d`, so an existing bucket gets the CORS too.
 
 ## Object storage in production
