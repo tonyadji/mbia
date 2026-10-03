@@ -13,5 +13,6 @@ Architecturally significant decisions for the Mbia MVP. Format: Context / Decisi
 | [ADR-007](ADR-007-image-processing.md) | Synchronous server-side image processing | Accepted |
 | [ADR-008](ADR-008-product-analytics.md) | Product analytics with PostHog (EU) | Accepted |
 | [ADR-009](ADR-009-local-object-storage-rustfs.md) | RustFS instead of MinIO for local object storage | Accepted |
+| [ADR-010](ADR-010-staging-single-vm-aws.md) | Staging on AWS: one VM, managed data services | Accepted |
 
 A new ADR is required to change framework, architectural style, persistence semantics, identity provider or public API style. Agents may draft ADRs with status `Proposed`; only a human sets `Accepted`.

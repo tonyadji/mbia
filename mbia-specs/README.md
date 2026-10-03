@@ -72,6 +72,14 @@ The visual mockup is a design reference. Product rules and screen behavior are d
 
 ## Changelog
 
+### 0.7.3 — 2026-10-03
+
+Staging and closed beta:
+
+- ADR-010 Accepted: staging on AWS eu-west-3, one VM with Docker Compose for the backend and Keycloak, RDS, S3, CloudFront, SES, Route 53; `stack.md` links it;
+- OQ-070 (open sign-up, `noindex`), OQ-071 (beta data migrated to production), OQ-072 (legal texts written by a lawyer, beta and production) answered;
+- delivery plan `delivery/phase-7-staging.md` (PR-64 to PR-68).
+
 ### 0.7.2 — 2026-09-29
 
 - `data-model.md` §14: `ck_memory_happened_date` requires `happened_year IS NOT NULL` for YEAR_ONLY, since a check accepts the NULL result of `BETWEEN` (found by the schema test of PR-58); `V012__memory_happened_date.sql` follows it.

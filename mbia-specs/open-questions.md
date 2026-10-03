@@ -766,3 +766,33 @@ When a question is answered, update the relevant spec, then move the entry to **
 - **Recommendation:** A, the clearest for older readers.
 - **Blocking:** nothing before the screens; `localization-and-kinship-labels.md` §1 holds A, marked provisional.
 - **Answer:** A (human, 2026-09-29). Documented in `localization-and-kinship-labels.md` §1.
+
+### OQ-070 — Who can create an account during the closed beta
+
+- **Raised by / date:** coding agent (Phase 7 plan, ADR-010), 2026-09-29
+- **Context:** the staging environment hosts a closed beta (ADR-010). The local realm allows anyone to sign up (`registrationAllowed`), and an invited relative signs up from the invitation link (SCREEN-010). The specs say nothing about restricting access during a beta.
+- **Question:** during the closed beta, who may create an account on `app.staging`?
+- **Options:** A — open sign-up, the address is only shared with beta families; anyone who finds it can create a Family / B — sign-up open, but only the invited beta ADMINs may create a Family, invited relatives join through their invitation (needs a product rule and code) / C — sign-up closed in Keycloak; the human creates every account from the admin console, invitation links then only work for accounts created beforehand.
+- **Recommendation:** A, with `noindex` on the frontend: no product change, and the invitation journey stays the one being tested. B changes product rules; C breaks the invitation journey.
+- **Blocking:** the staging realm (PR-65).
+- **Answer:** A (human, 2026-10-03). Open sign-up; the address is shared only with beta families and the staging frontend is not indexed (`noindex`). Documented in ADR-010 and `delivery/phase-7-staging.md` (PR-65, PR-66).
+
+### OQ-071 — The fate of the beta data at the production launch
+
+- **Raised by / date:** coding agent (Phase 7 plan, ADR-010), 2026-09-29
+- **Context:** beta families will enter real memories, photos and relatives on staging. Production will run on other resources (ADR-010, later ADR).
+- **Question:** when production opens, is the beta data moved to production, or does staging stay a separate environment that is emptied?
+- **Options:** A — moved: the beta database, the Keycloak accounts and the media bucket become production's (or are copied to it); beta families keep everything / B — not moved: beta families are told from the start that their data will be deleted at the end of the beta / C — decided later, the beta families being told only that it is not guaranteed.
+- **Recommendation:** A. Families who told their story will not tell it twice, and ADR-010 already uses the production data services (RDS, S3, SES) for that reason. Staging for later tests is then rebuilt empty.
+- **Blocking:** the invitation message to beta families and the runbook (PR-68); not the infrastructure.
+- **Answer:** A (human, 2026-10-03). The beta data (database, Keycloak accounts, media) is migrated to production; beta families keep everything. Documented in ADR-010 (Consequences) and `delivery/phase-7-staging.md` (PR-68, §5).
+
+### OQ-072 — Terms of use and privacy policy for the closed beta
+
+- **Raised by / date:** coding agent (Phase 7 plan, ADR-010), 2026-09-29
+- **Context:** `mvp.md` §24 requires terms of use and a privacy policy for the public product; `mvp.md` §30 requires the support procedure before the first real family. A closed beta already stores personal data of living people, including children (GDPR).
+- **Question:** what must exist before the first beta family is invited?
+- **Options:** A — a short beta privacy notice and terms (who operates Mbia, what is stored, where — AWS Paris —, how to ask for deletion), reachable from the sign-up page and the account settings / B — the full terms and privacy policy of the public product / C — nothing on the site, the beta families are informed by email.
+- **Recommendation:** A, written by the human (legal content is not written by an agent). Where the link is shown is a small UI change, to be specified if chosen.
+- **Blocking:** inviting the first beta family (Phase 7 exit criteria); not the infrastructure.
+- **Answer:** A, extended (human, 2026-10-03). A lawyer writes the texts after a demo and the product vision: the beta notice and terms, and at the same time the terms of use and privacy policy of the production MVP (`mvp.md` §24). No agent writes legal content; where the links appear in the UI is specified once the texts exist. Documented in `delivery/phase-7-staging.md` (§2.2, §6).
