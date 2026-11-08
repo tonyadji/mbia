@@ -74,7 +74,7 @@ resource "aws_vpc_security_group_ingress_rule" "vm_web" {
 # AWS APIs (S3, ECR, SSM, CloudWatch Logs), Let's Encrypt and the Caddy image, all over HTTPS.
 resource "aws_vpc_security_group_egress_rule" "vm_https" {
   security_group_id = aws_security_group.vm.id
-  description       = "AWS APIs, Let's Encrypt, container images (HTTPS)"
+  description       = "AWS APIs, ACME certificates, container images (HTTPS)"
   cidr_ipv4         = "0.0.0.0/0"
   ip_protocol       = "tcp"
   from_port         = 443

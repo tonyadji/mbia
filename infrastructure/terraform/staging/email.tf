@@ -38,11 +38,13 @@ data "aws_sesv2_email_identity" "staging" {
 locals {
   ses_dkim_tokens = toset(data.aws_sesv2_email_identity.staging.dkim_signing_attributes[0].tokens)
 
-  # Records published by hand (plan §2.2), with their current values.
+  # imported: published by hand (plan §2.2) under this exact name. The MAIL FROM records were published by hand
+  # under a wrong name (mail.mbia-staging.lehnade.com.mbia-staging.lehnade.com): Terraform creates the right
+  # ones, and the human deletes the wrong ones (README.md).
   ses_records = {
-    mail_from_mx  = { name = "mail.${local.frontend_domain}", type = "MX", ttl = 600, value = "10 feedback-smtp.${local.region}.amazonses.com" }
-    mail_from_spf = { name = "mail.${local.frontend_domain}", type = "TXT", ttl = 600, value = "v=spf1 include:amazonses.com ~all" }
-    dmarc         = { name = "_dmarc.${local.frontend_domain}", type = "TXT", ttl = 300, value = "v=DMARC1; p=none;" }
+    mail_from_mx  = { name = "mail.${local.frontend_domain}", type = "MX", ttl = 300, value = "10 feedback-smtp.${local.region}.amazonses.com", imported = false }
+    mail_from_spf = { name = "mail.${local.frontend_domain}", type = "TXT", ttl = 300, value = "v=spf1 include:amazonses.com ~all", imported = false }
+    dmarc         = { name = "_dmarc.${local.frontend_domain}", type = "TXT", ttl = 300, value = "v=DMARC1; p=none;", imported = true }
   }
 }
 
@@ -81,14 +83,15 @@ resource "aws_route53_record" "ses" {
 }
 
 import {
-  for_each = local.ses_records
+  for_each = { for key, record in local.ses_records : key => record if record.imported }
   to       = aws_route53_record.ses[each.key]
   id       = "${data.aws_route53_zone.lehnade.zone_id}_${each.value.name}_${each.value.type}"
 }
 
 # Bounces and complaints. Its email subscription stays outside Terraform (a real address).
 resource "aws_sns_topic" "ses_feedback" {
-  name = "${local.name}-ses-feedback"
+  name         = "${local.name}-ses-feedback"
+  display_name = "${local.name}-ses-feedback" # as created in the console
 
   lifecycle {
     prevent_destroy = true
