@@ -1,6 +1,6 @@
 terraform {
   # Pinned: the S3 backend's native locking and write-only arguments need Terraform 1.11 or later.
-  required_version = "= 1.16.7"
+  required_version = "= 1.17.1"
 
   required_providers {
     aws = {

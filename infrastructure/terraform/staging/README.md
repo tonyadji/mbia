@@ -4,7 +4,7 @@ AWS resources of the staging / closed-beta environment (ADR-010, `mbia-specs/del
 
 | File | Resources |
 |---|---|
-| `versions.tf`, `providers.tf`, `locals.tf` | Terraform `1.16.7`, AWS provider `6.69.1` (pinned, `.terraform.lock.hcl` committed), S3 state, staging names |
+| `versions.tf`, `providers.tf`, `locals.tf` | Terraform `1.17.1`, AWS provider `6.69.1` (pinned, `.terraform.lock.hcl` committed), S3 state, staging names |
 | `network.tf` | VPC, two public subnets (two zones, required by RDS), no NAT gateway; security groups of the plan §3.1 |
 | `compute.tf`, `vm-init.sh` | EC2 `t4g.medium` (Amazon Linux 2023 arm64, Docker, SSM agent, no SSH key, IMDSv2, encrypted gp3), Elastic IP, instance role of §3.2 |
 | `database.tf` | RDS PostgreSQL 18 `db.t4g.micro`, single-AZ, encrypted, not public, backups 7 days, deletion protection |
@@ -14,7 +14,7 @@ AWS resources of the staging / closed-beta environment (ADR-010, `mbia-specs/del
 | `logs.tf` | CloudWatch Logs group `/mbia/staging`, 30 days |
 | `cdn.tf`, `cloudfront/spa-rewrite.js` | frontend bucket (private, read by the distribution only), CloudFront with Origin Access Control, ACM certificate in us-east-1, deep-link rewrite, cache and headers of `infrastructure/staging/README.md` §Frontend on CloudFront |
 | `dns.tf` | zone `lehnade.com` read only; `mbia-staging.lehnade.com` (A, AAAA alias to CloudFront), `api.` and `auth.mbia-staging.lehnade.com` (A to the Elastic IP), ACM validation |
-| `email.tf` | SES identity, MAIL FROM, DKIM, SPF and DMARC records, feedback topic and its Bounce and Complaint notifications (**imported**); SES SMTP user of §3.2 |
+| `email.tf` | SES identity, MAIL FROM, DKIM and DMARC records, feedback topic and its Bounce and Complaint notifications (**imported**); MAIL FROM MX and SPF records (created); SES SMTP user of §3.2 |
 | `deploy.tf` | GitHub OIDC provider and deployment role of §3.2 (`repo:tonyadji/mbia:ref:refs/heads/main` only) |
 
 ### Network and access (plan §3.1)
@@ -38,7 +38,9 @@ Actions without resource-level permission are granted on `*`: `ecr:GetAuthorizat
 
 ### Imported resources
 
-Created by hand before Terraform (`delivery/phase-7-staging.md` §2.2), brought under Terraform by `import` blocks in `email.tf`, never recreated: the SES identity and its MAIL FROM, the three DKIM CNAME records, the MAIL FROM MX and SPF records, the DMARC record, the topic `mbia-staging-ses-feedback` and the identity's Bounce and Complaint notifications. Each carries `prevent_destroy`: a plan that would destroy or replace one of them fails. The `import` blocks stay in the code: once imported, they do nothing.
+Created by hand before Terraform (`delivery/phase-7-staging.md` §2.2), brought under Terraform by `import` blocks in `email.tf`, never recreated: the SES identity and its MAIL FROM, the three DKIM CNAME records, the DMARC record, the topic `mbia-staging-ses-feedback` and the identity's Bounce and Complaint notifications. Each carries `prevent_destroy`: a plan that would destroy or replace one of them fails. The `import` blocks stay in the code: once imported, they do nothing.
+
+The MAIL FROM MX and SPF records were published by hand under a wrong name, `mail.mbia-staging.lehnade.com.mbia-staging.lehnade.com` (the full name typed in the console's subdomain field). The SES identity's MAIL FROM domain had the same wrong name: the first plan shows it changed in place to `mail.mbia-staging.lehnade.com`. Terraform creates the records under that name; the wrong ones are deleted by hand after the apply (below).
 
 ### What stays outside Terraform
 
@@ -49,7 +51,7 @@ Created by hand before Terraform (`delivery/phase-7-staging.md` §2.2), brought 
 
 ## Prerequisites
 
-- Terraform `1.16.7` exactly (`brew install hashicorp/tap/terraform`, or `tfenv install 1.16.7`).
+- Terraform `1.17.1` exactly (`brew install hashicorp/tap/terraform`, or `tfenv install 1.17.1`).
 - AWS CLI v2, a profile of an administrator of the account (`export AWS_PROFILE=<profile>`), region `eu-west-3`.
 
 ## Bootstrap (once)
@@ -83,8 +85,6 @@ aws route53 list-resource-record-sets --hosted-zone-id "$ZONE_ID" --query "Resou
 | Name | Type | Value in `email.tf` |
 |---|---|---|
 | `<token>._domainkey.mbia-staging.lehnade.com` (×3) | CNAME | `<token>.dkim.amazonses.com`, TTL 1800 |
-| `mail.mbia-staging.lehnade.com` | MX | `10 feedback-smtp.eu-west-3.amazonses.com`, TTL 600 |
-| `mail.mbia-staging.lehnade.com` | TXT | `"v=spf1 include:amazonses.com ~all"`, TTL 600 |
 | `_dmarc.mbia-staging.lehnade.com` | TXT | `"v=DMARC1; p=none;"`, TTL 300 |
 
 - A record missing from the list: remove its entry from the `import` block (`ses_dkim` or `ses` in `email.tf`); Terraform then creates it. Otherwise the plan fails with `Cannot import non-existent remote object`.
@@ -102,11 +102,24 @@ terraform apply staging.tfplan
 
 Before applying, read the plan:
 
-- the last line reads `Plan: 11 to import, N to add, M to change, 0 to destroy` (11: identity, MAIL FROM, 3 DKIM, MX, SPF, DMARC, topic, 2 notifications); every `to change` is an imported resource receiving the project's tags (the identity, the topic) or a value to align (above); no `must be replaced`;
+- the last line reads `Plan: 9 to import, N to add, M to change, 0 to destroy` (9: identity, MAIL FROM, 3 DKIM, DMARC, topic, 2 notifications; the MAIL FROM MX and SPF records are among the additions); every `to change` is an imported resource receiving the project's tags (the identity, the topic) or a value to align (above); no `must be replaced`;
 - RDS, the media bucket and every imported resource carry `prevent_destroy`: a plan that would destroy or replace them fails instead;
 - no IAM statement other than the table above, no security group rule other than the table above.
 
 Then: `terraform output` gives the instance id, the RDS endpoint, the media bucket and its origin (in the CSP), the frontend bucket, the distribution id, the deployment role ARN (a GitHub variable of PR-68), the SMTP user, the ECR URLs and the names of the SSM parameters. Their values are set by the runbook (PR-68); until then they hold `change-me`.
+
+### After the first apply: the wrong MAIL FROM records
+
+Once the right records exist, delete the two published under the wrong name, then check that SES sees the MAIL FROM domain (`MailFromDomainStatus` `SUCCESS`, within about an hour):
+
+```bash
+ZONE_ID=$(aws route53 list-hosted-zones-by-name --dns-name lehnade.com --query 'HostedZones[0].Id' --output text)
+aws route53 change-resource-record-sets --hosted-zone-id "$ZONE_ID" --change-batch '{"Changes":[
+  {"Action":"DELETE","ResourceRecordSet":{"Name":"mail.mbia-staging.lehnade.com.mbia-staging.lehnade.com.","Type":"MX","TTL":300,"ResourceRecords":[{"Value":"10 feedback-smtp.eu-west-3.amazonses.com"}]}},
+  {"Action":"DELETE","ResourceRecordSet":{"Name":"mail.mbia-staging.lehnade.com.mbia-staging.lehnade.com.","Type":"TXT","TTL":300,"ResourceRecords":[{"Value":"\"v=spf1 include:amazonses.com ~all\""}]}}
+]}'
+aws sesv2 get-email-identity --region eu-west-3 --email-identity mbia-staging.lehnade.com --query MailFromAttributes
+```
 
 ## Estimated monthly cost
 
