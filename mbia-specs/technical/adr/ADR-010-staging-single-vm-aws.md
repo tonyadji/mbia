@@ -25,14 +25,14 @@ Use **option B** for the staging / closed-beta environment, in AWS region **eu-w
 
 | Need | Staging choice | Production target (later ADR) |
 |---|---|---|
-| Domain, DNS | Route 53 (registered domain + hosted zone), subdomains `app.staging.`, `api.staging.`, `auth.staging.` | same, without `staging.` |
+| Domain, DNS | Route 53, domain `lehnade.com` (registered 2026-11-08): `mbia-staging.lehnade.com` (frontend), `api.mbia-staging.lehnade.com` (API), `auth.mbia-staging.lehnade.com` (Keycloak) | `mbia.lehnade.com`, `api.mbia.lehnade.com`, `auth.mbia.lehnade.com` |
 | Frontend | Static build in a private S3 bucket behind CloudFront (Origin Access Control), ACM certificate | same |
 | Backend | Container on one EC2 `t4g.medium` (ARM, 4 GB), started by Docker Compose | ECS Fargate |
 | Keycloak | Container on the same VM, production mode (`start --optimized`), realm imported without test users | ECS Fargate |
 | Reverse proxy, TLS | Caddy on the VM (Let's Encrypt), the only process with open ports (80, 443) | ALB + ACM |
 | PostgreSQL | RDS PostgreSQL (same major version as local), `db.t4g.micro`, single-AZ, not publicly accessible, automated backups kept 7 days; two databases `mbia` and `keycloak` with separate users, as locally | RDS multi-AZ |
 | Media | Private S3 bucket, CORS from the frontend origin only (`infrastructure/README.md`), versioning on | same |
-| Email | Amazon SES (eu-west-3), domain verified with DKIM, SPF and DMARC; SMTP credentials used by both the backend (`MBIA_SMTP_*`) and the Keycloak realm | same |
+| Email | Amazon SES (eu-west-3), identity `mbia-staging.lehnade.com` verified with DKIM, SPF and DMARC (sender `no-reply@mbia-staging.lehnade.com`, shown as "Mbia"; the reputation of `lehnade.com` stays apart); SMTP credentials used by both the backend (`MBIA_SMTP_*`) and the Keycloak realm | same |
 | Images | Amazon ECR, `linux/arm64` | same |
 | Secrets | SSM Parameter Store (SecureString), rendered to a `0600` env file on the VM at deploy time | Secrets Manager or Parameter Store |
 | Logs | Docker `awslogs` driver → CloudWatch Logs, retention 30 days | same |
@@ -62,8 +62,9 @@ Rules:
 - New files: backend and Keycloak container images, a staging Compose file and Caddy configuration, a staging realm, Terraform code under `infrastructure/`, a deployment workflow and a runbook (`delivery/phase-7-staging.md`).
 - The VM is a single point of failure: a beta outage of a few minutes during a deployment or a VM restart is accepted. The data is not on the VM (RDS, S3), so losing the VM loses no data.
 - The frontend build for staging sets `VITE_API_BASE_URL`, `VITE_OIDC_AUTHORITY`, `VITE_OIDC_CLIENT_ID` and `VITE_SUPPORT_EMAIL` at build time.
-- The human must, before the first deployment: register the domain, request the SES production access, and create the AWS account guardrails (billing alert, MFA on the root user).
+- The human must, before the first deployment: register the domain (done: `lehnade.com`, 2026-11-08), request the SES production access (granted 2026-11-08), and create the AWS account guardrails (billing alert, MFA on the root user).
 - A later ADR moves the backend and Keycloak to ECS Fargate for production; RDS, S3, CloudFront, SES, Route 53 and ECR stay.
 - `stack.md` §Infrastructure links this ADR for the staging environment.
+- Moving Mbia to another domain later changes the Keycloak address, hence the token issuer: accounts and data are kept, but every user signs in again and the configuration and emails follow.
 - Sign-up stays open during the closed beta; the address is shared only with beta families and the frontend is served with `noindex` (OQ-070).
 - The beta data (RDS databases `mbia` and `keycloak`, media bucket) is migrated to production at launch (OQ-071): the production ADR must describe this migration, and staging is then rebuilt empty for later tests.

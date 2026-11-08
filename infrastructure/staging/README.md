@@ -21,19 +21,19 @@ The backend is configured by environment variables only. Without a required one,
 |---|---|---|
 | `SPRING_DATASOURCE_URL` | yes | `jdbc:postgresql://<rds endpoint>:5432/mbia` |
 | `SPRING_DATASOURCE_USERNAME`, `SPRING_DATASOURCE_PASSWORD` | yes | the `mbia` database user |
-| `MBIA_SECURITY_ISSUER_URI` | yes | `https://auth.staging.<domain>/realms/mbia` |
-| `MBIA_CORS_ALLOWED_ORIGINS` | yes | `https://app.staging.<domain>` (comma-separated if several) |
+| `MBIA_SECURITY_ISSUER_URI` | yes | `https://auth.mbia-staging.lehnade.com/realms/mbia` |
+| `MBIA_CORS_ALLOWED_ORIGINS` | yes | `https://mbia-staging.lehnade.com` (comma-separated if several) |
 | `MBIA_STORAGE_BUCKET`, `MBIA_STORAGE_REGION` | yes | the media bucket, `eu-west-3` |
 | `MBIA_STORAGE_PATH_STYLE_ACCESS` | no (`true`) | `false` on AWS S3 |
 | `MBIA_STORAGE_ENDPOINT`, `MBIA_STORAGE_PUBLICENDPOINT` | no | unset on AWS; the endpoints of another S3-compatible provider |
 | `MBIA_STORAGE_ACCESSKEY`, `MBIA_STORAGE_SECRETKEY` | no | unset on AWS: the VM's instance role is used (default credentials chain) |
-| `MBIA_APP_BASE_URL` | yes | `https://app.staging.<domain>` (invitation links) |
-| `MBIA_MAIL_FROM` | yes | `Mbia <no-reply@<domain>>`, an address of the domain verified in SES |
+| `MBIA_APP_BASE_URL` | yes | `https://mbia-staging.lehnade.com` (invitation links) |
+| `MBIA_MAIL_FROM` | yes | `Mbia <no-reply@mbia-staging.lehnade.com>`, an address of the identity verified in SES |
 | `MBIA_SMTP_HOST`, `MBIA_SMTP_PORT` | yes | `email-smtp.eu-west-3.amazonaws.com`, `587` |
 | `MBIA_SMTP_USERNAME`, `MBIA_SMTP_PASSWORD` | yes | the SES SMTP credentials |
 | `MBIA_SMTP_AUTH`, `MBIA_SMTP_STARTTLS` | no (`true`) | `true` |
 | `MBIA_MEMORY_MAX_PHOTOS` | no (`3`) | between 1 and 10 |
-| `MBIA_PROBLEMS_BASE_URI` | no | `https://app.staging.<domain>/problems` (base of the `type` of error responses) |
+| `MBIA_PROBLEMS_BASE_URI` | no | `https://mbia-staging.lehnade.com/problems` (base of the `type` of error responses) |
 | `JDK_JAVA_OPTIONS` | no | extra JVM options; the heap already takes 75 % of the container memory |
 
 Secret values live in SSM Parameter Store, never in this repository (ADR-010).

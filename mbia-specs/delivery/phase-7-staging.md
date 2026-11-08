@@ -13,10 +13,10 @@ Mbia runs on AWS for a closed beta, as decided in ADR-010: one VM for the backen
 At the end of Phase 7, the following works without a developer machine, in FR and EN, on a phone:
 
 ```text
-open https://app.staging.<domain>
+open https://mbia-staging.lehnade.com
 → sign up, receive the verification email (SES), verify
 → create a Family, tell a first memory with a photo
-→ invite a relative by email: the invitation arrives, its link opens app.staging
+→ invite a relative by email: the invitation arrives, its link opens mbia-staging.lehnade.com
 → the relative joins and sees the family story
 → a new version is deployed from GitHub Actions: the data is still there
 → the database is restored from a backup on a test instance (runbook)
@@ -36,9 +36,9 @@ Phase 3 rules apply (`phase-3-family-memories.md` §2.1), with these differences
 ### 2.2 Before PR-64 (human)
 
 - [x] ADR-010 Accepted (2026-10-03).
-- [ ] Domain registered in Route 53 (hosted zone created).
+- [x] Domain registered in Route 53: `lehnade.com` (2026-11-08); hosts in ADR-010.
 - [ ] AWS account: MFA on the root user, an administrator user or SSO for the human, a budget alert.
-- [ ] SES production access requested for eu-west-3 (it can take a few days).
+- [x] SES production access granted for eu-west-3 (2026-11-08). Created by hand in the console: the SES identity `mbia-staging.lehnade.com` (Easy DKIM, MAIL FROM `mail.mbia-staging.lehnade.com`, records published to Route 53), the DMARC record `_dmarc.mbia-staging.lehnade.com` (`p=none`) and the SNS topic `mbia-staging-ses-feedback` (bounces and complaints, email subscription).
 - [x] OQ-070, OQ-071 and OQ-072 answered (2026-10-03).
 - [ ] Beta privacy notice and terms requested from the lawyer (OQ-072), with the production texts.
 
@@ -120,7 +120,7 @@ The backend is configured by environment variables only (Spring relaxed binding)
 - `infrastructure/keycloak/Dockerfile`: Keycloak image (same pinned version as `docker-compose.yml`) built for PostgreSQL (`kc.sh build`), started with `start --optimized`, `KC_PROXY_HEADERS=xforwarded`, `KC_HOSTNAME` from the environment.
 - `infrastructure/keycloak/realm-mbia-staging.json`: the `mbia` realm without test users; `mbia-web` redirect URIs and web origins from the environment; SMTP from the environment (Keycloak placeholders); registration open (OQ-070); password policy; brute-force protection on.
 - `infrastructure/staging/compose.yml`: Caddy, Keycloak, backend; `awslogs` log driver; restart policy; health checks.
-- `infrastructure/staging/Caddyfile`: `api.staging.<domain>` → backend `/api/v1` only, `auth.staging.<domain>` → Keycloak without `/admin`; security headers.
+- `infrastructure/staging/Caddyfile`: `api.mbia-staging.lehnade.com` → backend `/api/v1` only, `auth.mbia-staging.lehnade.com` → Keycloak without `/admin`; security headers.
 
 **Out of scope:** AWS resources (PR-67), deployment (PR-68).
 
@@ -174,7 +174,7 @@ The backend is configured by environment variables only (Spring relaxed binding)
 - EC2 `t4g.medium` (Amazon Linux, Docker, SSM agent), Elastic IP, instance role of §3.2, EBS encrypted.
 - RDS PostgreSQL `db.t4g.micro`, single-AZ, encrypted, backups 7 days, deletion protection.
 - S3 media bucket (private, CORS, versioning, encryption), S3 frontend bucket + CloudFront (OAC, ACM in us-east-1, response headers policy).
-- Route 53 records; SES domain identity with DKIM, SPF, DMARC and a custom MAIL FROM.
+- Route 53 records; SES domain identity with DKIM, SPF, DMARC and a custom MAIL FROM, and the SNS feedback topic: they already exist (§2.2), so they are brought under Terraform with `import` blocks, never recreated.
 - ECR repositories (backend, keycloak) with a lifecycle policy.
 - SSM parameter names (values set by the human, never in Terraform).
 - GitHub OIDC provider and deployment role of §3.2; AWS Budgets alert; CloudWatch log groups.
@@ -228,7 +228,7 @@ The backend is configured by environment variables only (Spring relaxed binding)
 ## 6. Phase 7 exit criteria
 
 - [ ] PR-64 to PR-68 merged, CI green.
-- [ ] The §1 journey passes on `app.staging.<domain>` in FR and EN, on a phone.
+- [ ] The §1 journey passes on `mbia-staging.lehnade.com` in FR and EN, on a phone.
 - [ ] Emails (Keycloak and invitations) arrive in a Gmail and an Outlook inbox, not in spam.
 - [ ] A restore of the database has been done once, following the runbook.
 - [ ] The support procedure of `mvp.md` §30 has been written and tested on staging (required before the first real family).
