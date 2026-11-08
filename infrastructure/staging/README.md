@@ -174,7 +174,7 @@ The values are read at build time and end up in the published JavaScript: none i
 
 ## Frontend on CloudFront
 
-What the CloudFront distribution of the frontend must do (PR-67). The build itself cannot set headers nor routing.
+What the CloudFront distribution of the frontend does, defined in [`../terraform/staging/cdn.tf`](../terraform/staging/cdn.tf) (PR-67). The build itself cannot set headers nor routing.
 
 1. **Origin:** the private frontend bucket through Origin Access Control; `default_root_object = index.html`.
 2. **Deep links** (`/invitations/<token>`, `/families/<id>/tree`, …): a CloudFront Function on viewer request rewrites to `/index.html` every URI whose last segment has no extension (no `.`). No custom error response turning 403/404 into `index.html`: a missing asset must stay an error. The application's paths hold only UUIDs, years and base64url invitation tokens, never a dot.
@@ -200,6 +200,6 @@ What the CloudFront distribution of the frontend must do (PR-67). The build itse
 Why each source of the CSP:
 
 - **Scripts, styles, fonts:** the build has no inline script nor stylesheet; React sets inline styles through the DOM, which the CSP allows; the font is bundled.
-- **Media bucket:** photos are uploaded with a pre-signed `PUT` sent by `XMLHttpRequest` (`connect-src`) and shown with pre-signed `GET` URLs in `<img>` (`img-src`). On AWS S3 the URLs are virtual-hosted (`path-style-access` `false`): `https://<media bucket>.s3.eu-west-3.amazonaws.com`. Take the bucket name from Terraform.
+- **Media bucket:** photos are uploaded with a pre-signed `PUT` sent by `XMLHttpRequest` (`connect-src`) and shown with pre-signed `GET` URLs in `<img>` (`img-src`). On AWS S3 the URLs are virtual-hosted (`path-style-access` `false`): `https://<media bucket>.s3.eu-west-3.amazonaws.com`. Terraform builds it from the bucket (`terraform output media_bucket_origin`).
 - **Keycloak:** oidc-client-ts fetches the discovery document and the keys, exchanges the code and renews the access token with the refresh token, all with `fetch` (`connect-src`); Keycloak gives `mbia-web` a refresh token and allows its origin (`webOrigins`). Sign-in, sign-out and the account page are full-page navigations, outside the CSP. No silent renewal in an iframe: it is used only without a refresh token, and the callback page does not handle it; the application then signs the User in again. Hence `frame-src 'none'`.
 - **PostHog EU:** absent, the frontend sends no analytics today (ADR-008). Add `https://eu.i.posthog.com` to `connect-src` when a change does.
