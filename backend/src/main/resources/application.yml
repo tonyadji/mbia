@@ -48,25 +48,29 @@ management:
 mbia:
   problems:
     # Base of the `type` URI of error responses (technical-specification.md §12).
-    base-uri: https://mbia.example.com/problems
+    base-uri: ${MBIA_PROBLEMS_BASE_URI:https://mbia.example.com/problems}
   security:
     # Keycloak realm trusted by the API (ADR-005); no default outside local and test: startup fails without it.
-    # issuer-uri:
+    issuer-uri: ${MBIA_SECURITY_ISSUER_URI:}
     audience: mbia-api
     cors:
-      allowed-origins: []
+      # Comma-separated browser origins allowed to call the API, for example the frontend's.
+      allowed-origins: ${MBIA_CORS_ALLOWED_ORIGINS:}
   # S3-compatible object storage (ADR-004, ADR-009; Phase 3 plan §3.5). No bucket nor region outside
   # local and test: startup fails without them. `endpoint` is the one the backend reaches (empty for
   # the provider's default); `public-endpoint` the one the browser reaches, for which pre-signed URLs
   # are signed (empty for `endpoint`). Credentials: empty for the default AWS credentials chain.
+  # The optional ones, needed only by a provider other than AWS, are set by MBIA_STORAGE_ENDPOINT,
+  # MBIA_STORAGE_PUBLICENDPOINT, MBIA_STORAGE_ACCESSKEY and MBIA_STORAGE_SECRETKEY.
   storage:
-    # bucket:
-    # region:
+    bucket: ${MBIA_STORAGE_BUCKET:}
+    region: ${MBIA_STORAGE_REGION:}
     # endpoint:
     # public-endpoint:
     # access-key:
     # secret-key:
-    path-style-access: true
+    # `false` on AWS S3.
+    path-style-access: ${MBIA_STORAGE_PATH_STYLE_ACCESS:true}
     # Validity of a pre-signed upload (PUT) URL, returned as `expiresAt`.
     upload-url-validity: PT15M
     # Validity of a pre-signed view (GET) URL of an image derivative (data-model.md §13).

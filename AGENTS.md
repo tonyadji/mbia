@@ -60,6 +60,7 @@ Stack and versions: `mbia-specs/technical/stack.md`. Do not change a framework o
 docker compose up -d                      # PostgreSQL, RustFS, Keycloak (realm imported), Mailpit
 cd backend && ./mvnw verify               # compile, generate API, unit + Testcontainers + architecture tests
 cd backend && ./mvnw spring-boot:run -Dspring-boot.run.profiles=local   # API on http://localhost:8080/api/v1
+docker build -f backend/Dockerfile -t mbia-backend .   # backend container image, from the repository root (configuration: infrastructure/staging/README.md)
 cd frontend && npm ci
 cd frontend && npm run generate:api       # regenerate the TypeScript types (also run before dev, build, typecheck, lint, test)
 npx @redocly/cli@2.54.3 lint mbia-specs/technical/api/openapi.yaml   # lint the contract (rules: redocly.yaml)
