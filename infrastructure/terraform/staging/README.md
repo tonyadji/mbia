@@ -15,7 +15,7 @@ AWS resources of the staging / closed-beta environment (ADR-010, `mbia-specs/del
 | `cdn.tf`, `cloudfront/spa-rewrite.js` | frontend bucket (private, read by the distribution only), CloudFront with Origin Access Control, ACM certificate in us-east-1, deep-link rewrite, cache and headers of `infrastructure/staging/README.md` §Frontend on CloudFront |
 | `dns.tf` | zone `lehnade.com` read only; `mbia-staging.lehnade.com` (A, AAAA alias to CloudFront), `api.` and `auth.mbia-staging.lehnade.com` (A to the Elastic IP), ACM validation |
 | `email.tf` | SES identity, MAIL FROM, DKIM and DMARC records, feedback topic and its Bounce and Complaint notifications (**imported**); MAIL FROM MX and SPF records (created); SES SMTP user of §3.2 |
-| `deploy.tf` | GitHub OIDC provider and deployment role of §3.2 (`repo:tonyadji/mbia:ref:refs/heads/main` only) |
+| `deploy.tf` | GitHub OIDC provider and deployment role of §3.2 (`repo:tonyadji@19990474/mbia@1387134516:ref:refs/heads/main` only: the immutable subject of the repository, `locals.tf`) |
 
 ### Network and access (plan §3.1)
 
