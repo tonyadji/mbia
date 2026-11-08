@@ -815,3 +815,12 @@ When a question is answered, update the relevant spec, then move the entry to **
 - **Recommendation:** B for production; A is acceptable for a closed beta with a few invited families.
 - **Blocking:** the production realm; not the beta.
 - **Answer (beta only):** A (human, 2026-11-08). `realm-mbia-staging.json` keeps `length(8)`. **To review before production.** A stricter policy applies to existing users at their next password change only.
+
+### OQ-075 — How support carries out an account deletion
+
+- **Raised by / date:** coding agent (PR-68), 2026-11-08
+- **Context:** `mvp.md` §30 lists what an account deletion does (memberships removed, linked Persons released, Keycloak account deleted, Mbia User anonymised, content kept as "Former member"); `data-model.md` §5 gives the anonymised row. There is no self-service feature: support runs the procedure on the database (runbook, PR-68). Four points are not written: a Family must keep an ACTIVE ADMIN (`data-model.md` §28, rule 12); who is the actor of the audit entries when support acts; what becomes of the User's pending invitations; the photos' older versions in the versioned media bucket (OQ-074).
+- **Question:** how is each of these points handled?
+- **Options:** for the last ADMIN: A — support asks the User to name another ADMIN first, the deletion waits / B — support promotes another member / C — the Family is deleted. For the actor: A — none (`NULL`) / B — the deleted User. For pending invitations: A — revoked / B — left to expire.
+- **Recommendation:** last ADMIN A; actor A, no activity entry; invitations A; one transactional SQL script, then the Keycloak account deleted in the admin console.
+- **Answer:** the recommendations (human, 2026-11-08), with one adjustment found while writing the script: the actor is the deleted User (B), not `NULL`. `persons.updated_by` is `NOT NULL` and the Person history requires an actor; the deleted User is shown as "Former member", and the entries are written at the User's request. No activity entry. The User's photos follow OQ-074 (not decided): until then the runbook deletes the noncurrent versions by hand only when the User asks for specific content to be removed. Documented in `data-model.md` §5 and `infrastructure/staging/README.md` §Account deletion.

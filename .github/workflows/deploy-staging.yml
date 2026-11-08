@@ -1,0 +1,255 @@
+# Deployment of staging (ADR-010, Phase 7 plan PR-68). Manual only: a commit of main, never on every merge.
+#   gh workflow run deploy-staging.yml --ref main                     the head of main
+#   gh workflow run deploy-staging.yml --ref main -f commit=<sha>     a given commit of main (rollback)
+# Runbook: infrastructure/staging/README.md. AWS by OIDC with the role mbia-staging-deploy: no stored key.
+#
+# Repository variables (Settings › Secrets and variables › Actions › Variables; no secret is used):
+#   AWS_ACCOUNT_ID, AWS_DEPLOY_ROLE_ARN, STAGING_VM_INSTANCE_ID, STAGING_CLOUDFRONT_DISTRIBUTION_ID,
+#   STAGING_SUPPORT_EMAIL. No GitHub environment: it would change the token's subject, which the role's
+#   trust policy pins to repo:tonyadji/mbia:ref:refs/heads/main.
+name: Deploy staging
+
+on:
+  workflow_dispatch:
+    inputs:
+      commit:
+        description: Commit of main to deploy (full SHA). Empty for the head of main.
+        required: false
+        default: ''
+
+# One deployment at a time; a second one waits instead of cancelling the first.
+concurrency:
+  group: deploy-staging
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+  id-token: write
+
+env:
+  AWS_REGION: eu-west-3
+  MBIA_FRONTEND_HOST: mbia-staging.lehnade.com
+  MBIA_API_HOST: api.mbia-staging.lehnade.com
+  MBIA_AUTH_HOST: auth.mbia-staging.lehnade.com
+  FRONTEND_BUCKET: lehnade-mbia-staging-frontend
+
+jobs:
+  deploy:
+    name: deploy
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    steps:
+      - name: Check the repository variables
+        env:
+          AWS_ACCOUNT_ID: ${{ vars.AWS_ACCOUNT_ID }}
+          AWS_DEPLOY_ROLE_ARN: ${{ vars.AWS_DEPLOY_ROLE_ARN }}
+          STAGING_VM_INSTANCE_ID: ${{ vars.STAGING_VM_INSTANCE_ID }}
+          STAGING_CLOUDFRONT_DISTRIBUTION_ID: ${{ vars.STAGING_CLOUDFRONT_DISTRIBUTION_ID }}
+          STAGING_SUPPORT_EMAIL: ${{ vars.STAGING_SUPPORT_EMAIL }}
+        run: |
+          missing=0
+          for name in AWS_ACCOUNT_ID AWS_DEPLOY_ROLE_ARN STAGING_VM_INSTANCE_ID STAGING_CLOUDFRONT_DISTRIBUTION_ID STAGING_SUPPORT_EMAIL; do
+            if [ -z "${!name}" ]; then echo "::error::Repository variable $name is not set"; missing=1; fi
+          done
+          exit "$missing"
+
+      # The deployment tooling always comes from main, so that a rollback to an older commit uses it too.
+      - name: Check out main (deployment tooling)
+        uses: actions/checkout@v7
+        with:
+          path: tooling
+          fetch-depth: 0
+
+      - name: Resolve the commit to deploy
+        id: commit
+        working-directory: tooling
+        env:
+          REQUESTED: ${{ inputs.commit }}
+        run: |
+          commit=${REQUESTED:-$GITHUB_SHA}
+          if ! [[ $commit =~ ^[0-9a-f]{40}$ ]]; then
+            echo "::error::'$commit' is not a full commit SHA"; exit 1
+          fi
+          if ! git merge-base --is-ancestor "$commit" origin/main; then
+            echo "::error::$commit is not a commit of main"; exit 1
+          fi
+          echo "sha=$commit" >> "$GITHUB_OUTPUT"
+          echo "Deploying $commit"
+
+      - name: Check out the commit to deploy
+        uses: actions/checkout@v7
+        with:
+          path: target
+          ref: ${{ steps.commit.outputs.sha }}
+
+      - name: Authenticate to AWS (OIDC)
+        uses: aws-actions/configure-aws-credentials@v6
+        with:
+          role-to-assume: ${{ vars.AWS_DEPLOY_ROLE_ARN }}
+          role-session-name: deploy-staging-${{ github.run_id }}
+          aws-region: ${{ env.AWS_REGION }}
+          allowed-account-ids: ${{ vars.AWS_ACCOUNT_ID }}
+
+      # Tags are immutable in ECR: an image already pushed for this commit (rollback, new attempt) is reused.
+      - name: Log in to ECR and find the images to build
+        id: images
+        env:
+          REGISTRY: ${{ vars.AWS_ACCOUNT_ID }}.dkr.ecr.eu-west-3.amazonaws.com
+          COMMIT: ${{ steps.commit.outputs.sha }}
+        run: |
+          aws ecr get-login-password | docker login --username AWS --password-stdin "$REGISTRY"
+          for name in backend keycloak; do
+            found=$(aws ecr batch-get-image --repository-name "mbia-$name" --image-ids "imageTag=$COMMIT" \
+              --query 'length(images)' --output text)
+            build=true; [ "$found" = 0 ] || build=false
+            echo "$name image already in ECR: $([ "$build" = false ] && echo yes || echo no)"
+            echo "build_$name=$build" >> "$GITHUB_OUTPUT"
+            echo "$name=$REGISTRY/mbia-$name:$COMMIT" >> "$GITHUB_OUTPUT"
+          done
+
+      # The t4g VM is ARM. The backend's build stage runs on the runner's platform (backend/Dockerfile);
+      # QEMU only runs the few steps of the arm64 stages.
+      - name: Set up QEMU
+        if: steps.images.outputs.build_backend == 'true' || steps.images.outputs.build_keycloak == 'true'
+        uses: docker/setup-qemu-action@v4
+        with:
+          platforms: arm64
+
+      - name: Set up Docker Buildx
+        if: steps.images.outputs.build_backend == 'true' || steps.images.outputs.build_keycloak == 'true'
+        uses: docker/setup-buildx-action@v4
+
+      - name: Build and push the backend image
+        if: steps.images.outputs.build_backend == 'true'
+        uses: docker/build-push-action@v7
+        with:
+          context: target
+          file: target/backend/Dockerfile
+          platforms: linux/arm64
+          push: true
+          provenance: false
+          tags: ${{ steps.images.outputs.backend }}
+          cache-from: type=gha,scope=backend
+          cache-to: type=gha,scope=backend,mode=max
+
+      - name: Build and push the Keycloak image
+        if: steps.images.outputs.build_keycloak == 'true'
+        uses: docker/build-push-action@v7
+        with:
+          context: target
+          file: target/infrastructure/keycloak/Dockerfile
+          platforms: linux/arm64
+          push: true
+          provenance: false
+          tags: ${{ steps.images.outputs.keycloak }}
+          cache-from: type=gha,scope=keycloak
+          cache-to: type=gha,scope=keycloak,mode=max
+
+      # The Compose file and the Caddyfile of the commit, the deployment script of main, sent in the command
+      # itself (the deployment role reads no bucket of the VM). vm-deploy.sh keeps the current release
+      # running until the new one can start, and brings it back if the new one does not become healthy.
+      - name: Deploy on the VM (SSM Run Command)
+        id: deploy
+        env:
+          COMMIT: ${{ steps.commit.outputs.sha }}
+          BACKEND_IMAGE: ${{ steps.images.outputs.backend }}
+          KEYCLOAK_IMAGE: ${{ steps.images.outputs.keycloak }}
+          INSTANCE_ID: ${{ vars.STAGING_VM_INSTANCE_ID }}
+        run: |
+          bundle="$RUNNER_TEMP/release"
+          mkdir -p "$bundle"
+          cp target/infrastructure/staging/compose.yml target/infrastructure/staging/Caddyfile \
+            tooling/infrastructure/staging/deploy/vm-deploy.sh "$bundle/"
+          archive=$(tar -czf - -C "$bundle" . | base64 -w0)
+          release="/opt/mbia/staging/releases/$COMMIT"
+          cat > "$RUNNER_TEMP/deploy.sh" <<EOF
+          set -eu
+          install -d -m 0755 /opt/mbia/staging/bin "$release"
+          echo '$archive' | base64 -d | tar -xz --no-same-owner -C "$release"
+          install -m 0755 "$release/vm-deploy.sh" /opt/mbia/staging/bin/vm-deploy.sh
+          /opt/mbia/staging/bin/vm-deploy.sh deploy "$COMMIT" "$BACKEND_IMAGE" "$KEYCLOAK_IMAGE"
+          EOF
+          tooling/infrastructure/staging/deploy/run-on-vm.sh "$INSTANCE_ID" "$RUNNER_TEMP/deploy.sh" "$RUNNER_TEMP/deploy.out"
+          previous=$(sed -n 's/^\[vm-deploy\] previous: //p' "$RUNNER_TEMP/deploy.out" | tail -1)
+          echo "previous=$previous" >> "$GITHUB_OUTPUT"
+
+      - name: Smoke checks (API, Keycloak)
+        id: smoke_backend
+        run: tooling/infrastructure/staging/deploy/smoke-checks.sh backend
+
+      # The new containers are healthy on the VM but not reachable as expected: the previous release comes back.
+      - name: Bring the previous release back
+        if: failure() && steps.smoke_backend.outcome == 'failure'
+        env:
+          INSTANCE_ID: ${{ vars.STAGING_VM_INSTANCE_ID }}
+        run: |
+          echo '/opt/mbia/staging/bin/vm-deploy.sh revert' > "$RUNNER_TEMP/revert.sh"
+          tooling/infrastructure/staging/deploy/run-on-vm.sh "$INSTANCE_ID" "$RUNNER_TEMP/revert.sh" "$RUNNER_TEMP/revert.out"
+
+      # After the backend: if the backend fails, the previous frontend stays online.
+      - uses: actions/setup-node@v7
+        with:
+          node-version-file: target/frontend/.nvmrc
+          cache: npm
+          cache-dependency-path: target/frontend/package-lock.json
+
+      - name: Build the frontend for staging
+        working-directory: target/frontend
+        env:
+          VITE_API_BASE_URL: https://${{ env.MBIA_API_HOST }}/api/v1
+          VITE_OIDC_AUTHORITY: https://${{ env.MBIA_AUTH_HOST }}/realms/mbia
+          VITE_OIDC_CLIENT_ID: mbia-web
+          VITE_SUPPORT_EMAIL: ${{ vars.STAGING_SUPPORT_EMAIL }}
+        run: |
+          npm ci
+          npm run build:staging
+          npm run check:staging-build
+
+      # Hashed assets first (cached for a year), then index.html and robots.txt (always revalidated),
+      # then the assets of older builds are removed. CloudFront sets the same Cache-Control (cdn.tf).
+      - name: Upload the frontend
+        working-directory: target/frontend/dist
+        run: |
+          aws s3 sync assets "s3://$FRONTEND_BUCKET/assets" --only-show-errors \
+            --cache-control "public, max-age=31536000, immutable"
+          for file in *; do
+            [ -f "$file" ] || continue
+            aws s3 cp "$file" "s3://$FRONTEND_BUCKET/$file" --only-show-errors --cache-control "no-cache"
+          done
+          aws s3 sync assets "s3://$FRONTEND_BUCKET/assets" --only-show-errors --delete \
+            --cache-control "public, max-age=31536000, immutable"
+
+      - name: Invalidate CloudFront
+        env:
+          DISTRIBUTION_ID: ${{ vars.STAGING_CLOUDFRONT_DISTRIBUTION_ID }}
+        run: |
+          id=$(aws cloudfront create-invalidation --distribution-id "$DISTRIBUTION_ID" \
+            --paths "/" "/index.html" "/robots.txt" --query Invalidation.Id --output text)
+          echo "Invalidation $id"
+          aws cloudfront wait invalidation-completed --distribution-id "$DISTRIBUTION_ID" --id "$id"
+
+      - name: Smoke checks (frontend)
+        run: tooling/infrastructure/staging/deploy/smoke-checks.sh frontend target/frontend/dist/index.html
+
+      - name: Summary
+        if: always()
+        env:
+          COMMIT: ${{ steps.commit.outputs.sha }}
+          PREVIOUS: ${{ steps.deploy.outputs.previous }}
+          OUTCOME: ${{ job.status }}
+        run: |
+          {
+            echo "### Staging deployment: $OUTCOME"
+            echo ""
+            echo "- Commit: \`${COMMIT:-unresolved}\`"
+            echo "- Previous release on the VM: \`${PREVIOUS:-none}\`"
+            if [ -n "$PREVIOUS" ]; then
+              echo ""
+              echo "Rollback (infrastructure/staging/README.md):"
+              echo ""
+              echo '```bash'
+              echo "gh workflow run deploy-staging.yml --ref main -f commit=$PREVIOUS"
+              echo '```'
+            fi
+          } >> "$GITHUB_STEP_SUMMARY"
