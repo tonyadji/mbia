@@ -1,0 +1,119 @@
+# Container stack of the staging VM (ADR-010, Phase 7 plan PR-65): Caddy, Keycloak, backend.
+# PostgreSQL (RDS), S3, SES and CloudWatch are AWS services: none of them runs here.
+#   docker compose -f infrastructure/staging/compose.yml up -d
+# Locally, add compose.local.yml (infrastructure/staging/README.md).
+#
+# Interpolated variables (shell or `--env-file`): MBIA_BACKEND_IMAGE, MBIA_KEYCLOAK_IMAGE (required);
+# MBIA_API_HOST, MBIA_AUTH_HOST, MBIA_ENV_DIR, MBIA_AWS_REGION, MBIA_LOG_GROUP, KEYCLOAK_ADMIN_PORT.
+# Settings and secrets live in two 0600 env files outside the repository, one per service.
+name: mbia-staging
+
+x-awslogs: &awslogs
+  driver: awslogs
+  options: &awslogs-options
+    awslogs-region: ${MBIA_AWS_REGION:-eu-west-3}
+    awslogs-group: ${MBIA_LOG_GROUP:-/mbia/staging}
+    awslogs-create-group: "false"
+
+services:
+  caddy:
+    image: caddy:2.11.9-alpine
+    restart: unless-stopped
+    # Starts without waiting for the others: Caddy checks the backend itself, and Keycloak stays
+    # reachable when the backend does not start.
+    depends_on:
+      backend:
+        condition: service_started
+      keycloak:
+        condition: service_started
+    environment:
+      MBIA_API_ADDRESS: ${MBIA_API_HOST:-api.mbia-staging.lehnade.com}
+      MBIA_AUTH_ADDRESS: ${MBIA_AUTH_HOST:-auth.mbia-staging.lehnade.com}
+    ports:
+      - "80:80"
+      - "443:443"
+      - "443:443/udp"
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy-data:/data
+      - caddy-config:/config
+    networks:
+      default:
+        # The backend reaches Keycloak by its public name, through Caddy, without leaving the VM:
+        # the token issuer is the same for the browser and the backend (MBIA_SECURITY_ISSUER_URI).
+        aliases:
+          - ${MBIA_AUTH_HOST:-auth.mbia-staging.lehnade.com}
+    mem_limit: 128m
+    logging:
+      <<: *awslogs
+      options:
+        <<: *awslogs-options
+        awslogs-stream: caddy
+    healthcheck:
+      # Caddy's admin API, on the container's loopback only.
+      test: ["CMD", "wget", "-q", "-O", "/dev/null", "http://127.0.0.1:2019/config/"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+
+  keycloak:
+    image: ${MBIA_KEYCLOAK_IMAGE:?set MBIA_KEYCLOAK_IMAGE}
+    restart: unless-stopped
+    env_file:
+      - ${MBIA_ENV_DIR:-/etc/mbia/staging}/keycloak.env
+    ports:
+      # Admin console: on the VM's loopback only, reached through an SSM port forward (ADR-010).
+      - "127.0.0.1:${KEYCLOAK_ADMIN_PORT:-8081}:8080"
+    mem_limit: 1024m
+    logging:
+      <<: *awslogs
+      options:
+        <<: *awslogs-options
+        awslogs-stream: keycloak
+    healthcheck:
+      # The image has no curl nor wget: plain HTTP request with bash on the management port (not published).
+      test:
+        - CMD
+        - bash
+        - -c
+        - >-
+          exec 3<>/dev/tcp/localhost/9000 &&
+          printf 'GET /health/ready HTTP/1.1\r\nHost: localhost\r\nConnection: close\r\n\r\n' >&3 &&
+          grep -q '"status": "UP"' <&3
+      interval: 15s
+      timeout: 5s
+      start_period: 120s
+      retries: 5
+
+  backend:
+    image: ${MBIA_BACKEND_IMAGE:?set MBIA_BACKEND_IMAGE}
+    restart: unless-stopped
+    env_file:
+      - ${MBIA_ENV_DIR:-/etc/mbia/staging}/backend.env
+    # 75 % of it is the heap (backend/Dockerfile). 4 GB VM: backend 1.5 GB, Keycloak 1 GB, Caddy 128 MB,
+    # the rest for the system, Docker and the SSM and CloudWatch agents.
+    mem_limit: 1536m
+    logging:
+      <<: *awslogs
+      options:
+        <<: *awslogs-options
+        awslogs-stream: backend
+    healthcheck:
+      # The image has no curl nor wget: plain HTTP request with bash (its /bin/sh, dash, has no /dev/tcp).
+      test:
+        - CMD
+        - bash
+        - -c
+        - >-
+          exec 3<>/dev/tcp/localhost/8080 &&
+          printf 'GET /actuator/health HTTP/1.1\r\nHost: localhost\r\nConnection: close\r\n\r\n' >&3 &&
+          grep -q '"status":"UP"' <&3
+      interval: 15s
+      timeout: 5s
+      start_period: 120s
+      retries: 5
+
+volumes:
+  # Certificates and the ACME account: kept across deployments (Let's Encrypt rate limits).
+  caddy-data:
+  caddy-config:

@@ -89,6 +89,15 @@ When a question is answered, update the relevant spec, then move the entry to **
 - **Recommendation:** B (coding agent), not decided.
 - **Blocking:** nothing. **The human will ask beta users for feedback** before deciding; until then, A stays as specified and nothing changes in the specs or the code. If B is chosen: `mvp.md` §20, SCREEN-002, SCREEN-016 and `YearStrip` with its tests, in a separate change.
 
+### OQ-074 — How long the media bucket keeps deleted or replaced photos
+
+- **Raised by / date:** coding agent (PR-67), 2026-11-08
+- **Context:** ADR-010 turns versioning on for the staging media bucket. With versioning, deleting a photo (or a removal under `mvp.md` §30) only hides it: the previous version stays in the bucket, invisible to the application but kept forever. That protects against a mistaken deletion, but goes against a deletion request and keeps paying for the storage.
+- **Question:** how long are noncurrent versions (deleted or replaced photos) kept in the media bucket?
+- **Options:** A — forever (versioning without expiration; a §30 removal then needs a manual deletion of every version) / B — a fixed delay, for example 30 days, then deleted by an S3 lifecycle rule; the §30 procedure states that photos disappear completely after that delay / C — no versioning (changes ADR-010).
+- **Recommendation:** B with 30 days: a mistake can be undone for a month, and a deletion request is fulfilled within the 30 days of `mvp.md` §30 without a manual step.
+- **Blocking:** nothing in PR-67 (the media bucket has no expiration until answered); the §30 procedure of the runbook (PR-68).
+
 ## Resolved
 
 ### OQ-001 — JUnit major version with Spring Boot 4.1
@@ -766,3 +775,52 @@ When a question is answered, update the relevant spec, then move the entry to **
 - **Recommendation:** A, the clearest for older readers.
 - **Blocking:** nothing before the screens; `localization-and-kinship-labels.md` §1 holds A, marked provisional.
 - **Answer:** A (human, 2026-09-29). Documented in `localization-and-kinship-labels.md` §1.
+
+### OQ-070 — Who can create an account during the closed beta
+
+- **Raised by / date:** coding agent (Phase 7 plan, ADR-010), 2026-09-29
+- **Context:** the staging environment hosts a closed beta (ADR-010). The local realm allows anyone to sign up (`registrationAllowed`), and an invited relative signs up from the invitation link (SCREEN-010). The specs say nothing about restricting access during a beta.
+- **Question:** during the closed beta, who may create an account on `app.staging`?
+- **Options:** A — open sign-up, the address is only shared with beta families; anyone who finds it can create a Family / B — sign-up open, but only the invited beta ADMINs may create a Family, invited relatives join through their invitation (needs a product rule and code) / C — sign-up closed in Keycloak; the human creates every account from the admin console, invitation links then only work for accounts created beforehand.
+- **Recommendation:** A, with `noindex` on the frontend: no product change, and the invitation journey stays the one being tested. B changes product rules; C breaks the invitation journey.
+- **Blocking:** the staging realm (PR-65).
+- **Answer:** A (human, 2026-10-03). Open sign-up; the address is shared only with beta families and the staging frontend is not indexed (`noindex`). Documented in ADR-010 and `delivery/phase-7-staging.md` (PR-65, PR-66).
+
+### OQ-071 — The fate of the beta data at the production launch
+
+- **Raised by / date:** coding agent (Phase 7 plan, ADR-010), 2026-09-29
+- **Context:** beta families will enter real memories, photos and relatives on staging. Production will run on other resources (ADR-010, later ADR).
+- **Question:** when production opens, is the beta data moved to production, or does staging stay a separate environment that is emptied?
+- **Options:** A — moved: the beta database, the Keycloak accounts and the media bucket become production's (or are copied to it); beta families keep everything / B — not moved: beta families are told from the start that their data will be deleted at the end of the beta / C — decided later, the beta families being told only that it is not guaranteed.
+- **Recommendation:** A. Families who told their story will not tell it twice, and ADR-010 already uses the production data services (RDS, S3, SES) for that reason. Staging for later tests is then rebuilt empty.
+- **Blocking:** the invitation message to beta families and the runbook (PR-68); not the infrastructure.
+- **Answer:** A (human, 2026-10-03). The beta data (database, Keycloak accounts, media) is migrated to production; beta families keep everything. Documented in ADR-010 (Consequences) and `delivery/phase-7-staging.md` (PR-68, §5).
+
+### OQ-072 — Terms of use and privacy policy for the closed beta
+
+- **Raised by / date:** coding agent (Phase 7 plan, ADR-010), 2026-09-29
+- **Context:** `mvp.md` §24 requires terms of use and a privacy policy for the public product; `mvp.md` §30 requires the support procedure before the first real family. A closed beta already stores personal data of living people, including children (GDPR).
+- **Question:** what must exist before the first beta family is invited?
+- **Options:** A — a short beta privacy notice and terms (who operates Mbia, what is stored, where — AWS Paris —, how to ask for deletion), reachable from the sign-up page and the account settings / B — the full terms and privacy policy of the public product / C — nothing on the site, the beta families are informed by email.
+- **Recommendation:** A, written by the human (legal content is not written by an agent). Where the link is shown is a small UI change, to be specified if chosen.
+- **Blocking:** inviting the first beta family (Phase 7 exit criteria); not the infrastructure.
+- **Answer:** A, extended (human, 2026-10-03). A lawyer writes the texts after a demo and the product vision: the beta notice and terms, and at the same time the terms of use and privacy policy of the production MVP (`mvp.md` §24). No agent writes legal content; where the links appear in the UI is specified once the texts exist. Documented in `delivery/phase-7-staging.md` (§2.2, §6).
+
+### OQ-073 — Password policy of the Keycloak realm outside local
+
+- **Raised by / date:** coding agent (PR-65), 2026-11-08
+- **Context:** ADR-005 lists the realm settings (registration, email verification, forgot password, languages) but no password policy. The local realm requires 8 characters (PR-09). The staging realm (PR-65) hosts real accounts for the closed beta (ADR-010); brute-force protection is on (5 failures, then a wait growing from 1 to 15 minutes, no permanent lockout).
+- **Question:** which password policy do real accounts get, during the beta and in production?
+- **Options:** A — `length(8)`, as locally / B — `length(10) and notUsername and notEmail` / C — B plus a list of common passwords (`passwordBlacklist`, a file shipped in the Keycloak image).
+- **Recommendation:** B for production; A is acceptable for a closed beta with a few invited families.
+- **Blocking:** the production realm; not the beta.
+- **Answer (beta only):** A (human, 2026-11-08). `realm-mbia-staging.json` keeps `length(8)`. **To review before production.** A stricter policy applies to existing users at their next password change only.
+
+### OQ-075 — How support carries out an account deletion
+
+- **Raised by / date:** coding agent (PR-68), 2026-11-08
+- **Context:** `mvp.md` §30 lists what an account deletion does (memberships removed, linked Persons released, Keycloak account deleted, Mbia User anonymised, content kept as "Former member"); `data-model.md` §5 gives the anonymised row. There is no self-service feature: support runs the procedure on the database (runbook, PR-68). Four points are not written: a Family must keep an ACTIVE ADMIN (`data-model.md` §28, rule 12); who is the actor of the audit entries when support acts; what becomes of the User's pending invitations; the photos' older versions in the versioned media bucket (OQ-074).
+- **Question:** how is each of these points handled?
+- **Options:** for the last ADMIN: A — support asks the User to name another ADMIN first, the deletion waits / B — support promotes another member / C — the Family is deleted. For the actor: A — none (`NULL`) / B — the deleted User. For pending invitations: A — revoked / B — left to expire.
+- **Recommendation:** last ADMIN A; actor A, no activity entry; invitations A; one transactional SQL script, then the Keycloak account deleted in the admin console.
+- **Answer:** the recommendations (human, 2026-11-08), with one adjustment found while writing the script: the actor is the deleted User (B), not `NULL`. `persons.updated_by` is `NOT NULL` and the Person history requires an actor; the deleted User is shown as "Former member", and the entries are written at the User's request. No activity entry. The User's photos follow OQ-074 (not decided): until then the runbook deletes the noncurrent versions by hand only when the User asks for specific content to be removed. Documented in `data-model.md` §5 and `infrastructure/staging/README.md` §Account deletion.

@@ -1,0 +1,29 @@
+# Local override of compose.yml: tries the staging stack on a developer machine, against the PostgreSQL,
+# RustFS and Mailpit of the root docker-compose.yml (infrastructure/staging/README.md).
+#   docker compose -f infrastructure/staging/compose.yml -f infrastructure/staging/compose.local.yml up -d
+# Hosts api.localhost and auth.localhost on port 80, plain HTTP; logs stay in Docker (no CloudWatch).
+
+x-local-logging: &local-logging
+  driver: json-file
+
+services:
+  caddy:
+    environment:
+      MBIA_API_ADDRESS: http://${MBIA_API_HOST:-api.localhost}
+      MBIA_AUTH_ADDRESS: http://${MBIA_AUTH_HOST:-auth.localhost}
+    networks:
+      default:
+        aliases:
+          - ${MBIA_AUTH_HOST:-auth.localhost}
+    logging: *local-logging
+
+  keycloak:
+    # Reaches the root docker-compose.yml services published on the host (Linux needs the mapping).
+    extra_hosts:
+      - host.docker.internal:host-gateway
+    logging: *local-logging
+
+  backend:
+    extra_hosts:
+      - host.docker.internal:host-gateway
+    logging: *local-logging

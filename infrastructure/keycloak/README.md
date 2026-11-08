@@ -2,6 +2,8 @@
 
 Local OIDC identity provider for Mbia (ADR-005). `docker compose up -d` starts Keycloak in dev mode and imports [`realm-mbia.json`](realm-mbia.json) with no manual step.
 
+Staging uses another image and realm, without test users: [`Dockerfile`](Dockerfile) and [`realm-mbia-staging.json`](realm-mbia-staging.json), described in [`../staging/README.md`](../staging/README.md). A change to the realm's settings is made in both files.
+
 | What | URL |
 |---|---|
 | Admin console (realm `master`) | http://localhost:8081/admin/ (`admin` / `admin-local`) |

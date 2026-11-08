@@ -60,6 +60,16 @@ Stack and versions: `mbia-specs/technical/stack.md`. Do not change a framework o
 docker compose up -d                      # PostgreSQL, RustFS, Keycloak (realm imported), Mailpit
 cd backend && ./mvnw verify               # compile, generate API, unit + Testcontainers + architecture tests
 cd backend && ./mvnw spring-boot:run -Dspring-boot.run.profiles=local   # API on http://localhost:8080/api/v1
+docker build -f backend/Dockerfile -t mbia-backend .   # backend container image, from the repository root (configuration: infrastructure/staging/README.md)
+docker build -f infrastructure/keycloak/Dockerfile -t mbia-keycloak .   # Keycloak image for staging, with the staging realm
+docker compose --env-file infrastructure/staging/local/compose.env -f infrastructure/staging/compose.yml -f infrastructure/staging/compose.local.yml up -d --wait   # staging stack locally, on api.localhost / auth.localhost (infrastructure/staging/README.md)
+python3 infrastructure/staging/check-staging-realm.py   # the staging realm has no user, no local address, no secret
+terraform -chdir=infrastructure/terraform/staging fmt -check -recursive ..   # Terraform 1.17.1 exactly
+terraform -chdir=infrastructure/terraform/staging init -backend=false && terraform -chdir=infrastructure/terraform/staging validate   # no AWS access; plan and apply: human only (infrastructure/terraform/staging/README.md)
+docker run --rm -v "$PWD:/repo" -w /repo rhysd/actionlint:1.7.12   # lint the GitHub workflows (also runs shellcheck on their scripts)
+docker run --rm -v "$PWD:/mnt" -w /mnt koalaman/shellcheck:v0.11.0 infrastructure/staging/deploy/*.sh infrastructure/terraform/staging/vm-init.sh   # lint the deployment scripts
+gh workflow run deploy-staging.yml --ref main   # human only: deploy the head of main to staging (runbook: infrastructure/staging/README.md)
+gh workflow run deploy-staging.yml --ref main -f commit=<sha>   # human only: deploy a given commit of main, the rollback to the previous release
 cd frontend && npm ci
 cd frontend && npm run generate:api       # regenerate the TypeScript types (also run before dev, build, typecheck, lint, test)
 npx @redocly/cli@2.54.3 lint mbia-specs/technical/api/openapi.yaml   # lint the contract (rules: redocly.yaml)
@@ -68,6 +78,8 @@ python3 -m venv .venv-fixtures && .venv-fixtures/bin/pip install Pillow==12.3.0 
 cd frontend && npm run typecheck
 cd frontend && npm run lint
 cd frontend && npm run i18n:check        # French and English translations have the same keys, no empty value
+cd frontend && npm run build:staging     # staging build: VITE_API_BASE_URL, VITE_OIDC_AUTHORITY, VITE_OIDC_CLIENT_ID, VITE_SUPPORT_EMAIL required (infrastructure/staging/README.md)
+cd frontend && npm run check:staging-build   # the staging build in dist/ holds no local address and a robots.txt
 cd frontend && npm test                   # Vitest
 cd frontend && npx playwright install chromium   # once, the browser used by the E2E tests
 cd frontend && npm run test:e2e           # Playwright on the built frontend (needs docker compose + backend running)

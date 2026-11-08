@@ -47,6 +47,7 @@
 - Containerized Spring Boot backend
 - Static frontend hosting + CDN
 - Managed PostgreSQL in production
+- Staging / closed beta: AWS eu-west-3, one VM with Docker Compose for the backend and Keycloak, RDS, S3, CloudFront, SES, Route 53 (ADR-010)
 
 ## Version policy
 

@@ -1,12 +1,9 @@
 import { UserManager, WebStorageStateStore } from 'oidc-client-ts';
 
-const DEFAULT_AUTHORITY = 'http://localhost:8081/realms/mbia';
-const DEFAULT_CLIENT_ID = 'mbia-web';
-
 export const CALLBACK_PATH = '/auth/callback';
 
-const authority = () => import.meta.env.VITE_OIDC_AUTHORITY ?? DEFAULT_AUTHORITY;
-const clientId = () => import.meta.env.VITE_OIDC_CLIENT_ID ?? DEFAULT_CLIENT_ID;
+const authority = () => import.meta.env.VITE_OIDC_AUTHORITY;
+const clientId = () => import.meta.env.VITE_OIDC_CLIENT_ID;
 
 /**
  * The OIDC client for Keycloak (ADR-005): Authorization Code + PKCE against the public client

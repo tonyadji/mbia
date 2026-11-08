@@ -232,6 +232,7 @@ Notes:
 - Mbia does not store password hashes.
 - Email uniqueness applies to active accounts.
 - Account deletion (product/mvp.md §30) anonymises the row: `status = DELETED`, `email = NULL`, `display_name = NULL`, `identity_provider_subject = 'deleted:' || id`, `deleted_at` set. Foreign keys to the user remain valid; the UI displays "Former member".
+- Support carries out the deletion in one transaction (OQ-075): it is refused while the User is the last ACTIVE ADMIN of a Family (the User names another ADMIN first); each ACTIVE membership becomes `REMOVED` and its linked Person is released, with the audit entries `MEMBERSHIP_REMOVED` and `PERSON_UNCLAIMED`; the User's `PENDING` invitations (sent by the User, or to the User's email) become `REVOKED` (`INVITATION_REVOKED`); then the row is anonymised (`USER_DELETED`). The actor of these entries is the deleted User; no activity entry is written. The Keycloak account is deleted after the transaction.
 
 ## 6. Table: `families`
 
