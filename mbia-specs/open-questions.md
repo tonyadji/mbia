@@ -89,6 +89,15 @@ When a question is answered, update the relevant spec, then move the entry to **
 - **Recommendation:** B (coding agent), not decided.
 - **Blocking:** nothing. **The human will ask beta users for feedback** before deciding; until then, A stays as specified and nothing changes in the specs or the code. If B is chosen: `mvp.md` §20, SCREEN-002, SCREEN-016 and `YearStrip` with its tests, in a separate change.
 
+### OQ-074 — How long the media bucket keeps deleted or replaced photos
+
+- **Raised by / date:** coding agent (PR-67), 2026-11-08
+- **Context:** ADR-010 turns versioning on for the staging media bucket. With versioning, deleting a photo (or a removal under `mvp.md` §30) only hides it: the previous version stays in the bucket, invisible to the application but kept forever. That protects against a mistaken deletion, but goes against a deletion request and keeps paying for the storage.
+- **Question:** how long are noncurrent versions (deleted or replaced photos) kept in the media bucket?
+- **Options:** A — forever (versioning without expiration; a §30 removal then needs a manual deletion of every version) / B — a fixed delay, for example 30 days, then deleted by an S3 lifecycle rule; the §30 procedure states that photos disappear completely after that delay / C — no versioning (changes ADR-010).
+- **Recommendation:** B with 30 days: a mistake can be undone for a month, and a deletion request is fulfilled within the 30 days of `mvp.md` §30 without a manual step.
+- **Blocking:** nothing in PR-67 (the media bucket has no expiration until answered); the §30 procedure of the runbook (PR-68).
+
 ## Resolved
 
 ### OQ-001 — JUnit major version with Spring Boot 4.1

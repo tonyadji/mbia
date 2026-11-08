@@ -44,3 +44,9 @@ playwright/.cache/
 
 # Local tooling
 .claude/settings.local.json
+
+# Terraform (state lives in S3; plans may hold sensitive values)
+.terraform/
+*.tfstate
+*.tfstate.*
+*.tfplan

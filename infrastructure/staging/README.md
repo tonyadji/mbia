@@ -1,6 +1,6 @@
 # staging
 
-Staging and closed-beta environment on AWS (ADR-010, `mbia-specs/delivery/phase-7-staging.md`). This folder grows with Phase 7: the backend image (PR-64), the container stack of the VM (PR-65), the frontend build (PR-66), the deployment and the runbook (PR-68).
+Staging and closed-beta environment on AWS (ADR-010, `mbia-specs/delivery/phase-7-staging.md`). This folder grows with Phase 7: the backend image (PR-64), the container stack of the VM (PR-65), the frontend build (PR-66), the deployment and the runbook (PR-68). The AWS resources are in [`../terraform/staging/`](../terraform/staging/README.md) (PR-67).
 
 ## Backend container image
 
