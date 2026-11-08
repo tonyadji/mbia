@@ -12,6 +12,10 @@ AWS resources of the staging / closed-beta environment (ADR-010, `mbia-specs/del
 | `ecr.tf` | `mbia-backend`, `mbia-keycloak`: immutable tags, scan on push, last 10 images kept |
 | `ssm.tf` | names of the VM's settings under `/mbia/staging/` (values set by the human) |
 | `logs.tf` | CloudWatch Logs group `/mbia/staging`, 30 days |
+| `cdn.tf`, `cloudfront/spa-rewrite.js` | frontend bucket (private, read by the distribution only), CloudFront with Origin Access Control, ACM certificate in us-east-1, deep-link rewrite, cache and headers of `infrastructure/staging/README.md` §Frontend on CloudFront |
+| `dns.tf` | zone `lehnade.com` read only; `mbia-staging.lehnade.com` (A, AAAA alias to CloudFront), `api.` and `auth.mbia-staging.lehnade.com` (A to the Elastic IP), ACM validation |
+| `email.tf` | SES identity, MAIL FROM, DKIM, SPF and DMARC records, feedback topic and its Bounce and Complaint notifications (**imported**); SES SMTP user of §3.2 |
+| `deploy.tf` | GitHub OIDC provider and deployment role of §3.2 (`repo:tonyadji/mbia:ref:refs/heads/main` only) |
 
 ### Network and access (plan §3.1)
 
@@ -22,11 +26,26 @@ AWS resources of the staging / closed-beta environment (ADR-010, `mbia-specs/del
 
 No port 22: the human reaches the VM with SSM Session Manager and port forwarding. The VPC's default security group is emptied.
 
+### IAM (plan §3.2)
+
+| Principal | Allowed |
+|---|---|
+| role `mbia-staging-vm` | S3 Get/Put/DeleteObject and ListBucket on the media bucket; ECR pull on the two repositories; read `/mbia/staging/*`; write to `/mbia/staging` logs; the SSM agent's own calls (hand-written: `AmazonSSMManagedInstanceCore` would grant every parameter) |
+| role `mbia-staging-deploy` (GitHub OIDC, `main` of `tonyadji/mbia`) | ECR push on the two repositories; list, put and delete in the frontend bucket; create and read invalidations of the distribution; `ssm:SendCommand` of `AWS-RunShellScript` on the VM and `ssm:GetCommandInvocation` |
+| user `mbia-staging-ses-smtp` | `ses:SendRawEmail` on the identity `mbia-staging.lehnade.com`, sender `*@mbia-staging.lehnade.com` only |
+
+Actions without resource-level permission are granted on `*`: `ecr:GetAuthorizationToken`, the SSM agent's calls, `ssm:GetCommandInvocation`.
+
+### Imported resources
+
+Created by hand before Terraform (`delivery/phase-7-staging.md` §2.2), brought under Terraform by `import` blocks in `email.tf`, never recreated: the SES identity and its MAIL FROM, the three DKIM CNAME records, the MAIL FROM MX and SPF records, the DMARC record, the topic `mbia-staging-ses-feedback` and the identity's Bounce and Complaint notifications. Each carries `prevent_destroy`: a plan that would destroy or replace one of them fails. The `import` blocks stay in the code: once imported, they do nothing.
+
 ### What stays outside Terraform
 
 - the state bucket (bootstrap, below);
 - the RDS master password, an SSM SecureString outside `/mbia/staging/` that the VM cannot read; Terraform reads it as an ephemeral value and passes it as a write-only argument: it is in neither the state nor the plan;
-- the values of the SSM parameters, the SES SMTP access key, the AWS Budgets alert and the email subscription of the SES feedback topic: they hold secrets or a real email address.
+- the values of the SSM parameters, the SES SMTP access key, the AWS Budgets alert and the email subscription of the SES feedback topic: they hold secrets or a real email address;
+- the hosted zone `lehnade.com`, read only.
 
 ## Prerequisites
 
@@ -52,6 +71,26 @@ aws ssm put-parameter --region eu-west-3 --name /mbia-admin/staging/rds-master-p
 
 To rotate it later: change the parameter, then increase `password_wo_version` in `database.tf` and apply.
 
+## Before the first plan: the records to import
+
+The imports expect the records below. List those of the zone:
+
+```bash
+ZONE_ID=$(aws route53 list-hosted-zones-by-name --dns-name lehnade.com --query 'HostedZones[0].Id' --output text)
+aws route53 list-resource-record-sets --hosted-zone-id "$ZONE_ID" --query "ResourceRecordSets[?contains(Name, 'mbia-staging')].[Name,Type,TTL,join(' ', ResourceRecords[].Value)]" --output text
+```
+
+| Name | Type | Value in `email.tf` |
+|---|---|---|
+| `<token>._domainkey.mbia-staging.lehnade.com` (×3) | CNAME | `<token>.dkim.amazonses.com`, TTL 1800 |
+| `mail.mbia-staging.lehnade.com` | MX | `10 feedback-smtp.eu-west-3.amazonses.com`, TTL 600 |
+| `mail.mbia-staging.lehnade.com` | TXT | `"v=spf1 include:amazonses.com ~all"`, TTL 600 |
+| `_dmarc.mbia-staging.lehnade.com` | TXT | `"v=DMARC1; p=none;"`, TTL 300 |
+
+- A record missing from the list: remove its entry from the `import` block (`ses_dkim` or `ses` in `email.tf`); Terraform then creates it. Otherwise the plan fails with `Cannot import non-existent remote object`.
+- A different TTL or value: the plan shows it as an in-place change (`~`). Align `email.tf` with the existing record if it must stay as it is.
+- The MAIL FROM behavior on MX failure is `USE_DEFAULT_VALUE` (console default), the notifications without original headers: the same rule applies.
+
 ## Plan and apply
 
 ```bash
@@ -63,11 +102,11 @@ terraform apply staging.tfplan
 
 Before applying, read the plan:
 
-- the last line reads `Plan: N to add, 0 to change, 0 to destroy` on the first apply; later, `0 to destroy` and no `must be replaced`, unless the change asks for it;
-- RDS and the media bucket carry `prevent_destroy`: a plan that would destroy or replace them fails instead;
-- no IAM statement other than those of the plan §3.2, no security group rule other than the table above.
+- the last line reads `Plan: 11 to import, N to add, M to change, 0 to destroy` (11: identity, MAIL FROM, 3 DKIM, MX, SPF, DMARC, topic, 2 notifications); every `to change` is an imported resource receiving the project's tags (the identity, the topic) or a value to align (above); no `must be replaced`;
+- RDS, the media bucket and every imported resource carry `prevent_destroy`: a plan that would destroy or replace them fails instead;
+- no IAM statement other than the table above, no security group rule other than the table above.
 
-Then: `terraform output` gives the instance id, the RDS endpoint, the media bucket and its origin for the CSP, the ECR URLs and the names of the SSM parameters. Their values are set by the runbook (PR-68); until then they hold `change-me`.
+Then: `terraform output` gives the instance id, the RDS endpoint, the media bucket and its origin (in the CSP), the frontend bucket, the distribution id, the deployment role ARN (a GitHub variable of PR-68), the SMTP user, the ECR URLs and the names of the SSM parameters. Their values are set by the runbook (PR-68); until then they hold `change-me`.
 
 ## Estimated monthly cost
 
@@ -84,3 +123,6 @@ Prices of `eu-west-3`, without VAT, 730 hours.
 | CloudWatch Logs (1–2 GB ingested) | ~0.5–1 |
 | S3 media | < 0.5 |
 | SSM Parameter Store (standard), KMS `aws/ssm` | 0 |
+| CloudFront (always-free tier: 1 TB, 10 M requests), ACM, SES (< 1,000 emails), SNS, frontend bucket | ~0 |
+| Route 53: zone `lehnade.com` already paid, queries | ~0 |
+| **Total** | **≈ 50** (ADR-010: 40–55) |
