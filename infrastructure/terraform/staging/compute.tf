@@ -13,6 +13,9 @@ resource "aws_instance" "vm" {
   iam_instance_profile   = aws_iam_instance_profile.vm.name
   user_data              = file("${path.module}/vm-init.sh")
 
+  # The first boot installs packages over HTTPS (vm-init.sh): the security group's egress rules exist first.
+  depends_on = [aws_vpc_security_group_egress_rule.vm_https]
+
   disable_api_termination = true
 
   metadata_options {

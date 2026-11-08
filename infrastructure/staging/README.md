@@ -235,7 +235,7 @@ The env files hold every parameter of the path, the name after the last `/` bein
 
 ### GitHub repository variables
 
-Repository variables, not secrets (Settings › Secrets and variables › Actions › Variables), and no GitHub environment: an environment would change the OIDC subject, which the role's trust policy pins to `repo:tonyadji/mbia:ref:refs/heads/main`.
+Repository variables, not secrets (Settings › Secrets and variables › Actions › Variables), and no GitHub environment: an environment would change the OIDC subject, which the role's trust policy pins to `repo:tonyadji@19990474/mbia@1387134516:ref:refs/heads/main` (the repository uses GitHub's immutable subject, with the owner and repository ids; `locals.tf`).
 
 | Variable | Value |
 |---|---|
@@ -249,7 +249,7 @@ The hosts and the frontend bucket are fixed in the workflow (`locals.tf`).
 
 ## Runbook
 
-Everything here is done by the human, from a computer with the AWS CLI v2, the [Session Manager plugin](https://docs.aws.amazon.com/systems-manager/latest/userguide/session-manager-working-with-install-plugin.html), the GitHub CLI and `psql` (`brew install libpq`), with an administrator profile. The commands start from the repository root:
+Everything here is done by the human, from a computer with the AWS CLI v2, the [Session Manager plugin](https://docs.aws.amazon.com/systems-manager/latest/userguide/session-manager-working-with-install-plugin.html), the GitHub CLI and `psql` 17 or later (`brew install libpq`; an older client connects, but its `\l` fails on PostgreSQL 18), with an administrator profile. The commands start from the repository root:
 
 ```bash
 export AWS_PROFILE=<profile> AWS_REGION=eu-west-3
@@ -281,11 +281,13 @@ PGPASSWORD=$(aws ssm get-parameter --name /mbia-admin/staging/rds-master-passwor
   psql "host=localhost port=15432 user=mbia_admin dbname=postgres sslmode=require"
 ```
 
+A graphical client (pgAdmin 9 or later: older versions do not know PostgreSQL 18) uses the same port forward: host `127.0.0.1` (the forward listens on IPv4 only), port `15432`, SSL mode `require`, no other parameter, the user's password copied from SSM (`aws ssm get-parameter … --with-decryption --query Parameter.Value --output text | pbcopy`), not saved in the client.
+
 ### First installation
 
 Once, after the first `terraform apply` ([`../terraform/staging/README.md`](../terraform/staging/README.md)), in this order.
 
-**1. The Docker Compose plugin on the VM.** Amazon Linux 2023 ships Docker without it. Pinned version and checksum (from the release's `checksums.txt`); in a shell on the VM:
+**1. The Docker Compose plugin on the VM.** Amazon Linux 2023 ships Docker without it. Docker itself is installed at the first boot (`vm-init.sh`): check it with `docker --version`. If it is missing, `/var/log/cloud-init-output.log` says why; run the boot script again with `bash /var/lib/cloud/instance/scripts/part-001`. Pinned version and checksum (from the release's `checksums.txt`); in a shell on the VM:
 
 ```bash
 sudo -i
@@ -293,7 +295,7 @@ COMPOSE_VERSION=v5.6.1
 COMPOSE_SHA256=42cfa75f51ad0ccf290bad37899e0038a8c10a0069e85233ecc1d53e3ff1347d
 curl -fsSL -o /tmp/docker-compose "https://github.com/docker/compose/releases/download/$COMPOSE_VERSION/docker-compose-linux-aarch64"
 echo "$COMPOSE_SHA256  /tmp/docker-compose" | sha256sum -c -
-install -D -m 0755 /tmp/docker-compose /usr/local/lib/docker/cli-plugins/docker-compose && rm /tmp/docker-compose
+install -D -m 0755 /tmp/docker-compose /usr/local/lib/docker/cli-plugins/docker-compose && rm -f /tmp/docker-compose
 docker compose version
 ```
 
@@ -355,16 +357,27 @@ PGPASSWORD=$(aws ssm get-parameter --name /mbia-admin/staging/rds-master-passwor
 psql "host=localhost port=15432 user=mbia_admin dbname=postgres sslmode=require" -v ON_ERROR_STOP=1 \
   -v mbia_password="$(aws ssm get-parameter --name /mbia/staging/backend/SPRING_DATASOURCE_PASSWORD --with-decryption --query Parameter.Value --output text)" \
   -v keycloak_password="$(aws ssm get-parameter --name /mbia/staging/keycloak/KC_DB_PASSWORD --with-decryption --query Parameter.Value --output text)" <<'SQL'
--- The RDS master user is not a superuser: it must be able to SET ROLE to the owners it creates (PostgreSQL 16+).
-SET createrole_self_grant TO 'set, inherit';
+-- The RDS master user is not a superuser: it must be a member of a role to make it the owner of a database.
 CREATE ROLE mbia LOGIN PASSWORD :'mbia_password';
+GRANT mbia TO mbia_admin;
 CREATE DATABASE mbia OWNER mbia;
 REVOKE ALL ON DATABASE mbia FROM PUBLIC;
 CREATE ROLE keycloak LOGIN PASSWORD :'keycloak_password';
+GRANT keycloak TO mbia_admin;
 CREATE DATABASE keycloak OWNER keycloak;
 REVOKE ALL ON DATABASE keycloak FROM PUBLIC;
 SQL
 ```
+
+Check: the two databases, each owned by its role.
+
+```bash
+PGPASSWORD=$(aws ssm get-parameter --name /mbia-admin/staging/rds-master-password --with-decryption --query Parameter.Value --output text) \
+  psql "host=localhost port=15432 user=mbia_admin dbname=postgres sslmode=require" \
+  -c "SELECT datname, pg_get_userbyid(datdba) AS owner FROM pg_database WHERE datname IN ('mbia', 'keycloak')"
+```
+
+If the block stopped halfway (`ON_ERROR_STOP`), run again only the statements after the last one that succeeded.
 
 The schema of `mbia` is created by Flyway at the backend's first start; Keycloak creates its own.
 
@@ -388,7 +401,7 @@ gh variable set STAGING_SUPPORT_EMAIL --body "<support address>"
 
 ```bash
 gh workflow run deploy-staging.yml --ref main                    # the head of main
-gh workflow run deploy-staging.yml --ref main -f commit=<sha>    # a given commit of main
+gh workflow run deploy-staging.yml --ref main -f commit=<sha>    # a given commit of main, short or full SHA
 gh run watch "$(gh run list --workflow deploy-staging.yml --limit 1 --json databaseId --jq '.[0].databaseId')"
 ```
 
