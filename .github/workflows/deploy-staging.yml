@@ -1,19 +1,19 @@
 # Deployment of staging (ADR-010, Phase 7 plan PR-68). Manual only: a commit of main, never on every merge.
 #   gh workflow run deploy-staging.yml --ref main                     the head of main
-#   gh workflow run deploy-staging.yml --ref main -f commit=<sha>     a given commit of main (rollback)
+#   gh workflow run deploy-staging.yml --ref main -f commit=<sha>     a given commit of main, short or full SHA (rollback)
 # Runbook: infrastructure/staging/README.md. AWS by OIDC with the role mbia-staging-deploy: no stored key.
 #
 # Repository variables (Settings › Secrets and variables › Actions › Variables; no secret is used):
 #   AWS_ACCOUNT_ID, AWS_DEPLOY_ROLE_ARN, STAGING_VM_INSTANCE_ID, STAGING_CLOUDFRONT_DISTRIBUTION_ID,
 #   STAGING_SUPPORT_EMAIL. No GitHub environment: it would change the token's subject, which the role's
-#   trust policy pins to repo:tonyadji/mbia:ref:refs/heads/main.
+#   trust policy pins to the main branch (immutable subject repo:tonyadji@19990474/mbia@1387134516:ref:refs/heads/main).
 name: Deploy staging
 
 on:
   workflow_dispatch:
     inputs:
       commit:
-        description: Commit of main to deploy (full SHA). Empty for the head of main.
+        description: Commit of main to deploy (SHA, short or full). Empty for the head of main.
         required: false
         default: ''
 
@@ -67,9 +67,10 @@ jobs:
         env:
           REQUESTED: ${{ inputs.commit }}
         run: |
-          commit=${REQUESTED:-$GITHUB_SHA}
-          if ! [[ $commit =~ ^[0-9a-f]{40}$ ]]; then
-            echo "::error::'$commit' is not a full commit SHA"; exit 1
+          requested=${REQUESTED:-$GITHUB_SHA}
+          # A short SHA is completed from the history of main (fetch-depth 0); the image tag is the full SHA.
+          if ! [[ $requested =~ ^[0-9a-f]{7,40}$ ]] || ! commit=$(git rev-parse --verify --quiet "$requested^{commit}"); then
+            echo "::error::'$requested' is not a commit SHA known in this repository"; exit 1
           fi
           if ! git merge-base --is-ancestor "$commit" origin/main; then
             echo "::error::$commit is not a commit of main"; exit 1
