@@ -796,3 +796,13 @@ When a question is answered, update the relevant spec, then move the entry to **
 - **Recommendation:** A, written by the human (legal content is not written by an agent). Where the link is shown is a small UI change, to be specified if chosen.
 - **Blocking:** inviting the first beta family (Phase 7 exit criteria); not the infrastructure.
 - **Answer:** A, extended (human, 2026-10-03). A lawyer writes the texts after a demo and the product vision: the beta notice and terms, and at the same time the terms of use and privacy policy of the production MVP (`mvp.md` §24). No agent writes legal content; where the links appear in the UI is specified once the texts exist. Documented in `delivery/phase-7-staging.md` (§2.2, §6).
+
+### OQ-073 — Password policy of the Keycloak realm outside local
+
+- **Raised by / date:** coding agent (PR-65), 2026-11-08
+- **Context:** ADR-005 lists the realm settings (registration, email verification, forgot password, languages) but no password policy. The local realm requires 8 characters (PR-09). The staging realm (PR-65) hosts real accounts for the closed beta (ADR-010); brute-force protection is on (5 failures, then a wait growing from 1 to 15 minutes, no permanent lockout).
+- **Question:** which password policy do real accounts get, during the beta and in production?
+- **Options:** A — `length(8)`, as locally / B — `length(10) and notUsername and notEmail` / C — B plus a list of common passwords (`passwordBlacklist`, a file shipped in the Keycloak image).
+- **Recommendation:** B for production; A is acceptable for a closed beta with a few invited families.
+- **Blocking:** the production realm; not the beta.
+- **Answer (beta only):** A (human, 2026-11-08). `realm-mbia-staging.json` keeps `length(8)`. **To review before production.** A stricter policy applies to existing users at their next password change only.

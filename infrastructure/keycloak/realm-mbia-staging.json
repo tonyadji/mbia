@@ -1,0 +1,77 @@
+{
+  "realm": "mbia",
+  "displayName": "Mbia",
+  "enabled": true,
+  "sslRequired": "external",
+  "registrationAllowed": true,
+  "registrationEmailAsUsername": true,
+  "loginWithEmailAllowed": true,
+  "duplicateEmailsAllowed": false,
+  "verifyEmail": true,
+  "resetPasswordAllowed": true,
+  "rememberMe": false,
+  "editUsernameAllowed": false,
+  "bruteForceProtected": true,
+  "permanentLockout": false,
+  "failureFactor": 5,
+  "waitIncrementSeconds": 60,
+  "maxFailureWaitSeconds": 900,
+  "maxDeltaTimeSeconds": 43200,
+  "quickLoginCheckMilliSeconds": 1000,
+  "minimumQuickLoginWaitSeconds": 60,
+  "passwordPolicy": "length(8)",
+  "internationalizationEnabled": true,
+  "supportedLocales": ["fr", "en"],
+  "defaultLocale": "fr",
+  "smtpServer": {
+    "host": "${MBIA_KC_SMTP_HOST}",
+    "port": "${MBIA_KC_SMTP_PORT:587}",
+    "from": "${MBIA_KC_SMTP_FROM}",
+    "fromDisplayName": "Mbia",
+    "auth": "${MBIA_KC_SMTP_AUTH:true}",
+    "user": "${MBIA_KC_SMTP_USERNAME}",
+    "password": "${MBIA_KC_SMTP_PASSWORD}",
+    "ssl": "false",
+    "starttls": "${MBIA_KC_SMTP_STARTTLS:true}"
+  },
+  "clients": [
+    {
+      "clientId": "mbia-web",
+      "name": "Mbia web application",
+      "enabled": true,
+      "protocol": "openid-connect",
+      "publicClient": true,
+      "standardFlowEnabled": true,
+      "implicitFlowEnabled": false,
+      "directAccessGrantsEnabled": false,
+      "serviceAccountsEnabled": false,
+      "frontchannelLogout": true,
+      "rootUrl": "${MBIA_WEB_ORIGIN}",
+      "baseUrl": "/",
+      "redirectUris": ["${MBIA_WEB_ORIGIN}/*"],
+      "webOrigins": ["${MBIA_WEB_ORIGIN}"],
+      "attributes": {
+        "pkce.code.challenge.method": "S256",
+        "post.logout.redirect.uris": "${MBIA_WEB_ORIGIN}/*",
+        "oauth2.device.authorization.grant.enabled": "false",
+        "oidc.ciba.grant.enabled": "false"
+      },
+      "defaultClientScopes": ["basic", "profile", "email", "web-origins", "acr"],
+      "optionalClientScopes": [],
+      "protocolMappers": [
+        {
+          "name": "mbia-api audience",
+          "protocol": "openid-connect",
+          "protocolMapper": "oidc-audience-mapper",
+          "consentRequired": false,
+          "config": {
+            "included.custom.audience": "mbia-api",
+            "access.token.claim": "true",
+            "id.token.claim": "false",
+            "introspection.token.claim": "true"
+          }
+        }
+      ]
+    }
+  ]
+}

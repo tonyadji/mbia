@@ -73,6 +73,32 @@ jobs:
       # Rules: redocly.yaml (recommended set, three rules disabled).
       - run: npx -y @redocly/cli@2.54.3 lint mbia-specs/technical/api/openapi.yaml
 
+  # Staging stack configuration (Phase 7 plan PR-65): the realm holds no user nor local address,
+  # the Compose files and the Caddyfile are valid.
+  staging-config:
+    name: staging-config
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v7
+
+      - run: python3 -I infrastructure/staging/check-staging-realm.py
+
+      - name: Validate the Compose files
+        env:
+          MBIA_BACKEND_IMAGE: mbia-backend
+          MBIA_KEYCLOAK_IMAGE: mbia-keycloak
+          MBIA_ENV_DIR: ./local
+        run: |
+          docker compose -f infrastructure/staging/compose.yml config -q
+          docker compose -f infrastructure/staging/compose.yml -f infrastructure/staging/compose.local.yml config -q
+
+      - name: Validate the Caddyfile
+        run: |
+          docker run --rm -e MBIA_API_ADDRESS=api.example.test -e MBIA_AUTH_ADDRESS=auth.example.test \
+            -v "$PWD/infrastructure/staging/Caddyfile:/etc/caddy/Caddyfile:ro" \
+            caddy:2.11.9-alpine caddy validate --config /etc/caddy/Caddyfile
+
   api-breaking:
     name: api-breaking
     if: github.event_name == 'pull_request'

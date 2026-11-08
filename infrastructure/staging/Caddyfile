@@ -1,0 +1,51 @@
+# Reverse proxy of the staging VM (ADR-010, Phase 7 plan §3.1, PR-65): the only process with open ports.
+# Site addresses come from the environment (compose.yml):
+#   staging: api.mbia-staging.lehnade.com, auth.mbia-staging.lehnade.com (automatic HTTPS, Let's Encrypt)
+#   local:   http://api.localhost, http://auth.localhost (plain HTTP, no certificate)
+
+(security_headers) {
+	# defer: applied to the response, replacing the upstream's value instead of adding a second one.
+	header {
+		defer
+		Strict-Transport-Security "max-age=31536000; includeSubDomains"
+		X-Content-Type-Options "nosniff"
+		Referrer-Policy "strict-origin-when-cross-origin"
+		-Server
+	}
+}
+
+{$MBIA_API_ADDRESS} {
+	import security_headers
+	# The API returns JSON only: nothing to frame, run or load.
+	header {
+		defer
+		X-Frame-Options "DENY"
+		Content-Security-Policy "default-src 'none'; frame-ancestors 'none'"
+	}
+
+	# Only the API. /actuator and every other path of the backend are never exposed.
+	handle /api/v1/* {
+		reverse_proxy backend:8080 {
+			# The health of the backend is answered to Caddy only, on the internal network.
+			health_uri /actuator/health
+			health_interval 30s
+			health_timeout 5s
+		}
+	}
+	handle {
+		respond 404
+	}
+}
+
+{$MBIA_AUTH_ADDRESS} {
+	import security_headers
+	# Keycloak sets its own Content-Security-Policy and X-Frame-Options (its silent check iframes need them).
+
+	# The admin console and the admin REST API are reached through an SSM port forward only (ADR-010).
+	handle /admin* {
+		respond 404
+	}
+	handle {
+		reverse_proxy keycloak:8080
+	}
+}

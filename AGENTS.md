@@ -61,6 +61,9 @@ docker compose up -d                      # PostgreSQL, RustFS, Keycloak (realm 
 cd backend && ./mvnw verify               # compile, generate API, unit + Testcontainers + architecture tests
 cd backend && ./mvnw spring-boot:run -Dspring-boot.run.profiles=local   # API on http://localhost:8080/api/v1
 docker build -f backend/Dockerfile -t mbia-backend .   # backend container image, from the repository root (configuration: infrastructure/staging/README.md)
+docker build -f infrastructure/keycloak/Dockerfile -t mbia-keycloak .   # Keycloak image for staging, with the staging realm
+docker compose --env-file infrastructure/staging/local/compose.env -f infrastructure/staging/compose.yml -f infrastructure/staging/compose.local.yml up -d --wait   # staging stack locally, on api.localhost / auth.localhost (infrastructure/staging/README.md)
+python3 infrastructure/staging/check-staging-realm.py   # the staging realm has no user, no local address, no secret
 cd frontend && npm ci
 cd frontend && npm run generate:api       # regenerate the TypeScript types (also run before dev, build, typecheck, lint, test)
 npx @redocly/cli@2.54.3 lint mbia-specs/technical/api/openapi.yaml   # lint the contract (rules: redocly.yaml)
