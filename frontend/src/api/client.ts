@@ -4,8 +4,6 @@ import type { components, paths } from './generated/schema';
 type ProblemDetails = components['schemas']['ProblemDetails'];
 type FieldError = components['schemas']['FieldError'];
 
-const DEFAULT_BASE_URL = 'http://localhost:8080/api/v1';
-
 /**
  * An API error response. `code` and `traceId` come from the `ProblemDetails` body; they are `null`
  * when the response is not a problem (for example a proxy error page).
@@ -95,7 +93,7 @@ export function createApiClient(
   options: { baseUrl?: string; fetch?: typeof globalThis.fetch } = {},
 ) {
   const client = createClient<paths>({
-    baseUrl: options.baseUrl ?? import.meta.env.VITE_API_BASE_URL ?? DEFAULT_BASE_URL,
+    baseUrl: options.baseUrl ?? import.meta.env.VITE_API_BASE_URL,
     ...(options.fetch ? { fetch: options.fetch } : {}),
   });
   client.use(authentication, problems);

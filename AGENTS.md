@@ -72,6 +72,8 @@ python3 -m venv .venv-fixtures && .venv-fixtures/bin/pip install Pillow==12.3.0 
 cd frontend && npm run typecheck
 cd frontend && npm run lint
 cd frontend && npm run i18n:check        # French and English translations have the same keys, no empty value
+cd frontend && npm run build:staging     # staging build: VITE_API_BASE_URL, VITE_OIDC_AUTHORITY, VITE_OIDC_CLIENT_ID, VITE_SUPPORT_EMAIL required (infrastructure/staging/README.md)
+cd frontend && npm run check:staging-build   # the staging build in dist/ holds no local address and a robots.txt
 cd frontend && npm test                   # Vitest
 cd frontend && npx playwright install chromium   # once, the browser used by the E2E tests
 cd frontend && npm run test:e2e           # Playwright on the built frontend (needs docker compose + backend running)

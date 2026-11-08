@@ -59,6 +59,17 @@ jobs:
       - run: npm test
       - run: npm run build
 
+      # Phase 7 plan PR-66: a staging build, with placeholder values, holds no local address and a robots.txt.
+      - name: Build for staging and check the output
+        env:
+          VITE_API_BASE_URL: https://api.mbia-staging.example.test/api/v1
+          VITE_OIDC_AUTHORITY: https://auth.mbia-staging.example.test/realms/mbia
+          VITE_OIDC_CLIENT_ID: mbia-web
+          VITE_SUPPORT_EMAIL: support@example.test
+        run: |
+          npm run build:staging
+          npm run check:staging-build
+
   api-lint:
     name: api-lint
     runs-on: ubuntu-latest

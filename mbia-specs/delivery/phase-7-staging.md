@@ -174,6 +174,7 @@ The backend is configured by environment variables only (Spring relaxed binding)
 - EC2 `t4g.medium` (Amazon Linux, Docker, SSM agent), Elastic IP, instance role of §3.2, EBS encrypted.
 - RDS PostgreSQL `db.t4g.micro`, single-AZ, encrypted, backups 7 days, deletion protection.
 - S3 media bucket (private, CORS, versioning, encryption), S3 frontend bucket + CloudFront (OAC, ACM in us-east-1, response headers policy).
+- CloudFront for the SPA as listed by PR-66 in `infrastructure/staging/README.md` §Frontend on CloudFront: deep links, cache per path, `X-Robots-Tag`, security headers and CSP.
 - Route 53 records; SES domain identity with DKIM, SPF, DMARC and a custom MAIL FROM, and the SNS feedback topic: they already exist (§2.2), so they are brought under Terraform with `import` blocks, never recreated.
 - ECR repositories (backend, keycloak) with a lifecycle policy.
 - SSM parameter names (values set by the human, never in Terraform).

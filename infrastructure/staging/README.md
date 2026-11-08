@@ -1,6 +1,6 @@
 # staging
 
-Staging and closed-beta environment on AWS (ADR-010, `mbia-specs/delivery/phase-7-staging.md`). This folder grows with Phase 7: the backend image (PR-64), the container stack of the VM (PR-65), the deployment and the runbook (PR-68).
+Staging and closed-beta environment on AWS (ADR-010, `mbia-specs/delivery/phase-7-staging.md`). This folder grows with Phase 7: the backend image (PR-64), the container stack of the VM (PR-65), the frontend build (PR-66), the deployment and the runbook (PR-68).
 
 ## Backend container image
 
@@ -147,3 +147,59 @@ Separate databases: the local Keycloak already holds a realm `mbia`, which would
 - Port 80 must be free: inside the Compose network, Caddy also answers `auth.localhost` on port 80, so the issuer is the same for the browser and the backend.
 - If `5432` is already taken on the computer, start PostgreSQL with `POSTGRES_PORT=5433` and point `MBIA_ENV_DIR` to a copy of `local/` using that port.
 - To start again from an empty realm: `docker compose exec -T postgres psql -U postgres -c 'DROP DATABASE keycloak_staging WITH (FORCE)'` then create it again.
+
+## Frontend build
+
+The SPA is built for staging by the deployment workflow (PR-68), from `frontend/`:
+
+```bash
+npm ci
+VITE_API_BASE_URL=... VITE_OIDC_AUTHORITY=... VITE_OIDC_CLIENT_ID=... VITE_SUPPORT_EMAIL=... npm run build:staging
+npm run check:staging-build
+```
+
+| Variable | Value on staging |
+|---|---|
+| `VITE_API_BASE_URL` | `https://api.mbia-staging.lehnade.com/api/v1` |
+| `VITE_OIDC_AUTHORITY` | `https://auth.mbia-staging.lehnade.com/realms/mbia` |
+| `VITE_OIDC_CLIENT_ID` | `mbia-web` |
+| `VITE_SUPPORT_EMAIL` | `<support address>`, the contact for account deletion requests (`mvp.md` §30) |
+
+The values are read at build time and end up in the published JavaScript: none is secret. They come from the workflow, never from a file of the repository.
+
+- `npm run build:staging` builds in the Vite mode `staging`. It stops before building when a variable is missing or empty, when the API or the issuer is not an `https://` URL, or when a value points to a developer machine (`localhost`, `127.0.0.1`, `[::1]`). The local defaults (`frontend/scripts/build-env.js`) apply to every other mode only: `npm run dev`, the tests and the local `npm run build` of the E2E tests.
+- The staging build alone contains `robots.txt` (`User-agent: *`, `Disallow: /`, OQ-070); a production build will have none.
+- `npm run check:staging-build` fails when `dist/` contains a local address or no such `robots.txt`. Two exact literals are tolerated: `http://localhost` (react-router) and `http://127.0.0.1` (oidc-client-ts), bases against which these libraries parse relative URLs; no request goes to them.
+- Output: `index.html`, `robots.txt` and `assets/`, whose file names carry a content hash.
+
+## Frontend on CloudFront
+
+What the CloudFront distribution of the frontend must do (PR-67). The build itself cannot set headers nor routing.
+
+1. **Origin:** the private frontend bucket through Origin Access Control; `default_root_object = index.html`.
+2. **Deep links** (`/invitations/<token>`, `/families/<id>/tree`, …): a CloudFront Function on viewer request rewrites to `/index.html` every URI whose last segment has no extension (no `.`). No custom error response turning 403/404 into `index.html`: a missing asset must stay an error. The application's paths hold only UUIDs, years and base64url invitation tokens, never a dot.
+3. **Behavior `/assets/*`:** cache policy `CachingOptimized`; response header `Cache-Control: public, max-age=31536000, immutable` (override).
+4. **Default behavior** (`index.html`, `robots.txt`, deep links): cache policy `CachingDisabled`; response header `Cache-Control: no-cache` (override), so that browsers revalidate `index.html` on every visit and a deployment is seen at once.
+5. **Headers on every response** (the response headers policies of both behaviors):
+   - `X-Robots-Tag: noindex, nofollow` (OQ-070);
+   - `Strict-Transport-Security: max-age=31536000; includeSubDomains`;
+   - `X-Content-Type-Options: nosniff`;
+   - `X-Frame-Options: DENY`;
+   - `Referrer-Policy: strict-origin-when-cross-origin`: an invitation token in the address never leaves the frontend origin;
+   - `Content-Security-Policy`, on one line:
+
+     ```text
+     default-src 'self'; script-src 'self'; style-src 'self'; font-src 'self';
+     img-src 'self' https://<media bucket>.s3.eu-west-3.amazonaws.com;
+     connect-src 'self' https://api.mbia-staging.lehnade.com https://auth.mbia-staging.lehnade.com https://<media bucket>.s3.eu-west-3.amazonaws.com;
+     frame-src 'none'; object-src 'none'; base-uri 'self'; form-action 'self'; frame-ancestors 'none'
+     ```
+
+6. **After an upload** (PR-68): invalidate `/index.html` and `/robots.txt` at least (assets have new names).
+
+Why each source of the CSP:
+
+- **Scripts, styles, fonts:** the build has no inline script nor stylesheet; React sets inline styles through the DOM, which the CSP allows; the font is bundled.
+- **Media bucket:** photos are uploaded with a pre-signed `PUT` sent by `XMLHttpRequest` (`connect-src`) and shown with pre-signed `GET` URLs in `<img>` (`img-src`). On AWS S3 the URLs are virtual-hosted (`path-style-access` `false`): `https://<media bucket>.s3.eu-west-3.amazonaws.com`. Take the bucket name from Terraform.
+- **Keycloak:** oidc-client-ts fetches the discovery document and the keys, exchanges the code and renews the access token with the refresh token, all with `fetch` (`connect-src`); Keycloak gives `mbia-web` a refresh token and allows its origin (`webOrigins`). Sign-in, sign-out and the account page are full-page navigations, outside the CSP. No silent renewal in an iframe: it is used only without a refresh token, and the callback page does not handle it; the application then signs the User in again. Hence `frame-src 'none'`.
+- **PostHog EU:** absent, the frontend sends no analytics today (ADR-008). Add `https://eu.i.posthog.com` to `connect-src` when a change does.
