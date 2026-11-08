@@ -84,8 +84,8 @@ jobs:
       # Rules: redocly.yaml (recommended set, three rules disabled).
       - run: npx -y @redocly/cli@2.54.3 lint mbia-specs/technical/api/openapi.yaml
 
-  # Staging stack configuration (Phase 7 plan PR-65): the realm holds no user nor local address,
-  # the Compose files and the Caddyfile are valid.
+  # Staging stack configuration (Phase 7 plan PR-65, PR-68): the realm holds no user nor local address,
+  # the Compose files and the Caddyfile are valid, the workflows and deployment scripts pass their linters.
   staging-config:
     name: staging-config
     runs-on: ubuntu-latest
@@ -109,6 +109,13 @@ jobs:
           docker run --rm -e MBIA_API_ADDRESS=api.example.test -e MBIA_AUTH_ADDRESS=auth.example.test \
             -v "$PWD/infrastructure/staging/Caddyfile:/etc/caddy/Caddyfile:ro" \
             caddy:2.11.9-alpine caddy validate --config /etc/caddy/Caddyfile
+
+      # Deployment workflow and scripts (Phase 7 plan PR-68). actionlint also runs shellcheck on every `run:`.
+      - name: Lint the workflows and the deployment scripts
+        run: |
+          docker run --rm -v "$PWD:/repo" -w /repo rhysd/actionlint:1.7.12
+          docker run --rm -v "$PWD:/mnt" -w /mnt koalaman/shellcheck:v0.11.0 \
+            infrastructure/staging/deploy/*.sh infrastructure/terraform/staging/vm-init.sh
 
   # Staging infrastructure (Phase 7 plan PR-67): formatted and valid. No AWS credentials: nothing is planned here.
   terraform:
@@ -157,6 +164,8 @@ jobs:
             echo "::notice::Label api-breaking-approved present: breaking changes are reported, not blocking."
             fail_on=""
           fi
+          # $fail_on is two words, or none: left unquoted on purpose.
+          # shellcheck disable=SC2086
           docker run --rm \
             -v "$RUNNER_TEMP/openapi-base.yaml:/specs/base.yaml:ro" \
             -v "$PWD/mbia-specs/technical/api/openapi.yaml:/specs/head.yaml:ro" \

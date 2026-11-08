@@ -66,6 +66,10 @@ docker compose --env-file infrastructure/staging/local/compose.env -f infrastruc
 python3 infrastructure/staging/check-staging-realm.py   # the staging realm has no user, no local address, no secret
 terraform -chdir=infrastructure/terraform/staging fmt -check -recursive ..   # Terraform 1.17.1 exactly
 terraform -chdir=infrastructure/terraform/staging init -backend=false && terraform -chdir=infrastructure/terraform/staging validate   # no AWS access; plan and apply: human only (infrastructure/terraform/staging/README.md)
+docker run --rm -v "$PWD:/repo" -w /repo rhysd/actionlint:1.7.12   # lint the GitHub workflows (also runs shellcheck on their scripts)
+docker run --rm -v "$PWD:/mnt" -w /mnt koalaman/shellcheck:v0.11.0 infrastructure/staging/deploy/*.sh infrastructure/terraform/staging/vm-init.sh   # lint the deployment scripts
+gh workflow run deploy-staging.yml --ref main   # human only: deploy the head of main to staging (runbook: infrastructure/staging/README.md)
+gh workflow run deploy-staging.yml --ref main -f commit=<sha>   # human only: deploy a given commit of main, the rollback to the previous release
 cd frontend && npm ci
 cd frontend && npm run generate:api       # regenerate the TypeScript types (also run before dev, build, typecheck, lint, test)
 npx @redocly/cli@2.54.3 lint mbia-specs/technical/api/openapi.yaml   # lint the contract (rules: redocly.yaml)

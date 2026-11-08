@@ -72,6 +72,10 @@ The visual mockup is a design reference. Product rules and screen behavior are d
 
 ## Changelog
 
+### 0.7.4 — 2026-11-08
+
+- OQ-075 answered: how support carries out an account deletion (`mvp.md` §30); `data-model.md` §5 describes the transaction, `infrastructure/staging/README.md` the procedure (PR-68).
+
 ### 0.7.3 — 2026-10-03
 
 Staging and closed beta:
