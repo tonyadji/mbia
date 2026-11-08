@@ -110,6 +110,27 @@ jobs:
             -v "$PWD/infrastructure/staging/Caddyfile:/etc/caddy/Caddyfile:ro" \
             caddy:2.11.9-alpine caddy validate --config /etc/caddy/Caddyfile
 
+  # Staging infrastructure (Phase 7 plan PR-67): formatted and valid. No AWS credentials: nothing is planned here.
+  terraform:
+    name: terraform
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    defaults:
+      run:
+        working-directory: infrastructure/terraform/staging
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: 1.16.7
+          terraform_wrapper: false
+
+      - run: terraform fmt -check -recursive -diff ..
+      # The lock file is committed: init fails if it does not match the pinned provider.
+      - run: terraform init -backend=false -input=false -lockfile=readonly
+      - run: terraform validate
+
   api-breaking:
     name: api-breaking
     if: github.event_name == 'pull_request'

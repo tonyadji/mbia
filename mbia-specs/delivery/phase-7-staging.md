@@ -28,7 +28,7 @@ open https://mbia-staging.lehnade.com
 
 Phase 3 rules apply (`phase-3-family-memories.md` §2.1), with these differences:
 
-- Terraform, Dockerfiles, Compose, Caddy and workflow files count as hand-written code (**≤ ~700 lines** per PR). PR-67 is split into two PRs if it goes beyond.
+- Terraform, Dockerfiles, Compose, Caddy and workflow files count as hand-written code (**≤ ~700 lines** per PR). PR-67 is split into two PRs if it goes beyond: it is (PR-67a foundation, PR-67b edge and email, below).
 - **No product change.** No new endpoint, screen, migration or setting that a spec does not request. A code change is allowed only when the deployment needs it (for example a configuration key read from the environment), and it keeps `local` and `test` unchanged.
 - **No secret in the repository**: no password, key, token or real email address. Examples use placeholders (`<domain>`, `change-me`).
 - Terraform is never applied by the agent. The agent writes it and runs `terraform fmt -check` and `terraform validate`; the human runs `plan` and `apply`.
@@ -37,7 +37,7 @@ Phase 3 rules apply (`phase-3-family-memories.md` §2.1), with these differences
 
 - [x] ADR-010 Accepted (2026-10-03).
 - [x] Domain registered in Route 53: `lehnade.com` (2026-11-08); hosts in ADR-010.
-- [ ] AWS account: MFA on the root user, an administrator user or SSO for the human, a budget alert.
+- [ ] AWS account: MFA on the root user, an administrator user or SSO for the human, a budget alert (created by hand, 2026-11-08; it stays outside Terraform: its subscriber is a real email address).
 - [x] SES production access granted for eu-west-3 (2026-11-08). Created by hand in the console: the SES identity `mbia-staging.lehnade.com` (Easy DKIM, MAIL FROM `mail.mbia-staging.lehnade.com`, records published to Route 53), the DMARC record `_dmarc.mbia-staging.lehnade.com` (`p=none`) and the SNS topic `mbia-staging-ses-feedback` (bounces and complaints, email subscription).
 - [x] OQ-070, OQ-071 and OQ-072 answered (2026-10-03).
 - [ ] Beta privacy notice and terms requested from the lawyer (OQ-072), with the production texts.
@@ -58,7 +58,8 @@ Phase 3 rules apply (`phase-3-family-memories.md` §2.1), with these differences
 | Internet | VM | 80, 443 (Caddy) |
 | Internet | CloudFront | 443 |
 | VM | RDS | 5432 |
-| VM | S3, SES, ECR, SSM, CloudWatch | over HTTPS |
+| VM | S3, ECR, SSM, CloudWatch, Let's Encrypt, container images | over HTTPS (443) |
+| VM | SES | SMTP with STARTTLS (587): the backend and Keycloak send email over SMTP |
 | Human | VM | SSM Session Manager and port forwarding only |
 
 The Keycloak admin console and the Actuator are not exposed on the Internet; `/actuator/health` is answered only to Caddy (health check).
@@ -66,7 +67,7 @@ The Keycloak admin console and the Actuator are not exposed on the Internet; `/a
 ### 3.2 IAM
 
 - VM instance role: S3 `GetObject`, `PutObject`, `DeleteObject`, `ListBucket` on the media bucket only; ECR pull; SSM parameters under `/mbia/staging/` (read); CloudWatch Logs write; SSM managed instance.
-- GitHub deployment role (OIDC, `main` branch and manual runs only): ECR push, S3 write on the frontend bucket, CloudFront invalidation, SSM `SendCommand` on the VM.
+- GitHub deployment role (OIDC, `main` branch and manual runs only): ECR push, S3 write on the frontend bucket, CloudFront invalidation (create, and read its status), SSM `SendCommand` on the VM and reading the result of its commands (`GetCommandInvocation`).
 - SES SMTP user: `ses:SendRawEmail` from the verified domain only.
 
 ### 3.3 Configuration
@@ -80,7 +81,7 @@ The backend is configured by environment variables only (Spring relaxed binding)
 | PR-64 | Backend container image | the backend runs anywhere Docker runs |
 | PR-65 | Keycloak and the staging stack | the VM stack (Caddy, Keycloak, backend) runs in production mode |
 | PR-66 | Frontend build for staging | the SPA is built for an environment and served by a CDN |
-| PR-67 | Staging infrastructure (Terraform) | the AWS resources are reviewed as code |
+| PR-67 | Staging infrastructure (Terraform), in two PRs: PR-67a foundation (state, network, VM, RDS, media bucket, ECR, SSM, logs, CI), PR-67b edge and email (frontend bucket, CloudFront, ACM, Route 53, SES and SNS imports, SMTP user, GitHub OIDC) | the AWS resources are reviewed as code |
 | PR-68 | Deployment workflow and runbook | a version is deployed, checked and rolled back without the agent |
 
 ---
@@ -178,7 +179,7 @@ The backend is configured by environment variables only (Spring relaxed binding)
 - Route 53 records; SES domain identity with DKIM, SPF, DMARC and a custom MAIL FROM, and the SNS feedback topic: they already exist (§2.2), so they are brought under Terraform with `import` blocks, never recreated.
 - ECR repositories (backend, keycloak) with a lifecycle policy.
 - SSM parameter names (values set by the human, never in Terraform).
-- GitHub OIDC provider and deployment role of §3.2; AWS Budgets alert; CloudWatch log groups.
+- GitHub OIDC provider and deployment role of §3.2; CloudWatch log groups. The AWS Budgets alert stays manual (§2.2).
 
 **Out of scope:** applying it (human), production resources.
 
@@ -201,7 +202,7 @@ The backend is configured by environment variables only (Spring relaxed binding)
 **Scope**
 
 - `.github/workflows/deploy-staging.yml`, manual trigger on a commit of `main`: build and push the images (tagged with the commit), build and upload the frontend, invalidate CloudFront, deploy on the VM with SSM Run Command (`compose pull` + `up -d`), then smoke checks (health through Caddy, frontend `200`, OIDC discovery document).
-- `infrastructure/staging/README.md` (runbook): first installation (databases and users on RDS, SSM parameters, SES SMTP credentials), deployment, rollback to a previous tag, reading logs, reaching the Keycloak admin console, restoring RDS to a point in time, the account deletion procedure of `mvp.md` §30 on staging; what must be kept (RDS snapshots, media bucket, Keycloak database) for the migration of the beta data to production (OQ-071).
+- `infrastructure/staging/README.md` (runbook): first installation (the Docker Compose plugin on the VM, pinned with its checksum: Amazon Linux 2023 ships Docker without it; databases and users on RDS, SSM parameters, SES SMTP credentials), deployment, rollback to a previous tag, reading logs, reaching the Keycloak admin console, restoring RDS to a point in time, the account deletion procedure of `mvp.md` §30 on staging; what must be kept (RDS snapshots, media bucket, Keycloak database) for the migration of the beta data to production (OQ-071).
 - AGENTS.md §4: the new commands.
 
 **Out of scope:** automatic deployment on every merge, production.
