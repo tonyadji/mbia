@@ -72,6 +72,10 @@ The visual mockup is a design reference. Product rules and screen behavior are d
 
 ## Changelog
 
+### 0.7.5 — 2026-11-08
+
+- OQ-076 answered: the family visual of SCREEN-001 is a photograph provided by the human, in the existing frame (`screens.md`).
+
 ### 0.7.4 — 2026-11-08
 
 - OQ-075 answered: how support carries out an account deletion (`mvp.md` §30); `data-model.md` §5 describes the transaction, `infrastructure/staging/README.md` the procedure (PR-68).

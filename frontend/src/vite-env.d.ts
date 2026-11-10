@@ -11,6 +11,12 @@ interface ImportMetaEnv {
   readonly VITE_SUPPORT_EMAIL?: string;
 }
 
+// Images imported by components: Vite gives their URL, with a content hash.
+declare module '*.webp' {
+  const src: string;
+  export default src;
+}
+
 interface ImportMeta {
   readonly env: ImportMetaEnv;
 }
