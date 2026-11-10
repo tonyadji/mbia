@@ -44,6 +44,8 @@ Create my family
 
 No advanced feature list or genealogy configuration on this screen.
 
+The family visual is the photograph `references/home-screen.png` (OQ-076), in the frame between the logo and the title, cropped to fill it and centred on the faces. It is decorative: no alternative text, the title says what Mbia is. The full-screen layout of the mockup is not used (provisional).
+
 ---
 
 # SCREEN-002 — Family Home

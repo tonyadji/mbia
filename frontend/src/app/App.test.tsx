@@ -56,6 +56,16 @@ describe('App', () => {
       expect(screen.getByRole('button', { name: 'Se connecter' })).toBeInTheDocument();
     });
 
+    it('shows the family visual as a decorative photo (OQ-076)', async () => {
+      renderApp('/');
+      await screen.findByRole('button', { name: 'Créer ma famille' });
+
+      // Empty alternative text: hidden from assistive technologies, which read the title instead.
+      const photo = document.querySelector('img[src*="welcome-family"]');
+      expect(photo).not.toBeNull();
+      expect(photo).toHaveAttribute('alt', '');
+    });
+
     it('switches to English', async () => {
       renderApp('/');
       await screen.findByRole('button', { name: 'Créer ma famille' });

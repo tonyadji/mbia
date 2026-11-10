@@ -3,6 +3,7 @@ import { Navigate, useNavigate } from 'react-router';
 import { CREATE_FAMILY_PATH, HOME_PATH, useAuth } from '../auth/AuthProvider';
 import { Button } from '../components/Button';
 import { Logo } from '../components/Logo';
+import welcomeFamily from '../assets/welcome-family.webp';
 import { invitationPath, pendingInvitation } from '../invitations/pendingInvitation';
 
 /**
@@ -23,8 +24,19 @@ export function WelcomePage() {
       <header>
         <Logo />
       </header>
-      {/* Neutral placeholder for the family visual. */}
-      <div aria-hidden="true" className="min-h-40 flex-1 rounded-3xl bg-accent/20" />
+      {/* The family visual (OQ-076): decorative, the title says what Mbia is. Cropped to fill the frame,
+          centred on the two faces. */}
+      <div className="relative min-h-40 flex-1 overflow-hidden rounded-3xl bg-accent/20">
+        <img
+          src={welcomeFamily}
+          alt=""
+          width={2048}
+          height={768}
+          fetchPriority="high"
+          decoding="async"
+          className="absolute inset-0 h-full w-full object-cover object-[63%_35%]"
+        />
+      </div>
       <div className="flex flex-col gap-2">
         <h1 className="text-display text-text">{t('welcome.title')}</h1>
         <p className="text-body text-text-muted">{t('welcome.valueProposition')}</p>
